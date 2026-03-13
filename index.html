@@ -14,6 +14,7 @@
             --main-bg: #f8fafc;
             --accent-color: #3b82f6;
             --text-color: #334155;
+            --success-color: #10b981;
         }
 
         body {
@@ -249,7 +250,7 @@
             position: absolute;
             top: 95%; 
             left: 0;
-            width: 180px; 
+            width: 200px; 
             background: white;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
@@ -280,7 +281,47 @@
         .sub-link:hover { background-color: #eff6ff; color: var(--accent-color); }
         .sub-link:last-child { border-bottom: none; }
 
-        /* --- Do!Book --- */
+        /* --- VPN Copy Styling --- */
+        .vpn-copy-container {
+            padding: 10px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .vpn-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .copy-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            transition: all 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+            word-break: break-all;
+            text-align: left;
+            font-family: 'Sarabun', sans-serif;
+            outline: none;
+        }
+        .copy-btn:hover {
+            background: #f1f5f9;
+            border-color: var(--accent-color);
+        }
+
+        /* --- Hover Info Box --- */
         .hover-wrapper { position: relative; }
         .copy-box {
             display: none;
@@ -375,6 +416,7 @@
                         <a href="http://143.201.202.5/IFSS/ifcm01p01" target="_blank" class="sub-link">GSIS (Office)</a>
                         <a href="http://gsis.one.fanuc.com/IFSS/ifcm01p01/" target="_blank" class="sub-link">GSIS (Outside)</a>
                         <a href="https://bomgenerator.one.fanuc.com/bomgenerator/" target="_blank" class="sub-link">BOM GENERATOR</a>
+						<a href="https://ftp.one.fanuc.com/" target="_blank" class="sub-link">FTP of FANUC</a>		
                     </div>
                 </div>
 
@@ -399,6 +441,7 @@
                 <a href="http://10.36.1.12/prism/commond/default.aspx" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">PRISM</span></a>
                 <a href="http://10.36.1.12/PRBSSolution/prcm01p01/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Barcode System</span></a>
                 <a href="https://fanuc-inventory.syncroncloud.com/views/security/login/login.xhtml" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Syncron</span></a>
+				<a href="https://portal.office.com/account" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">MS365 Portal</span></a>
             </div>
         </div>
 
@@ -408,14 +451,14 @@
                 <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🔥</span><span class="link-name">GBDW</span></a>
                 <a href="https://www.fanuc.com/fth/th/index.html" target="_blank" class="link-box"><span class="emoji-icon">🏠</span><span class="link-name">FTH Website</span></a>
                 <a href="http://10.33.16.111/fth/albums.php" target="_blank" class="link-box"><span class="emoji-icon">📸</span><span class="link-name">Photo</span></a>
-                <a href="http://10.33.16.111/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a>
+                <a href="http://10.33.16.238/it/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a>
                 <a href="PC_Software_Delivery.html" target="_blank" class="link-box"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
                 <a href="http://accountserver:8080/fanuc/authentication/" target="_blank" class="link-box"><span class="emoji-icon">📊</span><span class="link-name">Billing System</span></a>
                 <a href="http://10.33.16.238/fth/robot_dem.html" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">Robot System</span></a>
 
                 <div class="link-box">
-					<img src="images/Jobcan.png" alt="Jobcan Icon" style="width: 40px; height: 40px; margin-right: 8px; vertical-align: middle;">
-					<span class="link-name">Jobcan ▼</span>
+                    <img src="https://ssl.jobcan.jp/favicon.ico" alt="Jobcan Icon" style="width: 32px; height: 32px; margin-bottom: 8px;">
+                    <span class="link-name">Jobcan ▼</span>
                     <div class="dropdown-menu">
                         <a href="https://ssl.jobcan.jp/login/pc-employee-global?lang_code=en" target="_blank" class="sub-link">For Staff</a>
                         <a href="https://ssl.jobcan.jp/login/client?lang_code=en" target="_blank" class="sub-link">For Manager</a>
@@ -426,24 +469,33 @@
                 <div class="link-box">
                     <span class="emoji-icon">👩🏼‍🦰</span> <span class="link-name">Admin ▼</span>
                     <div class="dropdown-menu">
-						<a href="http://10.33.16.238/IT/PR" target="_blank" class="sub-link">Purchase Request</a>
+                        <a href="http://10.33.16.238/IT/PR" target="_blank" class="sub-link">Purchase Request</a>
+                        <a href="http://10.33.16.238/IT/DOC/" target="_blank" class="sub-link">Document Portal</a>
                         <a href="http://10.33.16.120/" target="_blank" class="sub-link">CCTV 1</a>
                         <a href="http://10.33.16.121/" target="_blank" class="sub-link">CCTV 2</a>
-                        <a href="http://10.33.16.238/IT/DOC/" target="_blank" class="sub-link">Document Portal</a>
-					</div>
+                    </div>
                 </div>
 
                 <div class="link-box">
                     <span class="emoji-icon">👨‍💻</span> <span class="link-name">IT ▼</span>
                     <div class="dropdown-menu">
+                        <a href="http://10.33.16.238/fth/downloads/anyconnect-win-4.10.03104.msi" target="_blank" class="sub-link">📥 Download Cisco VPN</a>
+                        
+                        <div class="vpn-copy-container">
+                            <div class="vpn-label">VPN Server Address:</div>
+                            <button class="copy-btn" onclick="copyVPNAddress(this, 'vpn4.fanuc.co.jp/common/')">
+                                <span>vpn4.fanuc.co.jp/common/</span>
+                                <span>📋</span>
+                            </button>
+                        </div>
+
                         <a href="https://corp4.ais-idc.com/cacti/index.php" target="_blank" class="sub-link">Bandwidth Monitor</a>
                         <a href="http://10.33.16.111/sitesearch" target="_blank" class="sub-link">Sitesearch</a>
                         <a href="http://10.33.16.200" target="_blank" class="sub-link">AP Controller</a>
                         <a href="https://mailawn.thaicloudsolutions.com/login/" target="_blank" class="sub-link">Email Admin</a>
                         <a href="http://10.33.16.238/IT/" target="_blank" class="sub-link">IT</a>
                         <a href="https://fanucthai.webex.com/" target="_blank" class="sub-link">WEBEX</a>
-						<a href="http://10.33.16.238/fth/downloads/anyconnect-win-4.10.03104.msi" class="sub-link">Cisco VPN</a>                    
-					</div>
+                    </div>
                 </div>
 
                 <div class="link-box">
@@ -478,15 +530,61 @@
                 <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2022L0001/sap_common/SitePages/Community%20Home.aspx" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Common 8 Cos.</span></a>
                 <a href="http://10.33.16.111/fth/material/Multi-Factor_Authen_M365.pdf" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Manual Setup MS365</span></a>
                 <a href="https://cct.sde.cloud.sap/analytics" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Cloud Check Tool</span></a>
-                <a href="https://mysignins.microsoft.com/security-info" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">🔑MFA Auth</span></a>
+                <a href="https://mysignins.microsoft.com/security-info" target="_blank" class="link-box"><span class="emoji-icon">🔵🔑</span><span class="link-name">MFA Auth</span></a>
             </div>
         </div>
         
-        <footer>Compact Dashboard v1.2 | Data Restored</footer>
+        <footer>Compact Dashboard v1.3 | All Links Restored</footer>
     </div>
 </main>
 
 <script>
+    // --- ฟังก์ชันคัดลอก VPN Address (ปรับปรุงใหม่) ---
+    function copyVPNAddress(btn, text) {
+        // วิธีหลัก: ใช้ Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                fallbackCopy(btn, text);
+            });
+        } else {
+            // วิธีสำรอง: กรณี Browser ไม่รองรับ หรือไม่ใช่ HTTPS
+            fallbackCopy(btn, text);
+        }
+    }
+
+    function fallbackCopy(btn, text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) showCopySuccess(btn);
+        } catch (err) {
+            console.error('Fallback Copy Failed', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function showCopySuccess(btn) {
+        const originalHTML = btn.innerHTML;
+        btn.style.color = "#10b981";
+        btn.style.borderColor = "#10b981";
+        btn.innerHTML = "<span>Copied!</span><span>✅</span>";
+        
+        setTimeout(() => {
+            btn.style.color = "";
+            btn.style.borderColor = "";
+            btn.innerHTML = originalHTML;
+        }, 2000);
+    }
+
     // --- ฟังก์ชันเคลียร์ค่า ---
     function clearSearch() {
         const input = document.getElementById('searchInput');
@@ -496,75 +594,79 @@
         document.querySelector('.content-area').scrollTop = 0;
     }
 
-    // --- ระบบค้นหาครอบคลุมทุกส่วน (ชื่อหมวดหมู่, ลิงก์หลัก, ลิงก์ย่อย) ---
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('keyup', function() {
-        const filter = searchInput.value.toLowerCase().trim();
-        const sections = document.querySelectorAll('.section-wrapper');
+// --- ระบบค้นหาครอบคลุมทุกส่วน (แก้ไขเพื่อรองรับ 3 ฟิลด์ใหม่) ---
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('keyup', function() {
+    const filter = searchInput.value.toLowerCase().trim();
+    const sections = document.querySelectorAll('.section-wrapper');
 
-        sections.forEach(section => {
-            const sectionTitle = section.querySelector('.section-title');
-            const sectionTitleText = sectionTitle ? sectionTitle.textContent.toLowerCase() : "";
+    sections.forEach(section => {
+        const sectionTitle = section.querySelector('.section-title');
+        const sectionTitleText = sectionTitle ? sectionTitle.textContent.toLowerCase() : "";
+        const isSectionMatch = filter !== "" && sectionTitleText.includes(filter);
+        
+        let hasVisibleLinks = false;
+        const links = section.querySelectorAll('.link-box');
+
+        links.forEach(link => {
+            const mainNameElement = link.querySelector('.link-name');
+            const subLinks = link.querySelectorAll('.sub-link');
             
-            // กรณีชื่อหมวดหมู่ตรงกับคำค้นหา
-            const isSectionMatch = filter !== "" && sectionTitleText.includes(filter);
+            // เก็บค่า Original Text รวมถึงฟิลด์ใหม่ (Brand, Model, S/N) ถ้ามี
+            if (!link.dataset.originalText) link.dataset.originalText = mainNameElement.textContent;
             
-            let hasVisibleLinks = false;
-            const links = section.querySelectorAll('.link-box');
+            // ดึงข้อมูลฟิลด์ใหม่จาก Dataset (ถ้าคุณมีการใส่ไว้ใน HTML link-box)
+            const brandText = (link.dataset.pcBrand || "").toLowerCase();
+            const modelText = (link.dataset.pcModel || "").toLowerCase();
+            const snText = (link.dataset.pcSn || "").toLowerCase();
+            
+            let isLinkMatch = false;
+            const mainText = link.dataset.originalText.toLowerCase();
 
-            links.forEach(link => {
-                const mainNameElement = link.querySelector('.link-name');
-                const subLinks = link.querySelectorAll('.sub-link');
+            // ตรวจสอบการค้นหาใน Sub Links
+            subLinks.forEach(sub => {
+                if (!sub.dataset.originalText) sub.dataset.originalText = sub.textContent;
+                const subText = sub.dataset.originalText.toLowerCase();
                 
-                if (!link.dataset.originalText) link.dataset.originalText = mainNameElement.textContent;
-                
-                let isLinkMatch = false;
-                const mainText = link.dataset.originalText.toLowerCase();
-
-                // 1. ค้นหาใน Sub-links (Dropdown)
-                subLinks.forEach(sub => {
-                    if (!sub.dataset.originalText) sub.dataset.originalText = sub.textContent;
-                    const subText = sub.dataset.originalText.toLowerCase();
-                    
-                    if (filter !== "" && subText.includes(filter)) {
-                        isLinkMatch = true;
-                        const regex = new RegExp(`(${filter})`, 'gi');
-                        sub.innerHTML = sub.dataset.originalText.replace(regex, '<mark>$1</mark>');
-                    } else {
-                        sub.innerHTML = sub.dataset.originalText;
-                    }
-                });
-
-                // 2. ค้นหาใน Link หลัก
-                if (filter !== "" && mainText.includes(filter)) {
+                if (filter !== "" && subText.includes(filter)) {
                     isLinkMatch = true;
                     const regex = new RegExp(`(${filter})`, 'gi');
-                    mainNameElement.innerHTML = link.dataset.originalText.replace(regex, '<mark>$1</mark>');
+                    sub.innerHTML = sub.dataset.originalText.replace(regex, '<mark>$1</mark>');
                 } else {
-                    mainNameElement.innerHTML = link.dataset.originalText;
-                }
-
-                // การแสดงผล Link Box
-                if (filter === "") {
-                    link.style.display = "flex";
-                    link.classList.remove('active'); 
-                    hasVisibleLinks = true;
-                } else if (isLinkMatch || isSectionMatch) {
-                    link.style.display = "flex";
-                    if (isLinkMatch && subLinks.length > 0) link.classList.add('active');
-                    else link.classList.remove('active');
-                    hasVisibleLinks = true;
-                } else {
-                    link.style.display = "none";
-                    link.classList.remove('active');
+                    sub.innerHTML = sub.dataset.originalText;
                 }
             });
 
-            // การแสดงผล Section
-            if (filter === "") section.style.display = "block";
-            else section.style.display = hasVisibleLinks ? "block" : "none";
+            // ตรวจสอบการค้นหาในฟิลด์หลัก และ 3 ฟิลด์ใหม่ (Brand, Model, S/N)
+            if (filter !== "" && (mainText.includes(filter) || brandText.includes(filter) || modelText.includes(filter) || snText.includes(filter))) {
+                isLinkMatch = true;
+                const regex = new RegExp(`(${filter})`, 'gi');
+                mainNameElement.innerHTML = link.dataset.originalText.replace(regex, '<mark>$1</mark>');
+            } else {
+                mainNameElement.innerHTML = link.dataset.originalText;
+            }
+
+            // การแสดงผล Link Box
+            if (filter === "") {
+                link.style.display = "flex";
+                link.classList.remove('active'); 
+                hasVisibleLinks = true;
+            } else if (isLinkMatch || isSectionMatch) {
+                link.style.display = "flex";
+                // ถ้า Match ที่ Sub-link ให้เปิด Dropdown อัตโนมัติ
+                if (isLinkMatch && subLinks.length > 0) link.classList.add('active');
+                else link.classList.remove('active');
+                hasVisibleLinks = true;
+            } else {
+                link.style.display = "none";
+                link.classList.remove('active');
+            }
         });
+
+        if (filter === "") section.style.display = "block";
+        else section.style.display = hasVisibleLinks ? "block" : "none";
     });
+});
 
     // --- Sidebar Logic ---
     const sidebar = document.getElementById('mainSidebar');
