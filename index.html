@@ -8,9 +8,8 @@
     <style>
         /* --- ตั้งค่าพื้นฐาน --- */
         :root {
-            --sidebar-width: 240px; 
-            --sidebar-collapsed-width: 15px;
-            --sidebar-bg: #1e293b;
+
+
             --main-bg: #f8fafc;
             --accent-color: #3b82f6;
             --text-color: #334155;
@@ -26,80 +25,7 @@
             overflow: hidden;
         }
 
-        /* --- Sidebar --- */
-        aside {
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 30px; 
-            background-color: var(--sidebar-bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            padding: 20px 0;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            z-index: 999;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            overflow: hidden;
-            white-space: nowrap;
-            cursor: pointer; 
-        }
 
-        aside:hover, aside.active {
-            width: var(--sidebar-width);
-            padding: 20px 15px;
-        }
-
-        aside::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100%;
-            background: rgba(255,255,255,0.1);
-        }
-        
-        aside:hover::after, aside.active::after { display: none; }
-
-        aside h2 {
-            font-size: 1.2rem;
-            margin: 0 0 20px 0;
-            text-align: center;
-            font-weight: 600;
-            color: #fff;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            opacity: 0;
-            transition: opacity 0.2s;
-            pointer-events: none;
-        }
-
-        aside:hover h2, aside.active h2 { opacity: 1; }
-
-        .menu-item {
-            text-decoration: none;
-            color: #94a3b8;
-            padding: 10px 12px;
-            margin-bottom: 5px;
-            border-radius: 6px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            font-size: 0.95rem;
-            opacity: 0;
-        }
-
-        aside:hover .menu-item, aside.active .menu-item { opacity: 1; }
-
-        .menu-item:hover {
-            background-color: rgba(255,255,255,0.1);
-            color: white;
-            padding-left: 15px;
-        }
-
-        .menu-icon { margin-right: 10px; }
 
         /* --- Main Content --- */
         main {
@@ -107,9 +33,8 @@
             display: flex;
             flex-direction: column;
             position: relative;
-            margin-left: var(--sidebar-collapsed-width);
-            transition: margin-left 0.3s;
-            width: calc(100% - var(--sidebar-collapsed-width));
+            margin-left: 0;
+            width: 100%;
         }
 
         .top-bar {
@@ -362,13 +287,7 @@
 </head>
 <body>
 
-<aside id="mainSidebar">
-    <h2>🚀 FANUC</h2>
-    <a href="#FHQ" class="menu-item"><span class="menu-icon">🏢</span>FHQ Link</a> 
-    <a href="#FTH" class="menu-item"><span class="menu-icon">🏠</span>FTH Link</a> 
-    <a href="#SAPBYD" class="menu-item"><span class="menu-icon">💻</span>SAPBYD</a>
-    <hr style="border: 0.5px solid rgba(255,255,255,0.1); width: 80%;" />
-</aside>
+
 
 <main>
     <div class="top-bar">
@@ -669,16 +588,7 @@ searchInput.addEventListener('keyup', function() {
     });
 });
 
-    // --- Sidebar Logic ---
-    const sidebar = document.getElementById('mainSidebar');
-    sidebar.addEventListener('click', function(e) {
-        if (e.target.classList.contains('menu-item') || e.target.closest('.menu-item')) return;
-        this.classList.toggle('active');
-    });
 
-    document.querySelector('main').addEventListener('click', function() {
-        sidebar.classList.remove('active');
-    });
 </script>
 </body>
 </html>
