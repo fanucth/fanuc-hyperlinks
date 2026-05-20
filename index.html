@@ -307,7 +307,10 @@
 
     <div class="content-area">
         <div id="FHQ" class="section-wrapper">
-            <div class="section-title">FHQ Links</div>
+            <div class="section-title">
+                <img src="images/fhq.png" alt="FHQ" style="height: 24px; margin-right: 10px; object-fit: contain;">
+                FHQ Links
+            </div>
             <div class="grid-links">
                 <div class="link-box">
                     <span class="emoji-icon">🟡</span> <span class="link-name">Newsletter ▼</span>
@@ -358,6 +361,7 @@
 						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018K0001/Meetings/Forms/AllItems.aspx" target="_blank" class="sub-link">GITC Quarterly Meeting</a>
 						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025D0002" target="_blank" class="sub-link">FIELD system Basic Package Global Sales HUB</a>
 						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2026B0001" target="_blank" class="sub-link">FSC 2026</a>
+						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018G0001/SitePages/Home.aspx" target="_blank" class="sub-link">GBDW</a>
                     </div>
                 </div>
 
@@ -367,14 +371,19 @@
                 <a href="http://10.36.1.12/PRBSSolution/prcm01p01/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Barcode System</span></a>
                 <a href="https://fanuc-inventory.syncroncloud.com/views/security/login/login.xhtml" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Syncron</span></a>
 				<a href="https://portal.office.com/account" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">MS365 Portal</span></a>
+                <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">GBDW Portal</span></a>
             </div>
         </div>
 
         <div id="FTH" class="section-wrapper">
-            <div class="section-title">FTH Links</div>
+            <div class="section-title">
+                <img src="images/fth.png" alt="FTH" style="height: 36px; margin-right: 10px; object-fit: contain;">
+                FTH Links
+            </div>
             <div class="grid-links">
-                <!-- <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🔥</span><span class="link-name">GBDW</span></a> -->
+                <a href="https://macweerachai.github.io/fanuc-hyperlinks/" target="_blank" class="link-box"><span class="emoji-icon">🌐</span><span class="link-name">Outside Link</span></a>
 				<a href="http://10.33.16.238/IT" target="_blank" class="link-box"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
+                <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
                 <a href="http://10.33.16.238/fanucthai" target="_blank" class="link-box"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
 <!--                 <a href="http://10.33.16.238/it/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a> -->
                 <a href="PC_Software_Delivery.html" target="_blank" class="link-box"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
@@ -447,7 +456,10 @@
         </div>
 
         <div id="SAPBYD" class="section-wrapper">
-            <div class="section-title">💻 SAPBYD</div>
+            <div class="section-title">
+                <img src="images/sapbyd.jpg" alt="SAPBYD" style="height: 24px; margin-right: 10px; object-fit: contain;">
+                SAPBYD
+            </div>
             <div class="grid-links">
                 <a href="https://my423061-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Product Tenant</span></a>
                 <a href="https://my425419-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Test (ROLL OUT)</span></a>
@@ -594,6 +606,36 @@ searchInput.addEventListener('keyup', function() {
     });
 });
 
+// --- แก้ไขปัญหาเมนูย่อยกดไม่ได้บนมือถือ ---
+document.querySelectorAll('.link-box').forEach(box => {
+    // เพิ่ม Event Listener เฉพาะปุ่มที่มีเมนูย่อย
+    if(box.querySelector('.dropdown-menu')) {
+        box.addEventListener('click', function(e) {
+            // ปล่อยให้ลิงก์ด้านในทำงานตามปกติ
+            if (e.target.closest('.dropdown-menu')) return;
+            
+            // ป้องกันเหตุการณ์เริ่มต้นถ้าหากไม่ใช่ลิงก์ปกติ
+            e.preventDefault();
+
+            // ปิดเมนูอื่นๆ
+            document.querySelectorAll('.link-box.active').forEach(other => {
+                if (other !== this) other.classList.remove('active');
+            });
+
+            // เปิด/ปิดเมนูปัจจุบัน
+            this.classList.toggle('active');
+        });
+    }
+});
+
+// กดพื้นที่ว่างเพื่อปิดเมนู
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.link-box')) {
+        document.querySelectorAll('.link-box.active').forEach(box => {
+            box.classList.remove('active');
+        });
+    }
+});
 
 </script>
 </body>
