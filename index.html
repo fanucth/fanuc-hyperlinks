@@ -376,6 +376,47 @@
             padding-bottom: 20px;
         }
         mark { background: yellow; color: black; border-radius: 2px; }
+
+        /* --- Responsive Styles for Mobile Layout --- */
+        @media (max-width: 768px) {
+            .top-bar {
+                padding: 10px 14px;
+                gap: 8px;
+            }
+
+            .search-container {
+                gap: 8px;
+            }
+
+            /* Hide the Intelligent Search badge on mobile to free up space */
+            .search-badge {
+                display: none;
+            }
+
+            /* Hide shortcut badge on mobile since there are no physical keyboard shortcuts */
+            .search-shortcut-badge {
+                display: none;
+            }
+
+            /* Optimize input sizing and typing padding on mobile */
+            .search-input {
+                padding: 10px 14px 10px 42px;
+                font-size: 14px;
+                border-radius: 12px;
+                border-width: 2px;
+            }
+
+            .search-icon {
+                left: 14px;
+                font-size: 1rem;
+            }
+
+            .btn-home {
+                padding: 8px 12px;
+                border-radius: 12px;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body>
