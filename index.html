@@ -530,7 +530,24 @@
             <div class="grid-links">
                 <a href="https://macweerachai.github.io/fanuc-hyperlinks/" target="_blank" class="link-box"><span class="emoji-icon">🌐</span><span class="link-name">Outside Link</span></a>
 				<a href="http://10.33.16.238/IT" target="_blank" class="link-box"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
-				<a href="https://www.ess-center.com/" target="_blank" class="link-box"><img src="https://images.seeklogo.com/logo-png/37/1/tisco-logo-png_seeklogo-373898.png" alt="TISCO Logo" style="height: 50px; max-width: 50px; object-fit: contain; margin-bottom: 8px;"><span class="link-name">TISCO Code 274</span></a>
+				<div class="link-box">
+					<img src="https://images.seeklogo.com/logo-png/37/1/tisco-logo-png_seeklogo-373898.png" alt="TISCO Logo" style="height: 40px; max-width: 45px; object-fit: contain; margin-bottom: 8px;">
+					<span class="link-name">TISCO ▼</span>
+					<div class="dropdown-menu">
+						<a href="https://www.ess-center.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); padding-bottom: 2px; display: flex; align-items: center; justify-content: space-between;">
+							<span>ESS (e-Pay Slip) 🌐</span>
+						</a>
+						<div style="padding: 2px 12px 8px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 6px; justify-content: flex-start;">
+							<span style="font-size: 0.72rem; color: #64748b; white-space: nowrap;">Company Code: <strong style="color: #1e293b; font-size: 0.75rem;">274</strong></span>
+							<button class="copy-btn" onclick="copyESSCode(this, '274')" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; width: auto; background: #f8fafc; border: 1px solid #cbd5e1; white-space: nowrap; color: #3b82f6;">
+								<span>📋 Copy</span>
+							</button>
+						</div>
+						<a href="https://pvd.tiscoasset.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); display: flex; align-items: center; justify-content: space-between;">
+							<span>Provident Fund 🌐</span>
+						</a>
+					</div>
+				</div>
 				
 				
                 <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
@@ -638,6 +655,18 @@
             });
         } else {
             // วิธีสำรอง: กรณี Browser ไม่รองรับ หรือไม่ใช่ HTTPS
+            fallbackCopy(btn, text);
+        }
+    }
+
+    function copyESSCode(btn, text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                fallbackCopy(btn, text);
+            });
+        } else {
             fallbackCopy(btn, text);
         }
     }
