@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Scrap Photo Capture - Prototype</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
+    --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 80%,transparent);z-index:5;}
+  header h1{font-size:18px;margin:0 0 2px;}
+  header p{margin:0;color:var(--sub);font-size:12.5px;}
+  main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input[type=text]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
+  .btn-primary{background:var(--accent);color:#1a1500;}
+  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:var(--accent2);color:#fff;}
+  .btn-ok{background:var(--ok);color:#062f18;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  video{width:100%;border-radius:10px;background:#000;display:block;}
+  canvas{display:none;}
+  .scan-wrap{position:relative;}
+  .scan-hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;background:rgba(0,0,0,.55);padding:4px 0;border-radius:0 0 10px 10px;}
+  .photo-row{display:flex;gap:10px;margin-top:8px;}
+  .photo-box{flex:1;text-align:center;}
+  .photo-box img{width:100%;border-radius:8px;border:2px solid var(--line);aspect-ratio:1/1;object-fit:cover;background:#0a0e17;}
+  .photo-box span{display:block;font-size:11px;color:var(--sub);margin-top:4px;}
+  .status-ok{color:var(--ok);}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
+  .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
+  th{color:var(--sub);font-weight:600;font-size:11px;}
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;}
+  .toast.show{opacity:1;}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
+  .row2{display:flex;gap:8px;}
+  .row2 .btn{flex:1;}
+  .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 Scrap Photo Capture <span class="tag">Prototype</span></h1>
+  <p>สแกน QR/Barcode → ถ่ายภาพก่อน/หลังทำลาย → Export รายงาน</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>1) สแกน Barcode / QR Code</h2>
+    <div id="scanArea" class="scan-wrap" style="display:none;">
+      <video id="video" playsinline muted></video>
+      <div class="scan-hint">เล็งกล้องไปที่ Barcode/QR ของชิ้นงาน</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <button class="btn btn-primary" id="btnStartScan">📷 เปิดกล้องสแกนรหัส</button>
+    <button class="btn btn-secondary" id="btnStopScan" style="display:none;">หยุดสแกน</button>
+    <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง</label>
+    <input type="text" id="itemCode" placeholder="เช่น FTL-2026-000123">
+  </div>
+
+  <div class="card">
+    <h2>2) ถ่ายภาพหลักฐาน</h2>
+    <p class="note">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ ถ่าย "ก่อนทำลาย" และ "หลังทำลาย" อย่างละ 1 ภาพขึ้นไป</p>
+    <div class="row2">
+      <button class="btn btn-secondary" id="btnBefore">📸 ถ่ายภาพ ก่อนทำลาย</button>
+      <button class="btn btn-secondary" id="btnAfter">📸 ถ่ายภาพ หลังทำลาย</button>
+    </div>
+    <div class="photo-row">
+      <div class="photo-box"><img id="imgBefore" src="" alt=""><span>ก่อนทำลาย</span></div>
+      <div class="photo-box"><img id="imgAfter" src="" alt=""><span>หลังทำลาย</span></div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="btn btn-ok" id="btnSave" style="margin-top:12px;">💾 บันทึกรายการนี้</button>
+  </div>
+
+  <div class="card">
+    <h2>3) รายการที่บันทึกแล้ว (<span id="countTotal">0</span>)</h2>
+    <div id="tableWrap"><div class="empty">ยังไม่มีรายการ</div></div>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
+      <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
+    </div>
+    <p class="note">ข้อมูลในหน้านี้เก็บไว้ในเครื่อง (เบราว์เซอร์) ของคุณเท่านั้น เพื่อสาธิตการใช้งาน — เวอร์ชันจริงจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก</p>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let stream=null, scanning=false, currentBefore=null, currentAfter=null, capturingMode=null;
+let records = JSON.parse(sessionStorage.getItem('scrapRecords')||'[]');
+
+const video=document.getElementById('video');
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const scanArea=document.getElementById('scanArea');
+const itemCodeInput=document.getElementById('itemCode');
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+document.getElementById('btnStartScan').onclick = async ()=>{
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject = stream; video.play();
+    scanArea.style.display='block';
+    document.getElementById('btnStartScan').style.display='none';
+    document.getElementById('btnStopScan').style.display='block';
+    scanning=true;
+    requestAnimationFrame(tickScan);
+  }catch(e){
+    toast('เปิดกล้องไม่ได้: '+e.message);
+  }
+};
+document.getElementById('btnStopScan').onclick = stopScan;
+function stopScan(){
+  scanning=false;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  scanArea.style.display='none';
+  document.getElementById('btnStartScan').style.display='block';
+  document.getElementById('btnStopScan').style.display='none';
+}
+function tickScan(){
+  if(!scanning) return;
+  if(video.readyState===video.HAVE_ENOUGH_DATA){
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code=jsQR(imgData.data,imgData.width,imgData.height);
+    if(code && code.data){
+      itemCodeInput.value=code.data;
+      toast('สแกนสำเร็จ: '+code.data);
+      stopScan();
+      return;
+    }
+  }
+  requestAnimationFrame(tickScan);
+}
+
+const fileInput=document.getElementById('fileInput');
+document.getElementById('btnBefore').onclick=()=>{
+  if(!itemCodeInput.value.trim()){toast('กรุณาสแกน/กรอกรหัสชิ้นงานก่อน');return;}
+  capturingMode='before'; fileInput.click();
+};
+document.getElementById('btnAfter').onclick=()=>{
+  if(!itemCodeInput.value.trim()){toast('กรุณาสแกน/กรอกรหัสชิ้นงานก่อน');return;}
+  capturingMode='after'; fileInput.click();
+};
+fileInput.onchange = (e)=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=(ev)=>{
+    if(capturingMode==='before'){
+      currentBefore=ev.target.result;
+      document.getElementById('imgBefore').src=currentBefore;
+    }else{
+      currentAfter=ev.target.result;
+      document.getElementById('imgAfter').src=currentAfter;
+    }
+    toast('บันทึกภาพ'+(capturingMode==='before'?'ก่อนทำลาย':'หลังทำลาย')+'แล้ว');
+  };
+  reader.readAsDataURL(file);
+  fileInput.value='';
+};
+
+document.getElementById('btnSave').onclick=()=>{
+  const code=itemCodeInput.value.trim();
+  if(!code){toast('กรุณาระบุรหัสชิ้นงาน');return;}
+  if(!currentBefore && !currentAfter){toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป');return;}
+  const now=new Date();
+  records.push({
+    code, before: currentBefore, after: currentAfter,
+    beforeAt: currentBefore? now.toLocaleString('th-TH') : '',
+    afterAt: currentAfter? now.toLocaleString('th-TH') : '',
+    savedAt: now.toLocaleString('th-TH')
+  });
+  sessionStorage.setItem('scrapRecords', JSON.stringify(records));
+  currentBefore=null; currentAfter=null;
+  document.getElementById('imgBefore').src='';
+  document.getElementById('imgAfter').src='';
+  itemCodeInput.value='';
+  renderTable();
+  toast('บันทึกรายการสำเร็จ ✅');
+};
+
+function renderTable(){
+  document.getElementById('countTotal').textContent = records.length;
+  const wrap=document.getElementById('tableWrap');
+  if(records.length===0){ wrap.innerHTML='<div class="empty">ยังไม่มีรายการ</div>'; return; }
+  let html='<table><tr><th>รหัสชิ้นงาน</th><th>สถานะ</th><th>เวลา</th></tr>';
+  records.forEach(r=>{
+    const done = r.before && r.after;
+    html+=`<tr><td>${r.code}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
+  });
+  html+='</table>';
+  wrap.innerHTML=html;
+}
+renderTable();
+
+document.getElementById('btnExportExcel').onclick=()=>{
+  if(records.length===0){toast('ยังไม่มีข้อมูลให้ export');return;}
+  const rows = records.map((r,i)=>({
+    'ลำดับ': i+1, 'รหัสชิ้นงาน': r.code,
+    'มีภาพก่อนทำลาย': r.before? 'มี':'ไม่มี',
+    'มีภาพหลังทำลาย': r.after? 'มี':'ไม่มี',
+    'เวลาบันทึก': r.savedAt
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ScrapRecords');
+  XLSX.writeFile(wb, 'scrap_records.xlsx');
+};
+
+document.getElementById('btnExportPdf').onclick=async ()=>{
+  if(records.length===0){toast('ยังไม่มีข้อมูลให้ export');return;}
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({unit:'pt', format:'a4'});
+  let y = 40;
+  pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y+=26;
+  pdf.setFontSize(10);
+  for(const r of records){
+    if(y > 700){ pdf.addPage(); y=40; }
+    pdf.setFontSize(12); pdf.text('Item Code: '+r.code, 40, y); y+=14;
+    pdf.setFontSize(9); pdf.text('Saved: '+r.savedAt, 40, y); y+=12;
+    let x=40;
+    if(r.before){ try{ pdf.addImage(r.before, 'JPEG', x, y, 120, 120); }catch(e){} }
+    if(r.after){ try{ pdf.addImage(r.after, 'JPEG', x+140, y, 120, 120); }catch(e){} }
+    y += 132;
+    pdf.setFontSize(8); pdf.text('Before', x, y); pdf.text('After', x+140, y);
+    y += 18;
+  }
+  pdf.save('scrap_evidence_report.pdf');
+};
+</script>
+</body>
+</html>
