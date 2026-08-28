@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Scrap Photo Capture - Prototype</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -117,6 +117,10 @@ function toast(msg){
 }
 
 document.getElementById('btnStartScan').onclick = async ()=>{
+  if(typeof jsQR !== 'function'){
+    toast('โหลดไลบรารีสแกนไม่สำเร็จ (เช็คอินเทอร์เน็ต แล้วรีเฟรชหน้า)');
+    return;
+  }
   try{
     stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
     video.srcObject = stream; video.play();
@@ -139,17 +143,21 @@ function stopScan(){
 }
 function tickScan(){
   if(!scanning) return;
-  if(video.readyState===video.HAVE_ENOUGH_DATA){
-    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-    const code=jsQR(imgData.data,imgData.width,imgData.height);
-    if(code && code.data){
-      itemCodeInput.value=code.data;
-      toast('สแกนสำเร็จ: '+code.data);
-      stopScan();
-      return;
+  try{
+    if(video.readyState===video.HAVE_ENOUGH_DATA && video.videoWidth>0){
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=jsQR(imgData.data,imgData.width,imgData.height,{inversionAttempts:'attemptBoth'});
+      if(code && code.data){
+        itemCodeInput.value=code.data;
+        toast('สแกนสำเร็จ: '+code.data);
+        stopScan();
+        return;
+      }
     }
+  }catch(err){
+    console.error('scan error', err);
   }
   requestAnimationFrame(tickScan);
 }
