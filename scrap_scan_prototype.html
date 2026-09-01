@@ -3,9 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - Prototype v1.2</title>
-<!-- VERSION: v1.2 | Updated: 2026-09-01 | Change: QR auto-scan (jsQR) + Code 39 manual input -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<title>Scrap Photo Capture - v2.0</title>
+<!-- VERSION: v2.0 | Updated: 2026-09-01
+     Changes:
+       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode รองรับ Code 39 / Code 128 / QR
+       - กรอบสแกนเป็นแนวนอน เหมาะกับบาร์โค้ด 1 มิติ
+       - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
+       - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
+       - เตรียมช่องเสียบ Firebase (ยังไม่เปิดใช้จนกว่าจะใส่ config)
+-->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -29,15 +36,14 @@
   .btn-danger{background:var(--accent2);color:#fff;}
   .btn-ok{background:var(--ok);color:#062f18;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  video{width:100%;border-radius:10px;background:#000;display:block;}
-  canvas{display:none;}
-  .scan-wrap{position:relative;}
-  .scan-hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;background:rgba(0,0,0,.55);padding:4px 0;border-radius:0 0 10px 10px;}
+  #reader{width:100%;border-radius:10px;overflow:hidden;background:#000;}
+  #reader video{width:100%!important;display:block;}
+  #reader img[alt="Info icon"]{display:none;}
+  .scan-note{font-size:11.5px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.5;}
   .photo-row{display:flex;gap:10px;margin-top:8px;}
   .photo-box{flex:1;text-align:center;}
   .photo-box img{width:100%;border-radius:8px;border:2px solid var(--line);aspect-ratio:1/1;object-fit:cover;background:#0a0e17;}
   .photo-box span{display:block;font-size:11px;color:var(--sub);margin-top:4px;}
-  .status-ok{color:var(--ok);}
   .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
   .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
   .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
@@ -45,40 +51,46 @@
   th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
   th{color:var(--sub);font-weight:600;font-size:11px;}
   .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:90%;text-align:center;}
   .toast.show{opacity:1;}
+  .toast.err{background:var(--accent2);color:#fff;}
   .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
   .row2{display:flex;gap:8px;}
   .row2 .btn{flex:1;}
   .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
+  .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v1.2</span></h1>
-  <p>Code 39 พิมพ์เอง + QR สแกน → ถ่ายภาพก่อน/หลังทำลาย → Export รายงาน</p>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.0</span></h1>
+  <p>สแกน Code 39 / QR → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
+  <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
 
 <main>
   <div class="card">
     <h2>1) สแกน Barcode / QR Code</h2>
-    <div id="scanArea" class="scan-wrap" style="display:none;">
-      <video id="video" playsinline muted></video>
-      <div class="scan-hint">เล็งกล้องไปที่ Barcode/QR ของชิ้นงาน</div>
-    </div>
-    <canvas id="canvas"></canvas>
+    <div id="reader"></div>
+    <p class="scan-note" id="scanNote" style="display:none;">
+      วางบาร์โค้ดให้อยู่ในกรอบแนวนอน • ถือห่างประมาณ 15–25 ซม.<br>
+      ถ้าสแกนไม่ติด ให้เอียงมุมเล็กน้อยเพื่อเลี่ยงแสงสะท้อนบนสติกเกอร์
+    </p>
     <button class="btn btn-primary" id="btnStartScan">📷 เปิดกล้องสแกนรหัส</button>
-    <button class="btn btn-secondary" id="btnStopScan" style="display:none;">หยุดสแกน</button>
-    <label style="margin-top:6px;">📌 Code 39: พิมพ์รหัสด้านล่าง | QR Code: กดปุ่มสแกน</label>
-    <input type="text" id="itemCode" placeholder="เช่น FTL-2026-000123">
+    <div class="row2" id="scanControls" style="display:none;">
+      <button class="btn btn-secondary" id="btnTorch">🔦 ไฟฉาย</button>
+      <button class="btn btn-secondary" id="btnStopScan">⏹ หยุดสแกน</button>
+    </div>
+    <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
+    <input type="text" id="itemCode" placeholder="เช่น A06B-1407-B153">
   </div>
 
   <div class="card">
     <h2>2) ถ่ายภาพหลักฐาน</h2>
     <p class="note">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ ถ่าย "ก่อนทำลาย" และ "หลังทำลาย" อย่างละ 1 ภาพขึ้นไป</p>
     <div class="row2">
-      <button class="btn btn-secondary" id="btnBefore">📸 ถ่ายภาพ ก่อนทำลาย</button>
-      <button class="btn btn-secondary" id="btnAfter">📸 ถ่ายภาพ หลังทำลาย</button>
+      <button class="btn btn-secondary" id="btnBefore">📸 ก่อนทำลาย</button>
+      <button class="btn btn-secondary" id="btnAfter">📸 หลังทำลาย</button>
     </div>
     <div class="photo-row">
       <div class="photo-box"><img id="imgBefore" src="" alt=""><span>ก่อนทำลาย</span></div>
@@ -95,141 +107,275 @@
       <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
       <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
     </div>
-    <p class="note">ข้อมูลในหน้านี้เก็บไว้ในเครื่อง (เบราว์เซอร์) ของคุณเท่านั้น เพื่อสาธิตการใช้งาน — เวอร์ชันจริงจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก</p>
+    <p class="note" id="storageNote">
+      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Firebase config
+      ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
+    </p>
   </div>
 </main>
 
 <div class="toast" id="toast"></div>
 
+<!-- ============================================================
+     ส่วนที่ 1: ตั้งค่า Firebase
+     วิธีใช้: นำค่าจาก Firebase Console (Project settings > Your apps)
+     มาใส่แทนค่าว่างด้านล่าง ระบบจะสลับไปโหมด Cloud อัตโนมัติ
+     ถ้าปล่อยว่างไว้ ระบบจะทำงานแบบเก็บในเครื่องเหมือนเดิม
+     ============================================================ -->
 <script>
-let stream=null, scanning=false, currentBefore=null, currentAfter=null, capturingMode=null;
-let records = JSON.parse(sessionStorage.getItem('scrapRecords')||'[]');
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const CLOUD_MODE = !!FIREBASE_CONFIG.apiKey;
+</script>
 
-const video=document.getElementById('video');
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
-const scanArea=document.getElementById('scanArea');
-const itemCodeInput=document.getElementById('itemCode');
+<script>
+/* ============================================================
+   ส่วนที่ 2: ตัวแปรหลักและฟังก์ชันช่วย
+   ============================================================ */
+let html5QrCode = null;
+let scanning = false;
+let torchOn = false;
+let currentBefore = null, currentAfter = null, capturingMode = null;
+let records = JSON.parse(sessionStorage.getItem('scrapRecords') || '[]');
 
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),1800);
+const itemCodeInput = document.getElementById('itemCode');
+const scanControls  = document.getElementById('scanControls');
+const scanNote      = document.getElementById('scanNote');
+const btnStartScan  = document.getElementById('btnStartScan');
+
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isError);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-document.getElementById('btnStartScan').onclick = async ()=>{
-  if(typeof jsQR !== 'function'){
-    toast('โหลดไลบรารีสแกนไม่สำเร็จ (เช็คอินเทอร์เน็ต แล้วรีเฟรชหน้า)');
+/* ============================================================
+   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 / Code 128 / QR)
+   ============================================================ */
+function supportedFormats(){
+  const F = Html5QrcodeSupportedFormats;
+  return [
+    F.CODE_39,      // รูปแบบที่ป้ายอะไหล่ FANUC ใช้
+    F.CODE_128,     // เผื่อป้ายรุ่นใหม่
+    F.CODE_93,
+    F.ITF,
+    F.EAN_13,
+    F.QR_CODE
+  ];
+}
+
+// Code 39 อาจคืนค่ามาพร้อมเครื่องหมาย * ครอบหัวท้าย ต้องตัดออก
+function cleanCode(raw){
+  return String(raw).trim().replace(/^\*+/, '').replace(/\*+$/, '');
+}
+
+btnStartScan.onclick = async () => {
+  if (typeof Html5Qrcode === 'undefined') {
+    toast('โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', true);
     return;
   }
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    video.srcObject = stream; video.play();
-    scanArea.style.display='block';
-    document.getElementById('btnStartScan').style.display='none';
-    document.getElementById('btnStopScan').style.display='block';
-    scanning=true;
-    requestAnimationFrame(tickScan);
-  }catch(e){
-    toast('เปิดกล้องไม่ได้: '+e.message);
-  }
-};
-document.getElementById('btnStopScan').onclick = stopScan;
-function stopScan(){
-  scanning=false;
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  scanArea.style.display='none';
-  document.getElementById('btnStartScan').style.display='block';
-  document.getElementById('btnStopScan').style.display='none';
-}
-function tickScan(){
-  if(!scanning) return;
-  try{
-    if(video.readyState===video.HAVE_ENOUGH_DATA && video.videoWidth>0){
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-      const code=jsQR(imgData.data,imgData.width,imgData.height,{inversionAttempts:'attemptBoth'});
-      if(code && code.data){
-        itemCodeInput.value=code.data;
-        toast('สแกนสำเร็จ: '+code.data);
+  try {
+    html5QrCode = new Html5Qrcode("reader", {
+      formatsToSupport: supportedFormats(),
+      verbose: false
+    });
+
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        // กรอบแนวนอน สำคัญมากสำหรับบาร์โค้ด 1 มิติ
+        // ถ้าใช้กรอบสี่เหลี่ยมจัตุรัสแบบ QR จะจับ Code 39 ได้ยากมาก
+        qrbox: (vw, vh) => {
+          const w = Math.floor(Math.min(vw, vh * 2.2) * 0.85);
+          const h = Math.floor(w * 0.42);
+          return { width: w, height: h };
+        },
+        aspectRatio: 1.777,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      },
+      (decodedText) => {
+        const code = cleanCode(decodedText);
+        if (!code) return;
+        itemCodeInput.value = code;
+        toast('สแกนสำเร็จ: ' + code);
+        if (navigator.vibrate) navigator.vibrate(120);
         stopScan();
-        return;
-      }
-    }
-  }catch(err){
-    console.error('scan error', err);
+      },
+      () => { /* ไม่พบรหัสในเฟรมนี้ เป็นเรื่องปกติ ไม่ต้องแจ้งผู้ใช้ */ }
+    );
+
+    scanning = true;
+    btnStartScan.style.display = 'none';
+    scanControls.style.display = 'flex';
+    scanNote.style.display = 'block';
+  } catch (e) {
+    toast('เปิดกล้องไม่ได้: ' + (e.message || e), true);
   }
-  requestAnimationFrame(tickScan);
+};
+
+document.getElementById('btnStopScan').onclick = stopScan;
+
+async function stopScan(){
+  if (!html5QrCode || !scanning) return;
+  scanning = false;
+  torchOn = false;
+  try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){}
+  html5QrCode = null;
+  btnStartScan.style.display = 'block';
+  scanControls.style.display = 'none';
+  scanNote.style.display = 'none';
 }
 
-const fileInput=document.getElementById('fileInput');
-document.getElementById('btnBefore').onclick=()=>{
-  if(!itemCodeInput.value.trim()){toast('กรุณาสแกน/กรอกรหัสชิ้นงานก่อน');return;}
-  capturingMode='before'; fileInput.click();
-};
-document.getElementById('btnAfter').onclick=()=>{
-  if(!itemCodeInput.value.trim()){toast('กรุณาสแกน/กรอกรหัสชิ้นงานก่อน');return;}
-  capturingMode='after'; fileInput.click();
-};
-fileInput.onchange = (e)=>{
-  const file=e.target.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=(ev)=>{
-    if(capturingMode==='before'){
-      currentBefore=ev.target.result;
-      document.getElementById('imgBefore').src=currentBefore;
-    }else{
-      currentAfter=ev.target.result;
-      document.getElementById('imgAfter').src=currentAfter;
-    }
-    toast('บันทึกภาพ'+(capturingMode==='before'?'ก่อนทำลาย':'หลังทำลาย')+'แล้ว');
-  };
-  reader.readAsDataURL(file);
-  fileInput.value='';
+// ไฟฉาย ช่วยมากเวลาสแกนในโกดังที่แสงน้อย (บางเครื่อง/เบราว์เซอร์ไม่รองรับ)
+document.getElementById('btnTorch').onclick = async () => {
+  if (!html5QrCode || !scanning) return;
+  try {
+    torchOn = !torchOn;
+    await html5QrCode.applyVideoConstraints({
+      advanced: [{ torch: torchOn }]
+    });
+    toast(torchOn ? 'เปิดไฟฉาย' : 'ปิดไฟฉาย');
+  } catch (e) {
+    torchOn = false;
+    toast('เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', true);
+  }
 };
 
-document.getElementById('btnSave').onclick=()=>{
-  const code=itemCodeInput.value.trim();
-  if(!code){toast('กรุณาระบุรหัสชิ้นงาน');return;}
-  if(!currentBefore && !currentAfter){toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป');return;}
-  const now=new Date();
-  records.push({
-    code, before: currentBefore, after: currentAfter,
-    beforeAt: currentBefore? now.toLocaleString('th-TH') : '',
-    afterAt: currentAfter? now.toLocaleString('th-TH') : '',
-    savedAt: now.toLocaleString('th-TH')
+/* ============================================================
+   ส่วนที่ 4: ถ่ายภาพและย่อขนาดก่อนบันทึก
+   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase
+   ย่อเหลือกว้าง 1280 px คุณภาพ 0.75 จะเหลือประมาณ 150–250 KB ต่อใบ
+   ============================================================ */
+const MAX_WIDTH = 1280;
+const JPEG_QUALITY = 0.75;
+
+function compressImage(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', JPEG_QUALITY));
+      };
+      img.onerror = () => reject(new Error('อ่านไฟล์ภาพไม่สำเร็จ'));
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    reader.readAsDataURL(file);
   });
-  sessionStorage.setItem('scrapRecords', JSON.stringify(records));
-  currentBefore=null; currentAfter=null;
-  document.getElementById('imgBefore').src='';
-  document.getElementById('imgAfter').src='';
-  itemCodeInput.value='';
+}
+
+const fileInput = document.getElementById('fileInput');
+
+document.getElementById('btnBefore').onclick = () => {
+  if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
+  capturingMode = 'before'; fileInput.click();
+};
+document.getElementById('btnAfter').onclick = () => {
+  if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
+  capturingMode = 'after'; fileInput.click();
+};
+
+fileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  fileInput.value = '';
+  if(!file) return;
+  try {
+    const dataUrl = await compressImage(file);
+    if (capturingMode === 'before') {
+      currentBefore = dataUrl;
+      document.getElementById('imgBefore').src = dataUrl;
+    } else {
+      currentAfter = dataUrl;
+      document.getElementById('imgAfter').src = dataUrl;
+    }
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+    toast('บันทึกภาพ' + (capturingMode==='before'?'ก่อน':'หลัง') + 'ทำลายแล้ว (~' + kb + ' KB)');
+  } catch (err) {
+    toast(err.message, true);
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 5: บันทึกรายการ
+   ============================================================ */
+document.getElementById('btnSave').onclick = async () => {
+  const code = itemCodeInput.value.trim();
+  if(!code){ toast('กรุณาระบุรหัสชิ้นงาน', true); return; }
+  if(!currentBefore && !currentAfter){ toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป', true); return; }
+
+  const now = new Date();
+  const record = {
+    code,
+    before: currentBefore,
+    after: currentAfter,
+    savedAt: now.toLocaleString('th-TH')
+  };
+
+  if (CLOUD_MODE) {
+    try {
+      await uploadToCloud(record);
+    } catch (e) {
+      toast('อัปโหลดขึ้น Cloud ไม่สำเร็จ: ' + e.message, true);
+      return;
+    }
+  }
+
+  records.push(record);
+  try {
+    sessionStorage.setItem('scrapRecords', JSON.stringify(records));
+  } catch (e) {
+    // sessionStorage เต็ม (ภาพเยอะ) แต่ข้อมูลยังอยู่ในหน่วยความจำ ยัง export ได้
+    toast('พื้นที่เบราว์เซอร์เต็ม แนะนำให้ Export แล้วรีเฟรชหน้า', true);
+  }
+
+  currentBefore = null; currentAfter = null;
+  document.getElementById('imgBefore').src = '';
+  document.getElementById('imgAfter').src = '';
+  itemCodeInput.value = '';
   renderTable();
   toast('บันทึกรายการสำเร็จ ✅');
 };
 
 function renderTable(){
   document.getElementById('countTotal').textContent = records.length;
-  const wrap=document.getElementById('tableWrap');
-  if(records.length===0){ wrap.innerHTML='<div class="empty">ยังไม่มีรายการ</div>'; return; }
-  let html='<table><tr><th>รหัสชิ้นงาน</th><th>สถานะ</th><th>เวลา</th></tr>';
-  records.forEach(r=>{
+  const wrap = document.getElementById('tableWrap');
+  if(records.length === 0){ wrap.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>'; return; }
+  let html = '<table><tr><th>รหัสชิ้นงาน</th><th>สถานะ</th><th>เวลา</th></tr>';
+  records.forEach(r => {
     const done = r.before && r.after;
-    html+=`<tr><td>${r.code}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
+    html += `<tr><td>${r.code}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
   });
-  html+='</table>';
-  wrap.innerHTML=html;
+  html += '</table>';
+  wrap.innerHTML = html;
 }
 renderTable();
 
-document.getElementById('btnExportExcel').onclick=()=>{
-  if(records.length===0){toast('ยังไม่มีข้อมูลให้ export');return;}
-  const rows = records.map((r,i)=>({
-    'ลำดับ': i+1, 'รหัสชิ้นงาน': r.code,
-    'มีภาพก่อนทำลาย': r.before? 'มี':'ไม่มี',
-    'มีภาพหลังทำลาย': r.after? 'มี':'ไม่มี',
+/* ============================================================
+   ส่วนที่ 6: Export
+   ============================================================ */
+document.getElementById('btnExportExcel').onclick = () => {
+  if(records.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
+  const rows = records.map((r,i) => ({
+    'ลำดับ': i+1,
+    'รหัสชิ้นงาน': r.code,
+    'มีภาพก่อนทำลาย': r.before ? 'มี' : 'ไม่มี',
+    'มีภาพหลังทำลาย': r.after ? 'มี' : 'ไม่มี',
     'เวลาบันทึก': r.savedAt
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -238,26 +384,102 @@ document.getElementById('btnExportExcel').onclick=()=>{
   XLSX.writeFile(wb, 'scrap_records.xlsx');
 };
 
-document.getElementById('btnExportPdf').onclick=async ()=>{
-  if(records.length===0){toast('ยังไม่มีข้อมูลให้ export');return;}
+document.getElementById('btnExportPdf').onclick = async () => {
+  if(records.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({unit:'pt', format:'a4'});
   let y = 40;
-  pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y+=26;
+  pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
   pdf.setFontSize(10);
   for(const r of records){
-    if(y > 700){ pdf.addPage(); y=40; }
-    pdf.setFontSize(12); pdf.text('Item Code: '+r.code, 40, y); y+=14;
-    pdf.setFontSize(9); pdf.text('Saved: '+r.savedAt, 40, y); y+=12;
-    let x=40;
-    if(r.before){ try{ pdf.addImage(r.before, 'JPEG', x, y, 120, 120); }catch(e){} }
-    if(r.after){ try{ pdf.addImage(r.after, 'JPEG', x+140, y, 120, 120); }catch(e){} }
-    y += 132;
-    pdf.setFontSize(8); pdf.text('Before', x, y); pdf.text('After', x+140, y);
-    y += 18;
+    if(y > 660){ pdf.addPage(); y = 40; }
+    pdf.setFontSize(12); pdf.text('Item Code: ' + r.code, 40, y); y += 14;
+    pdf.setFontSize(9);  pdf.text('Saved: ' + r.savedAt, 40, y); y += 12;
+    const x = 40;
+    if(r.before){ try{ pdf.addImage(r.before, 'JPEG', x, y, 150, 150); }catch(e){} }
+    if(r.after) { try{ pdf.addImage(r.after,  'JPEG', x+165, y, 150, 150); }catch(e){} }
+    y += 158;
+    pdf.setFontSize(8); pdf.text('Before', x, y); pdf.text('After', x+165, y);
+    y += 20;
   }
   pdf.save('scrap_evidence_report.pdf');
 };
+
+/* ============================================================
+   ส่วนที่ 7: Firebase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
+   ============================================================ */
+let fbAuth = null, fbStorage = null, fbDb = null;
+
+async function initFirebase(){
+  if (!CLOUD_MODE) return;
+  const [{ initializeApp }, authMod, storageMod, dbMod] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
+  ]);
+  const app = initializeApp(FIREBASE_CONFIG);
+  fbAuth    = { mod: authMod,    inst: authMod.getAuth(app) };
+  fbStorage = { mod: storageMod, inst: storageMod.getStorage(app) };
+  fbDb      = { mod: dbMod,      inst: dbMod.getFirestore(app) };
+
+  document.getElementById('modeBadge').textContent = 'โหมด: อัปโหลดขึ้น Cloud';
+  document.getElementById('storageNote').textContent =
+    'ระบบอัปโหลดภาพขึ้น Firebase Storage อัตโนมัติทุกครั้งที่กดบันทึก';
+
+  authMod.onAuthStateChanged(fbAuth.inst, (user) => {
+    if (!user) promptLogin();
+  });
+}
+
+function promptLogin(){
+  const email = prompt('อีเมลสำหรับเข้าใช้ระบบ');
+  if (!email) return;
+  const password = prompt('รหัสผ่าน');
+  if (!password) return;
+  fbAuth.mod.signInWithEmailAndPassword(fbAuth.inst, email, password)
+    .then(() => toast('เข้าสู่ระบบสำเร็จ'))
+    .catch(e => toast('เข้าสู่ระบบไม่สำเร็จ: ' + e.code, true));
+}
+
+function dataUrlToBlob(dataUrl){
+  const [head, b64] = dataUrl.split(',');
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function uploadOne(itemCode, dataUrl, phase){
+  const { ref, uploadBytes, getDownloadURL } = fbStorage.mod;
+  const path = `scrap/${itemCode}/${phase}_${Date.now()}.jpg`;
+  const fileRef = ref(fbStorage.inst, path);
+  await uploadBytes(fileRef, dataUrlToBlob(dataUrl), { contentType: 'image/jpeg' });
+  return await getDownloadURL(fileRef);
+}
+
+async function uploadToCloud(record){
+  const user = fbAuth.inst.currentUser;
+  if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
+
+  const beforeUrl = record.before ? await uploadOne(record.code, record.before, 'before') : null;
+  const afterUrl  = record.after  ? await uploadOne(record.code, record.after,  'after')  : null;
+
+  const { collection, addDoc, serverTimestamp } = fbDb.mod;
+  await addDoc(collection(fbDb.inst, 'scrapRecords'), {
+    itemCode: record.code,
+    beforeUrl,
+    afterUrl,
+    createdBy: user.uid,            // ต้องตรงกับ Firestore Security Rule
+    createdByEmail: user.email,
+    createdAt: serverTimestamp()
+  });
+}
+
+initFirebase().catch(e => {
+  toast('เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message, true);
+});
 </script>
 </body>
 </html>
