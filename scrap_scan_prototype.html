@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - v2.1</title>
-<!-- VERSION: v2.1 | Updated: 2026-09-01
+<title>Scrap Photo Capture - v2.4</title>
+<!-- VERSION: v2.4 | Updated: 2026-09-01
      Changes:
        - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode รองรับ Code 39 / Code 128 / QR
        - กรอบสแกนเป็นแนวนอน เหมาะกับบาร์โค้ด 1 มิติ
        - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
        - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
        - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
-       - เตรียมช่องเสียบ Firebase (ยังไม่เปิดใช้จนกว่าจะใส่ config)
+       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL) — ยังไม่ใส่ config (ว่างไว้ = โหมดเก็บในเครื่อง)
+       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน กล้องสูง 190px ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -38,10 +39,13 @@
   .btn-danger{background:var(--accent2);color:#fff;}
   .btn-ok{background:var(--ok);color:#062f18;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  #reader{width:100%;border-radius:10px;overflow:hidden;background:#000;}
-  #reader video{width:100%!important;display:block;}
+  #reader{width:100%;height:190px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
+  #reader video{width:100%!important;height:190px!important;object-fit:cover;display:block;}
+  #reader__scan_region{height:190px!important;}
+  #reader__scan_region img{display:none!important;}
+  #reader__dashboard{display:none!important;}
   #reader img[alt="Info icon"]{display:none;}
-  .scan-note{font-size:11.5px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.5;}
+  .scan-note{font-size:11px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.4;}
   .photo-row{display:flex;gap:10px;margin-top:8px;}
   .photo-box{flex:1;text-align:center;}
   .photo-box img{width:100%;border-radius:8px;border:2px solid var(--line);aspect-ratio:1/1;object-fit:cover;background:#0a0e17;}
@@ -65,7 +69,7 @@
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.0</span></h1>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.4</span></h1>
   <p>สแกน Code 39 / QR → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
   <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
@@ -73,18 +77,16 @@
 <main>
   <div class="card">
     <h2>1) สแกน Barcode / QR Code</h2>
-    <div id="reader"></div>
-    <p class="scan-note" id="scanNote" style="display:none;">
-      วางบาร์โค้ดให้อยู่ในกรอบแนวนอน • ถือห่างประมาณ 15–25 ซม.<br>
-      ถ้าสแกนไม่ติด ให้เอียงมุมเล็กน้อยเพื่อเลี่ยงแสงสะท้อนบนสติกเกอร์<br>
-      บาร์โค้ดชำรุด? เล็งกล้องไปที่ <b>ตัวอักษร Part No.</b> แล้วกดปุ่มอ่านตัวอักษรด้านล่าง
-    </p>
     <button class="btn btn-primary" id="btnStartScan">📷 เปิดกล้องสแกนรหัส</button>
     <div class="row2" id="scanControls" style="display:none;">
       <button class="btn btn-secondary" id="btnTorch">🔦 ไฟฉาย</button>
       <button class="btn btn-secondary" id="btnStopScan">⏹ หยุดสแกน</button>
     </div>
-    <button class="btn btn-secondary" id="btnOcr" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (กรณีบาร์โค้ดชำรุด)</button>
+    <div id="reader" style="display:none;"></div>
+    <button class="btn btn-secondary" id="btnOcr" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
+    <p class="scan-note" id="scanNote" style="display:none;">
+      วางบาร์โค้ดในกรอบ • ห่าง 15–25 ซม. • เอียงมุมเล็กน้อยถ้ามีแสงสะท้อน
+    </p>
     <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
     <input type="text" id="itemCode" placeholder="เช่น A06B-1407-B153">
   </div>
@@ -112,7 +114,7 @@
       <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
     </div>
     <p class="note" id="storageNote">
-      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Firebase config
+      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config
       ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
     </p>
   </div>
@@ -121,21 +123,18 @@
 <div class="toast" id="toast"></div>
 
 <!-- ============================================================
-     ส่วนที่ 1: ตั้งค่า Firebase
-     วิธีใช้: นำค่าจาก Firebase Console (Project settings > Your apps)
-     มาใส่แทนค่าว่างด้านล่าง ระบบจะสลับไปโหมด Cloud อัตโนมัติ
-     ถ้าปล่อยว่างไว้ ระบบจะทำงานแบบเก็บในเครื่องเหมือนเดิม
+     ส่วนที่ 1: ตั้งค่า Supabase
+     วิธีใช้: ไปที่ Supabase Dashboard > Project Settings > API
+     นำ "Project URL" และ "anon public key" มาใส่แทนค่าว่างด้านล่าง
+     ระบบจะสลับไปโหมด Cloud อัตโนมัติ ถ้าปล่อยว่างไว้จะเก็บในเครื่องเหมือนเดิม
      ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+const SUPABASE_CONFIG = {
+  url: "",       // เช่น https://xxxxxxxxxxxx.supabase.co
+  anonKey: ""    // Project Settings > API > anon public
 };
-const CLOUD_MODE = !!FIREBASE_CONFIG.apiKey;
+const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 </script>
 
 <script>
@@ -220,6 +219,7 @@ btnStartScan.onclick = async () => {
     scanning = true;
     btnStartScan.style.display = 'none';
     scanControls.style.display = 'flex';
+    document.getElementById('reader').style.display = 'block';
     document.getElementById('btnOcr').style.display = 'block';
     scanNote.style.display = 'block';
   } catch (e) {
@@ -237,6 +237,7 @@ async function stopScan(){
   html5QrCode = null;
   btnStartScan.style.display = 'block';
   scanControls.style.display = 'none';
+  document.getElementById('reader').style.display = 'none';
   document.getElementById('btnOcr').style.display = 'none';
   scanNote.style.display = 'none';
 }
@@ -530,40 +531,39 @@ document.getElementById('btnExportPdf').onclick = async () => {
 };
 
 /* ============================================================
-   ส่วนที่ 7: Firebase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
+   ส่วนที่ 7: Supabase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
    ============================================================ */
-let fbAuth = null, fbStorage = null, fbDb = null;
+let sb = null; // Supabase client
+const BUCKET = 'scrap-photos';
+const TABLE  = 'scrap_records';
 
-async function initFirebase(){
+async function initSupabase(){
   if (!CLOUD_MODE) return;
-  const [{ initializeApp }, authMod, storageMod, dbMod] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
-  ]);
-  const app = initializeApp(FIREBASE_CONFIG);
-  fbAuth    = { mod: authMod,    inst: authMod.getAuth(app) };
-  fbStorage = { mod: storageMod, inst: storageMod.getStorage(app) };
-  fbDb      = { mod: dbMod,      inst: dbMod.getFirestore(app) };
+  if (typeof window.supabase === 'undefined'){
+    toast('โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', true);
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
   document.getElementById('modeBadge').textContent = 'โหมด: อัปโหลดขึ้น Cloud';
   document.getElementById('storageNote').textContent =
-    'ระบบอัปโหลดภาพขึ้น Firebase Storage อัตโนมัติทุกครั้งที่กดบันทึก';
+    'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก';
 
-  authMod.onAuthStateChanged(fbAuth.inst, (user) => {
-    if (!user) promptLogin();
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) promptLogin();
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN') toast('เข้าสู่ระบบสำเร็จ');
   });
 }
 
-function promptLogin(){
+async function promptLogin(){
   const email = prompt('อีเมลสำหรับเข้าใช้ระบบ');
   if (!email) return;
   const password = prompt('รหัสผ่าน');
   if (!password) return;
-  fbAuth.mod.signInWithEmailAndPassword(fbAuth.inst, email, password)
-    .then(() => toast('เข้าสู่ระบบสำเร็จ'))
-    .catch(e => toast('เข้าสู่ระบบไม่สำเร็จ: ' + e.code, true));
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) toast('เข้าสู่ระบบไม่สำเร็จ: ' + error.message, true);
 }
 
 function dataUrlToBlob(dataUrl){
@@ -576,33 +576,36 @@ function dataUrlToBlob(dataUrl){
 }
 
 async function uploadOne(itemCode, dataUrl, phase){
-  const { ref, uploadBytes, getDownloadURL } = fbStorage.mod;
-  const path = `scrap/${itemCode}/${phase}_${Date.now()}.jpg`;
-  const fileRef = ref(fbStorage.inst, path);
-  await uploadBytes(fileRef, dataUrlToBlob(dataUrl), { contentType: 'image/jpeg' });
-  return await getDownloadURL(fileRef);
+  const path = `${itemCode}/${phase}_${Date.now()}.jpg`;
+  const blob = dataUrlToBlob(dataUrl);
+  const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 async function uploadToCloud(record){
-  const user = fbAuth.inst.currentUser;
+  const { data: { user } } = await sb.auth.getUser();
   if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
 
   const beforeUrl = record.before ? await uploadOne(record.code, record.before, 'before') : null;
   const afterUrl  = record.after  ? await uploadOne(record.code, record.after,  'after')  : null;
 
-  const { collection, addDoc, serverTimestamp } = fbDb.mod;
-  await addDoc(collection(fbDb.inst, 'scrapRecords'), {
-    itemCode: record.code,
-    beforeUrl,
-    afterUrl,
-    createdBy: user.uid,            // ต้องตรงกับ Firestore Security Rule
-    createdByEmail: user.email,
-    createdAt: serverTimestamp()
+  const { error } = await sb.from(TABLE).insert({
+    item_code: record.code,
+    before_url: beforeUrl,
+    after_url: afterUrl,
+    status: (beforeUrl && afterUrl) ? 'complete' : 'partial',
+    created_by: user.id,
+    created_by_email: user.email
   });
+  if (error) throw error;
 }
 
-initFirebase().catch(e => {
-  toast('เชื่อมต่อ Firebase ไม่สำเร็จ: ' + e.message, true);
+initSupabase().catch(e => {
+  toast('เชื่อมต่อ Supabase ไม่สำเร็จ: ' + e.message, true);
 });
 </script>
 </body>
