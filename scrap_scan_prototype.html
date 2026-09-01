@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - v2.5</title>
-<!-- VERSION: v2.5 | Updated: 2026-09-01
+<title>Scrap Photo Capture - v2.6</title>
+<!-- VERSION: v2.6 | Updated: 2026-09-01
      Changes:
        - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode รองรับ Code 39 / Code 128 / QR
-       - กรอบสแกนเป็นแนวนอน เหมาะกับบาร์โค้ด 1 มิติ
        - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
        - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
        - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
        - ย้ายจาก Firebase เป็น Supabase (PostgreSQL) — ยังไม่ใส่ config (ว่างไว้ = โหมดเก็บในเครื่อง)
-       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน กล้องสูง 190px ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
+       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
        - FIX: แก้บั๊กสแกนไม่ติด (ทั้ง Code 39 และ QR) — ต้องโชว์กล้องก่อน start() เสมอ
        - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
+       - FIX: แก้บั๊ก QR สแกนไม่ติด — เปลี่ยนกรอบสแกนจากแถบแนวนอนบาง เป็นสี่เหลี่ยมจัตุรัส (ใช้ได้ทั้ง Code 39 และ QR)
+       - เพิ่มความสูงกล้องเป็น 230px ให้กรอบสี่เหลี่ยมจัตุรัสมีพื้นที่ใช้งานพอดี
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -41,9 +42,9 @@
   .btn-danger{background:var(--accent2);color:#fff;}
   .btn-ok{background:var(--ok);color:#062f18;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  #reader{width:100%;height:190px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
-  #reader video{width:100%!important;height:190px!important;object-fit:cover;display:block;}
-  #reader__scan_region{height:190px!important;}
+  #reader{width:100%;height:230px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
+  #reader video{width:100%!important;height:230px!important;object-fit:cover;display:block;}
+  #reader__scan_region{height:230px!important;}
   #reader__scan_region img{display:none!important;}
   #reader__dashboard{display:none!important;}
   #reader img[alt="Info icon"]{display:none;}
@@ -75,7 +76,7 @@
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.5</span></h1>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.6</span></h1>
   <p>สแกน Code 39 / QR → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
   <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
@@ -215,12 +216,14 @@ btnStartScan.onclick = async () => {
       { facingMode: "environment" },
       {
         fps: 10,
-        // กรอบแนวนอน สำคัญมากสำหรับบาร์โค้ด 1 มิติ
-        // ถ้าใช้กรอบสี่เหลี่ยมจัตุรัสแบบ QR จะจับ Code 39 ได้ยากมาก
+        // กรอบสี่เหลี่ยมจัตุรัส ขนาด ~75% ของด้านที่สั้นกว่า
+        // (เดิมใช้กรอบแถบแนวนอนบางมาก h=0.42*w เหมาะกับ Code 39 อย่างเดียว
+        //  แต่ QR Code เป็นสี่เหลี่ยมจัตุรัส ถ้ากรอบเตี้ยเกินไปจะไม่พอดีในกรอบ สแกนไม่ติดเลย
+        //  กรอบสี่เหลี่ยมจัตุรัสใช้ได้ดีกับทั้ง Code 39 และ QR)
         qrbox: (vw, vh) => {
-          const w = Math.floor(Math.min(vw, vh * 2.2) * 0.85);
-          const h = Math.floor(w * 0.42);
-          return { width: w, height: h };
+          const shortSide = Math.min(vw, vh);
+          const size = Math.floor(shortSide * 0.75);
+          return { width: size, height: size };
         },
         aspectRatio: 1.777,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
