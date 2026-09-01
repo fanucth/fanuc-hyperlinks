@@ -3,19 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - v2.6</title>
-<!-- VERSION: v2.6 | Updated: 2026-09-01
+<title>Scrap Photo Capture - v2.7</title>
+<!-- VERSION: v2.7 | Updated: 2026-09-01
      Changes:
-       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode รองรับ Code 39 / Code 128 / QR
+       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode
        - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
        - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
        - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
        - ย้ายจาก Firebase เป็น Supabase (PostgreSQL) — ยังไม่ใส่ config (ว่างไว้ = โหมดเก็บในเครื่อง)
        - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
-       - FIX: แก้บั๊กสแกนไม่ติด (ทั้ง Code 39 และ QR) — ต้องโชว์กล้องก่อน start() เสมอ
+       - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
        - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
-       - FIX: แก้บั๊ก QR สแกนไม่ติด — เปลี่ยนกรอบสแกนจากแถบแนวนอนบาง เป็นสี่เหลี่ยมจัตุรัส (ใช้ได้ทั้ง Code 39 และ QR)
-       - เพิ่มความสูงกล้องเป็น 230px ให้กรอบสี่เหลี่ยมจัตุรัสมีพื้นที่ใช้งานพอดี
+       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" (ตัด Code 128/93/ITF/EAN-13/QR ออก) ตามชนิดป้ายจริงของ FANUC
+         → กรอบสแกนกลับไปเป็นแถบแนวนอน (เล็งง่ายกว่าสี่เหลี่ยมจัตุรัส)
+         → fps 10 → 20 (ตรวจจับถี่ขึ้น) + disableFlip (ไม่ต้องลองพลิกภาพแบบ QR) = สแกนเร็วขึ้น
+         → เช็คแค่ 1 รูปแบบต่อเฟรม แทนที่จะไล่เช็ค 6 รูปแบบ = แม่นยำขึ้น ลดโอกาสอ่านผิด
+         → ลดความสูงกล้องกลับเหลือ 180px (ไม่ต้องเผื่อพื้นที่ QR สี่เหลี่ยมจัตุรัสแล้ว)
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -42,9 +45,9 @@
   .btn-danger{background:var(--accent2);color:#fff;}
   .btn-ok{background:var(--ok);color:#062f18;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  #reader{width:100%;height:230px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
-  #reader video{width:100%!important;height:230px!important;object-fit:cover;display:block;}
-  #reader__scan_region{height:230px!important;}
+  #reader{width:100%;height:180px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
+  #reader video{width:100%!important;height:180px!important;object-fit:cover;display:block;}
+  #reader__scan_region{height:180px!important;}
   #reader__scan_region img{display:none!important;}
   #reader__dashboard{display:none!important;}
   #reader img[alt="Info icon"]{display:none;}
@@ -76,14 +79,14 @@
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.6</span></h1>
-  <p>สแกน Code 39 / QR → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.7</span></h1>
+  <p>สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
   <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
 
 <main>
   <div class="card">
-    <h2>1) สแกน Barcode / QR Code</h2>
+    <h2>1) สแกน Barcode (Code 39)</h2>
     <button class="btn btn-primary" id="btnStartScan">📷 เปิดกล้องสแกนรหัส</button>
     <div class="row2" id="scanControls" style="display:none;">
       <button class="btn btn-secondary" id="btnTorch">🔦 ไฟฉาย</button>
@@ -92,7 +95,7 @@
     <div id="reader" style="display:none;"></div>
     <button class="btn btn-secondary" id="btnOcr" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
     <p class="scan-note" id="scanNote" style="display:none;">
-      วางบาร์โค้ดในกรอบ • ห่าง 15–25 ซม. • เอียงมุมเล็กน้อยถ้ามีแสงสะท้อน
+      ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.
     </p>
     <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
     <div class="code-row">
@@ -178,18 +181,13 @@ document.getElementById('btnClearCode').onclick = () => {
 };
 
 /* ============================================================
-   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 / Code 128 / QR)
+   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 อย่างเดียว)
+   จำกัดแค่รูปแบบเดียว ช่วยให้ไลบรารีถอดรหัสเร็วขึ้นและแม่นยำขึ้น
+   (ไม่ต้องเสียเวลาไล่เช็คหลายรูปแบบต่อเฟรม + ลดโอกาสอ่านผิดรูปแบบ)
    ============================================================ */
 function supportedFormats(){
   const F = Html5QrcodeSupportedFormats;
-  return [
-    F.CODE_39,      // รูปแบบที่ป้ายอะไหล่ FANUC ใช้
-    F.CODE_128,     // เผื่อป้ายรุ่นใหม่
-    F.CODE_93,
-    F.ITF,
-    F.EAN_13,
-    F.QR_CODE
-  ];
+  return [ F.CODE_39 ];   // รูปแบบเดียวที่ป้ายอะไหล่ FANUC ใช้
 }
 
 // Code 39 อาจคืนค่ามาพร้อมเครื่องหมาย * ครอบหัวท้าย ต้องตัดออก
@@ -215,17 +213,16 @@ btnStartScan.onclick = async () => {
     await html5QrCode.start(
       { facingMode: "environment" },
       {
-        fps: 10,
-        // กรอบสี่เหลี่ยมจัตุรัส ขนาด ~75% ของด้านที่สั้นกว่า
-        // (เดิมใช้กรอบแถบแนวนอนบางมาก h=0.42*w เหมาะกับ Code 39 อย่างเดียว
-        //  แต่ QR Code เป็นสี่เหลี่ยมจัตุรัส ถ้ากรอบเตี้ยเกินไปจะไม่พอดีในกรอบ สแกนไม่ติดเลย
-        //  กรอบสี่เหลี่ยมจัตุรัสใช้ได้ดีกับทั้ง Code 39 และ QR)
+        fps: 20,
+        // กลับไปใช้กรอบแถบแนวนอน เหมาะกับ Code 39 โดยเฉพาะ (ไม่ต้องรองรับ QR แล้ว)
+        // กรอบกว้าง+เตี้ย ช่วยให้เล็งง่าย ถือโทรศัพท์ขนานกับบาร์โค้ดแล้วสแกนติดทันที
         qrbox: (vw, vh) => {
-          const shortSide = Math.min(vw, vh);
-          const size = Math.floor(shortSide * 0.75);
-          return { width: size, height: size };
+          const w = Math.floor(Math.min(vw, vh * 2.5) * 0.9);
+          const h = Math.floor(w * 0.38);
+          return { width: w, height: h };
         },
         aspectRatio: 1.777,
+        disableFlip: true, // Code 39 ไม่ใช่ QR ไม่ต้องลองพลิกภาพ ช่วยลดงานประมวลผลต่อเฟรม
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
       },
       (decodedText) => {
