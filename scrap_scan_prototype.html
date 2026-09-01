@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Scrap Photo Capture - Prototype</title>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -55,12 +55,12 @@
 <body>
 <header>
   <h1>📦 Scrap Photo Capture <span class="tag">Prototype</span></h1>
-  <p>สแกน QR/Barcode → ถ่ายภาพก่อน/หลังทำลาย → Export รายงาน</p>
+  <p>สแกน Code 39 / Code 128 / QR Code → ถ่ายภาพก่อน/หลังทำลาย → Export รายงาน</p>
 </header>
 
 <main>
   <div class="card">
-    <h2>1) สแกน Barcode / QR Code</h2>
+    <h2>1) สแกน Barcode 39 / QR Code</h2>
     <div id="scanArea" class="scan-wrap" style="display:none;">
       <video id="video" playsinline muted></video>
       <div class="scan-hint">เล็งกล้องไปที่ Barcode/QR ของชิ้นงาน</div>
@@ -117,49 +117,77 @@ function toast(msg){
 }
 
 document.getElementById('btnStartScan').onclick = async ()=>{
-  if(typeof jsQR !== 'function'){
+  if(typeof Quagga === 'undefined'){
     toast('โหลดไลบรารีสแกนไม่สำเร็จ (เช็คอินเทอร์เน็ต แล้วรีเฟรชหน้า)');
     return;
   }
   try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    video.srcObject = stream; video.play();
     scanArea.style.display='block';
     document.getElementById('btnStartScan').style.display='none';
     document.getElementById('btnStopScan').style.display='block';
     scanning=true;
-    requestAnimationFrame(tickScan);
-  }catch(e){
-    toast('เปิดกล้องไม่ได้: '+e.message);
-  }
-};
-document.getElementById('btnStopScan').onclick = stopScan;
-function stopScan(){
-  scanning=false;
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  scanArea.style.display='none';
-  document.getElementById('btnStartScan').style.display='block';
-  document.getElementById('btnStopScan').style.display='none';
-}
-function tickScan(){
-  if(!scanning) return;
-  try{
-    if(video.readyState===video.HAVE_ENOUGH_DATA && video.videoWidth>0){
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-      const code=jsQR(imgData.data,imgData.width,imgData.height,{inversionAttempts:'attemptBoth'});
-      if(code && code.data){
-        itemCodeInput.value=code.data;
-        toast('สแกนสำเร็จ: '+code.data);
+
+    Quagga.init({
+      inputStream: {
+        type: 'LiveStream',
+        constraints: {
+          width: {min: 640},
+          height: {min: 480},
+          facingMode: 'environment',
+          aspectRatio: {min: 1, max: 2}
+        },
+        target: video
+      },
+      decoder: {
+        readers: [
+          'code_39_reader',    // Code 39 (FANUC)
+          'code_128_reader',   // Code 128 (backup)
+          'qr_reader'          // QR Code
+        ],
+        debug: {
+          showCanvas: false,
+          showPatternOnly: false
+        }
+      },
+      locator: {
+        halfSample: true
+      }
+    }, (err)=>{
+      if(err){
+        toast('เปิดกล้องไม่ได้: '+err.message);
         stopScan();
         return;
       }
-    }
-  }catch(err){
-    console.error('scan error', err);
+      Quagga.start();
+    });
+
+    Quagga.onDetected((result)=>{
+      if(result.codeResult && result.codeResult.code){
+        const detectedCode = result.codeResult.code;
+        itemCodeInput.value = detectedCode;
+        toast('✅ สแกนสำเร็จ: '+detectedCode);
+        stopScan();
+      }
+    });
+  }catch(e){
+    toast('เปิดกล้องไม่ได้: '+e.message);
+    stopScan();
   }
-  requestAnimationFrame(tickScan);
+};
+
+document.getElementById('btnStopScan').onclick = stopScan;
+function stopScan(){
+  scanning=false;
+  if(typeof Quagga !== 'undefined'){
+    Quagga.stop();
+  }
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
+  }
+  scanArea.style.display='none';
+  document.getElementById('btnStartScan').style.display='block';
+  document.getElementById('btnStopScan').style.display='none';
 }
 
 const fileInput=document.getElementById('fileInput');
