@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - v2.4</title>
-<!-- VERSION: v2.4 | Updated: 2026-09-01
+<title>Scrap Photo Capture - v2.5</title>
+<!-- VERSION: v2.5 | Updated: 2026-09-01
      Changes:
        - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode รองรับ Code 39 / Code 128 / QR
        - กรอบสแกนเป็นแนวนอน เหมาะกับบาร์โค้ด 1 มิติ
@@ -13,6 +13,8 @@
        - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
        - ย้ายจาก Firebase เป็น Supabase (PostgreSQL) — ยังไม่ใส่ config (ว่างไว้ = โหมดเก็บในเครื่อง)
        - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน กล้องสูง 190px ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
+       - FIX: แก้บั๊กสแกนไม่ติด (ทั้ง Code 39 และ QR) — ต้องโชว์กล้องก่อน start() เสมอ
+       - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -63,13 +65,17 @@
   .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
   .row2{display:flex;gap:8px;}
   .row2 .btn{flex:1;}
+  .code-row{display:flex;gap:8px;align-items:stretch;}
+  .code-row input{flex:1;margin-bottom:10px;}
+  .btn-clear{flex:0 0 auto;width:44px;height:44px;margin-top:0;margin-bottom:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--sub);font-size:16px;font-weight:700;cursor:pointer;}
+  .btn-clear:active{background:var(--accent2);color:#fff;}
   .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
   .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.4</span></h1>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.5</span></h1>
   <p>สแกน Code 39 / QR → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
   <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
@@ -88,7 +94,10 @@
       วางบาร์โค้ดในกรอบ • ห่าง 15–25 ซม. • เอียงมุมเล็กน้อยถ้ามีแสงสะท้อน
     </p>
     <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
-    <input type="text" id="itemCode" placeholder="เช่น A06B-1407-B153">
+    <div class="code-row">
+      <input type="text" id="itemCode" placeholder="เช่น A06B-1407-B153">
+      <button class="btn-clear" id="btnClearCode" title="ล้างรหัสชิ้นงาน">✕</button>
+    </div>
   </div>
 
   <div class="card">
@@ -160,6 +169,13 @@ function toast(msg, isError){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
+// ล้างรหัสชิ้นงาน กรณีสแกนมาแล้วไม่ตรง อยากลบแล้วสแกน/พิมพ์ใหม่
+document.getElementById('btnClearCode').onclick = () => {
+  itemCodeInput.value = '';
+  itemCodeInput.focus();
+  toast('ล้างรหัสชิ้นงานแล้ว');
+};
+
 /* ============================================================
    ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 / Code 128 / QR)
    ============================================================ */
@@ -186,6 +202,10 @@ btnStartScan.onclick = async () => {
     return;
   }
   try {
+    // ต้องโชว์กล้องก่อน start เสมอ ไม่งั้นไลบรารีจะคำนวณขนาดกรอบสแกนเป็น 0
+    // (เจอปัญหานี้มาแล้ว: ซ่อนกล้องไว้ตอน start ทำให้สแกนไม่ติดเลยทั้ง Code 39 และ QR)
+    document.getElementById('reader').style.display = 'block';
+
     html5QrCode = new Html5Qrcode("reader", {
       formatsToSupport: supportedFormats(),
       verbose: false
@@ -219,10 +239,10 @@ btnStartScan.onclick = async () => {
     scanning = true;
     btnStartScan.style.display = 'none';
     scanControls.style.display = 'flex';
-    document.getElementById('reader').style.display = 'block';
     document.getElementById('btnOcr').style.display = 'block';
     scanNote.style.display = 'block';
   } catch (e) {
+    document.getElementById('reader').style.display = 'none';
     toast('เปิดกล้องไม่ได้: ' + (e.message || e), true);
   }
 };
