@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Scrap Photo Capture - v2.7</title>
-<!-- VERSION: v2.7 | Updated: 2026-09-01
+<title>Scrap Photo Capture - v2.8</title>
+<!-- VERSION: v2.8 | Updated: 2026-09-01
      Changes:
        - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode
        - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
@@ -14,11 +14,14 @@
        - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
        - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
        - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
-       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" (ตัด Code 128/93/ITF/EAN-13/QR ออก) ตามชนิดป้ายจริงของ FANUC
-         → กรอบสแกนกลับไปเป็นแถบแนวนอน (เล็งง่ายกว่าสี่เหลี่ยมจัตุรัส)
-         → fps 10 → 20 (ตรวจจับถี่ขึ้น) + disableFlip (ไม่ต้องลองพลิกภาพแบบ QR) = สแกนเร็วขึ้น
-         → เช็คแค่ 1 รูปแบบต่อเฟรม แทนที่จะไล่เช็ค 6 รูปแบบ = แม่นยำขึ้น ลดโอกาสอ่านผิด
-         → ลดความสูงกล้องกลับเหลือ 180px (ไม่ต้องเผื่อพื้นที่ QR สี่เหลี่ยมจัตุรัสแล้ว)
+       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" สแกนเร็วขึ้น+แม่นยำขึ้น
+       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป:
+         → UI เป็นแกลเลอรี่ ถ่ายเพิ่มได้เรื่อยๆ กดปุ่ม + ซ้ำ, แตะ ✕ บนรูปเพื่อลบทีละรูป
+         → มีตัวเลขนับจำนวนรูปกำกับแต่ละเฟส + เตือนถ้าถ่ายเกิน 10 รูป (กันมือลั่น)
+         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records (1 แถว/ครั้งบันทึก) +
+           scrap_photos (หลายแถว/record, มี phase + photo_url)
+         → Export Excel: เปลี่ยนจาก "มี/ไม่มี" เป็นนับจำนวนรูปต่อเฟส
+         → Export PDF: วางรูปเป็นกริด (4 คอลัมน์) รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติ
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -52,10 +55,16 @@
   #reader__dashboard{display:none!important;}
   #reader img[alt="Info icon"]{display:none;}
   .scan-note{font-size:11px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.4;}
-  .photo-row{display:flex;gap:10px;margin-top:8px;}
-  .photo-box{flex:1;text-align:center;}
-  .photo-box img{width:100%;border-radius:8px;border:2px solid var(--line);aspect-ratio:1/1;object-fit:cover;background:#0a0e17;}
-  .photo-box span{display:block;font-size:11px;color:var(--sub);margin-top:4px;}
+  .gallery-group{margin-top:10px;}
+  .gallery-label{font-size:12px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .gallery-label b{color:var(--text);font-weight:600;}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;}
+  .thumb{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#0a0e17;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb .del:active{background:var(--accent2);}
+  .thumb-add{aspect-ratio:1/1;border-radius:8px;border:2px dashed var(--line);background:var(--card2);color:var(--sub);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb-add:active{background:var(--accent);color:#1a1500;}
   .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
   .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
   .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
@@ -79,7 +88,7 @@
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.7</span></h1>
+  <h1>📦 Scrap Photo Capture <span class="tag">v2.8</span></h1>
   <p>สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
   <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
 </header>
@@ -106,17 +115,24 @@
 
   <div class="card">
     <h2>2) ถ่ายภาพหลักฐาน</h2>
-    <p class="note">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ ถ่าย "ก่อนทำลาย" และ "หลังทำลาย" อย่างละ 1 ภาพขึ้นไป</p>
-    <div class="row2">
-      <button class="btn btn-secondary" id="btnBefore">📸 ก่อนทำลาย</button>
-      <button class="btn btn-secondary" id="btnAfter">📸 หลังทำลาย</button>
+    <p class="note">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+
+    <div class="gallery-group">
+      <div class="gallery-label">📷 ก่อนทำลาย <b id="countBefore">(0 รูป)</b></div>
+      <div class="gallery" id="galleryBefore">
+        <button class="thumb-add" id="btnBefore">+</button>
+      </div>
     </div>
-    <div class="photo-row">
-      <div class="photo-box"><img id="imgBefore" src="" alt=""><span>ก่อนทำลาย</span></div>
-      <div class="photo-box"><img id="imgAfter" src="" alt=""><span>หลังทำลาย</span></div>
+
+    <div class="gallery-group">
+      <div class="gallery-label">📷 หลังทำลาย <b id="countAfter">(0 รูป)</b></div>
+      <div class="gallery" id="galleryAfter">
+        <button class="thumb-add" id="btnAfter">+</button>
+      </div>
     </div>
+
     <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
-    <button class="btn btn-ok" id="btnSave" style="margin-top:12px;">💾 บันทึกรายการนี้</button>
+    <button class="btn btn-ok" id="btnSave" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
   </div>
 
   <div class="card">
@@ -157,7 +173,8 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 let html5QrCode = null;
 let scanning = false;
 let torchOn = false;
-let currentBefore = null, currentAfter = null, capturingMode = null;
+let currentBefore = [], currentAfter = [], capturingMode = null;   // เก็บเป็น array รองรับหลายรูป/เฟส
+const PHOTO_SOFT_LIMIT = 10; // เตือนกันมือลั่นถ้าถ่ายเกินจำนวนนี้ ไม่ได้บล็อก
 let records = JSON.parse(sessionStorage.getItem('scrapRecords') || '[]');
 
 const itemCodeInput = document.getElementById('itemCode');
@@ -426,15 +443,8 @@ function compressImage(file){
 }
 
 const fileInput = document.getElementById('fileInput');
-
-document.getElementById('btnBefore').onclick = () => {
-  if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
-  capturingMode = 'before'; fileInput.click();
-};
-document.getElementById('btnAfter').onclick = () => {
-  if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
-  capturingMode = 'after'; fileInput.click();
-};
+// หมายเหตุ: ปุ่ม "+" ในแกลเลอรี่ถูก re-render บ่อย (ทุกครั้งที่เพิ่ม/ลบรูป)
+// จึงผูก event ให้ปุ่ม "+" ไว้ในฟังก์ชัน renderGallery() แทนการผูกครั้งเดียวตรงนี้
 
 fileInput.onchange = async (e) => {
   const file = e.target.files[0];
@@ -442,19 +452,55 @@ fileInput.onchange = async (e) => {
   if(!file) return;
   try {
     const dataUrl = await compressImage(file);
-    if (capturingMode === 'before') {
-      currentBefore = dataUrl;
-      document.getElementById('imgBefore').src = dataUrl;
-    } else {
-      currentAfter = dataUrl;
-      document.getElementById('imgAfter').src = dataUrl;
-    }
+    const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
+    arr.push(dataUrl);
+    renderGallery(capturingMode);
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
-    toast('บันทึกภาพ' + (capturingMode==='before'?'ก่อน':'หลัง') + 'ทำลายแล้ว (~' + kb + ' KB)');
+    toast('เพิ่มภาพ' + (capturingMode==='before'?'ก่อน':'หลัง') + 'ทำลายแล้ว (~' + kb + ' KB) รวม ' + arr.length + ' รูป');
+    if (arr.length === PHOTO_SOFT_LIMIT) {
+      toast('ถ่ายไปแล้ว ' + PHOTO_SOFT_LIMIT + ' รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', true);
+    }
   } catch (err) {
     toast(err.message, true);
   }
 };
+
+// วาดแกลเลอรี่รูปภาพของเฟสนั้นๆ ใหม่ (ใช้ทั้งตอนเพิ่มและตอนลบรูป)
+function renderGallery(phase){
+  const arr = (phase === 'before') ? currentBefore : currentAfter;
+  const gallery = document.getElementById(phase === 'before' ? 'galleryBefore' : 'galleryAfter');
+  const countEl = document.getElementById(phase === 'before' ? 'countBefore' : 'countAfter');
+
+  countEl.textContent = `(${arr.length} รูป)`;
+
+  let html = '';
+  arr.forEach((dataUrl, idx) => {
+    html += `<div class="thumb">
+      <img src="${dataUrl}" alt="">
+      <button class="del" data-phase="${phase}" data-idx="${idx}" title="ลบรูปนี้">✕</button>
+    </div>`;
+  });
+  html += `<button class="thumb-add" id="btn${phase === 'before' ? 'Before' : 'After'}">+</button>`;
+  gallery.innerHTML = html;
+
+  // ผูก event ปุ่ม + ใหม่ (เพราะ innerHTML เขียนทับ element เดิม)
+  document.getElementById(phase === 'before' ? 'btnBefore' : 'btnAfter').onclick = () => {
+    if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
+    capturingMode = phase; fileInput.click();
+  };
+
+  // ผูก event ปุ่มลบทุกปุ่มในแกลเลอรี่นี้
+  gallery.querySelectorAll('.del').forEach(btn => {
+    btn.onclick = () => {
+      const p = btn.dataset.phase;
+      const i = parseInt(btn.dataset.idx, 10);
+      const targetArr = (p === 'before') ? currentBefore : currentAfter;
+      targetArr.splice(i, 1);
+      renderGallery(p);
+      toast('ลบรูปแล้ว');
+    };
+  });
+}
 
 /* ============================================================
    ส่วนที่ 5: บันทึกรายการ
@@ -462,13 +508,15 @@ fileInput.onchange = async (e) => {
 document.getElementById('btnSave').onclick = async () => {
   const code = itemCodeInput.value.trim();
   if(!code){ toast('กรุณาระบุรหัสชิ้นงาน', true); return; }
-  if(!currentBefore && !currentAfter){ toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป', true); return; }
+  if(currentBefore.length === 0 && currentAfter.length === 0){
+    toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป', true); return;
+  }
 
   const now = new Date();
   const record = {
     code,
-    before: currentBefore,
-    after: currentAfter,
+    before: currentBefore.slice(),   // copy array ไว้ก่อนเคลียร์
+    after: currentAfter.slice(),
     savedAt: now.toLocaleString('th-TH')
   };
 
@@ -489,40 +537,49 @@ document.getElementById('btnSave').onclick = async () => {
     toast('พื้นที่เบราว์เซอร์เต็ม แนะนำให้ Export แล้วรีเฟรชหน้า', true);
   }
 
-  currentBefore = null; currentAfter = null;
-  document.getElementById('imgBefore').src = '';
-  document.getElementById('imgAfter').src = '';
+  currentBefore = []; currentAfter = [];
+  renderGallery('before');
+  renderGallery('after');
   itemCodeInput.value = '';
   renderTable();
-  toast('บันทึกรายการสำเร็จ ✅');
+  toast('บันทึกรายการสำเร็จ ✅ (' + record.before.length + ' ก่อน / ' + record.after.length + ' หลัง)');
 };
 
 function renderTable(){
   document.getElementById('countTotal').textContent = records.length;
   const wrap = document.getElementById('tableWrap');
   if(records.length === 0){ wrap.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>'; return; }
-  let html = '<table><tr><th>รหัสชิ้นงาน</th><th>สถานะ</th><th>เวลา</th></tr>';
+  let html = '<table><tr><th>รหัสชิ้นงาน</th><th>ก่อน</th><th>หลัง</th><th>สถานะ</th><th>เวลา</th></tr>';
   records.forEach(r => {
-    const done = r.before && r.after;
-    html += `<tr><td>${r.code}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
+    const nBefore = (r.before || []).length;
+    const nAfter = (r.after || []).length;
+    const done = nBefore > 0 && nAfter > 0;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
 }
 renderTable();
+renderGallery('before');
+renderGallery('after');
 
 /* ============================================================
    ส่วนที่ 6: Export
    ============================================================ */
 document.getElementById('btnExportExcel').onclick = () => {
   if(records.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
-  const rows = records.map((r,i) => ({
-    'ลำดับ': i+1,
-    'รหัสชิ้นงาน': r.code,
-    'มีภาพก่อนทำลาย': r.before ? 'มี' : 'ไม่มี',
-    'มีภาพหลังทำลาย': r.after ? 'มี' : 'ไม่มี',
-    'เวลาบันทึก': r.savedAt
-  }));
+  const rows = records.map((r,i) => {
+    const nBefore = (r.before || []).length;
+    const nAfter  = (r.after  || []).length;
+    return {
+      'ลำดับ': i+1,
+      'รหัสชิ้นงาน': r.code,
+      'จำนวนภาพก่อนทำลาย': nBefore,
+      'จำนวนภาพหลังทำลาย': nAfter,
+      'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+      'เวลาบันทึก': r.savedAt
+    };
+  });
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ScrapRecords');
@@ -533,19 +590,42 @@ document.getElementById('btnExportPdf').onclick = async () => {
   if(records.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({unit:'pt', format:'a4'});
+  const PAGE_BOTTOM = 780;
+  const THUMB = 110, GAP = 10, COLS = 4;
   let y = 40;
+
   pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
   pdf.setFontSize(10);
-  for(const r of records){
-    if(y > 660){ pdf.addPage(); y = 40; }
+
+  // วางรูปเป็นกริด รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
+  function drawPhotoGrid(label, photos, startY){
+    let yy = startY;
+    pdf.setFontSize(10); pdf.setTextColor(90);
+    pdf.text(label + ' (' + photos.length + ' รูป)', 40, yy); yy += 6;
+    pdf.setTextColor(0);
+    if (photos.length === 0){ yy += 14; return yy; }
+
+    let col = 0;
+    for (const photo of photos){
+      if (col === 0) yy += 10;
+      if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; }
+      const x = 40 + col * (THUMB + GAP);
+      try { pdf.addImage(photo, 'JPEG', x, yy, THUMB, THUMB); } catch(e){}
+      col++;
+      if (col >= COLS){ col = 0; yy += THUMB + GAP; }
+    }
+    if (col !== 0) yy += THUMB + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลง
+    return yy;
+  }
+
+  for (const r of records){
+    if (y > PAGE_BOTTOM - 60){ pdf.addPage(); y = 40; }
     pdf.setFontSize(12); pdf.text('Item Code: ' + r.code, 40, y); y += 14;
-    pdf.setFontSize(9);  pdf.text('Saved: ' + r.savedAt, 40, y); y += 12;
-    const x = 40;
-    if(r.before){ try{ pdf.addImage(r.before, 'JPEG', x, y, 150, 150); }catch(e){} }
-    if(r.after) { try{ pdf.addImage(r.after,  'JPEG', x+165, y, 150, 150); }catch(e){} }
-    y += 158;
-    pdf.setFontSize(8); pdf.text('Before', x, y); pdf.text('After', x+165, y);
-    y += 20;
+    pdf.setFontSize(9);  pdf.text('Saved: ' + r.savedAt, 40, y); y += 14;
+
+    y = drawPhotoGrid('Before', r.before || [], y);
+    y = drawPhotoGrid('After',  r.after  || [], y);
+    y += 16; // เว้นช่องว่างก่อนรายการถัดไป
   }
   pdf.save('scrap_evidence_report.pdf');
 };
@@ -555,7 +635,8 @@ document.getElementById('btnExportPdf').onclick = async () => {
    ============================================================ */
 let sb = null; // Supabase client
 const BUCKET = 'scrap-photos';
-const TABLE  = 'scrap_records';
+const TABLE_RECORDS = 'scrap_records';
+const TABLE_PHOTOS  = 'scrap_photos';
 
 async function initSupabase(){
   if (!CLOUD_MODE) return;
@@ -595,8 +676,9 @@ function dataUrlToBlob(dataUrl){
   return new Blob([arr], { type: mime });
 }
 
-async function uploadOne(itemCode, dataUrl, phase){
-  const path = `${itemCode}/${phase}_${Date.now()}.jpg`;
+// อัพโหลดรูปเดียวขึ้น Storage คืนค่า public URL
+async function uploadOne(itemCode, dataUrl, phase, idx){
+  const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
   const blob = dataUrlToBlob(dataUrl);
   const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
     contentType: 'image/jpeg', upsert: false
@@ -606,22 +688,38 @@ async function uploadOne(itemCode, dataUrl, phase){
   return data.publicUrl;
 }
 
+// อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
+async function uploadPhaseAll(itemCode, photos, phase){
+  return Promise.all(photos.map((dataUrl, idx) => uploadOne(itemCode, dataUrl, phase, idx)));
+}
+
+// บันทึก 1 รายการ (record) + รูปทั้งหมด (photos) ตามโครงสร้าง 1-to-many
+// scrap_records (1 แถวต่อ 1 ครั้งที่บันทึก) → scrap_photos (หลายแถวต่อ 1 record)
 async function uploadToCloud(record){
   const { data: { user } } = await sb.auth.getUser();
   if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
 
-  const beforeUrl = record.before ? await uploadOne(record.code, record.before, 'before') : null;
-  const afterUrl  = record.after  ? await uploadOne(record.code, record.after,  'after')  : null;
+  const [beforeUrls, afterUrls] = await Promise.all([
+    uploadPhaseAll(record.code, record.before, 'before'),
+    uploadPhaseAll(record.code, record.after,  'after')
+  ]);
 
-  const { error } = await sb.from(TABLE).insert({
+  const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
     item_code: record.code,
-    before_url: beforeUrl,
-    after_url: afterUrl,
-    status: (beforeUrl && afterUrl) ? 'complete' : 'partial',
+    status: (beforeUrls.length > 0 && afterUrls.length > 0) ? 'complete' : 'partial',
     created_by: user.id,
     created_by_email: user.email
-  });
-  if (error) throw error;
+  }).select().single();
+  if (recErr) throw recErr;
+
+  const photoRows = [
+    ...beforeUrls.map(url => ({ record_id: inserted.id, phase: 'before', photo_url: url })),
+    ...afterUrls.map(url  => ({ record_id: inserted.id, phase: 'after',  photo_url: url }))
+  ];
+  if (photoRows.length > 0){
+    const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
+    if (photoErr) throw photoErr;
+  }
 }
 
 initSupabase().catch(e => {
