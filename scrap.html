@@ -1000,23 +1000,24 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
     // วางรูปเป็นกริด รักษาสัดส่วนภาพจริง (contain ภายในกรอบ THUMB x THUMB แทนการยืดเป็นสี่เหลี่ยมจัตุรัส)
     // รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
+    // หมายเหตุ: จัดรูปให้ชิดขอบบนของกรอบ (ไม่ centered แนวตั้ง) รูปแนวนอน/wide จะได้ไม่ลอยห่างจาก label ก่อน/หลัง
     async function drawPhotoGrid(label, photoDataUrls, startY){
       let yy = startY;
       pdf.setFontSize(10); pdf.setTextColor(90);
-      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 6;
+      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 4;
       pdf.setTextColor(0);
       if (photoDataUrls.length === 0){ yy += 14; return yy; }
 
       let col = 0;
       for (const dataUrl of photoDataUrls){
-        if (col === 0) yy += 10;
+        if (col === 0) yy += 4;
         if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; }
         const x = 40 + col * (THUMB + GAP);
         try {
           const { w, h } = await getImageSize(dataUrl);
           const scale = Math.min(THUMB / w, THUMB / h);
           const dw = w * scale, dh = h * scale;
-          const dx = x + (THUMB - dw) / 2, dy = yy + (THUMB - dh) / 2; // จัดกึ่งกลางกรอบ
+          const dx = x + (THUMB - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง (กันรูป wide ลอยห่างจาก label)
           pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
         } catch(e){}
         col++;
@@ -1079,7 +1080,7 @@ const TABLE_PHOTOS  = 'scrap_photos';
    คอลัมน์ photo_url เก็บเป็น "path" ในตั้งแต่ v3.1 (ไม่ใช่ URL เต็มแบบเดิม)
    แต่ยังรองรับข้อมูลเก่าที่เก็บเป็น public URL เต็มไว้ด้วย (ถอด path ออกมาเอง)
    ============================================================ */
-const SIGNED_URL_TTL = 3600; // วินาที (1 ชม.) — พอสำหรับเปิดดู/export ต่อเนื่อง ไม่นานเกินจนเสี่ยงถ้าหลุด
+const SIGNED_URL_TTL = 600; // วินาที (10 นาที) — พอสำหรับเปิดดู/export ต่อเนื่อง แต่ลดหน้าต่างความเสี่ยงถ้าลิงก์หลุดออกไป
 const signedUrlCache = new Map(); // path -> { url, expiresAt }
 
 // รองรับทั้งค่าเก่า (public URL เต็ม) และค่าใหม่ (path ตรงๆ) ที่เก็บในคอลัมน์ photo_url
