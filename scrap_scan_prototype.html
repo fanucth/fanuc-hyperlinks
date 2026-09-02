@@ -4,8 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v2.9</title>
-<!-- VERSION: v2.9 | Updated: 2026-09-02
+<title>Scrap Photo Capture - v3.0</title>
+<!-- VERSION: v3.0 | Updated: 2026-09-02
+     Changes (v3.0):
+       - เปลี่ยนหน้า login จาก prompt() ของเบราว์เซอร์ เป็นหน้าฟอร์ม login จริงในตัวเว็บ (ภาษาอังกฤษเสมอ)
+       - บังคับ login ก่อนถึงจะเห็น/ใช้แอปได้เลย (โหมด Cloud) — ไม่กด login (หรือปิดฟอร์มไม่ได้เลยเพราะไม่มีปุ่ม cancel)
+         จะเข้าแอปไม่ได้ ต่างจากของเดิมที่กด Cancel บน prompt() แล้วยังเห็นหน้าแอปอยู่ดี
+       - เพิ่มปุ่ม Logout ในหัวเว็บ (โชว์เฉพาะตอน login แล้ว)
+       - เพิ่มตัวเลือกภาษา TH / EN / JP ในหัวเว็บ (โชว์หลัง login) ค่าเริ่มต้นเป็นไทยเสมอ
+         จำค่าไว้ต่อเครื่อง (localStorage) ไม่กระทบ user อื่น
      Changes (v2.9):
        - เพิ่มหน้า "รายการที่บันทึกแล้ว" ให้ดึงข้อมูลจริงจาก Supabase (โหมด Cloud)
          แทนที่จะโชว์แค่ของ session/เครื่องนี้ — มีช่องค้นหาตามรหัสชิ้นงาน + ปุ่มรีเฟรช
@@ -24,18 +31,13 @@
        - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
        - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
        - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
-       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL) — ยังไม่ใส่ config (ว่างไว้ = โหมดเก็บในเครื่อง)
+       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL)
        - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
        - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
        - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
        - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" สแกนเร็วขึ้น+แม่นยำขึ้น
-       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป:
-         → UI เป็นแกลเลอรี่ ถ่ายเพิ่มได้เรื่อยๆ กดปุ่ม + ซ้ำ, แตะ ✕ บนรูปเพื่อลบทีละรูป
-         → มีตัวเลขนับจำนวนรูปกำกับแต่ละเฟส + เตือนถ้าถ่ายเกิน 10 รูป (กันมือลั่น)
-         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records (1 แถว/ครั้งบันทึก) +
-           scrap_photos (หลายแถว/record, มี phase + photo_url)
-         → Export Excel: เปลี่ยนจาก "มี/ไม่มี" เป็นนับจำนวนรูปต่อเฟส
-         → Export PDF: วางรูปเป็นกริด (4 คอลัมน์) รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติ
+       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป
+         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records + scrap_photos
 -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
@@ -49,13 +51,18 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
   header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 80%,transparent);z-index:5;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:520px;margin:0 auto;}
   header h1{font-size:18px;margin:0 0 2px;}
   header p{margin:0;color:var(--sub);font-size:12.5px;}
+  .header-actions{display:none;align-items:center;gap:8px;flex:0 0 auto;}
+  .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
+  .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .btn-logout:active{background:var(--accent2);color:#fff;}
   main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
   .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input[type=text]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
   .btn-primary{background:var(--accent);color:#1a1500;}
   .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
@@ -108,69 +115,102 @@
   .modal-body .gallery{margin-bottom:4px;}
   .modal-body .thumb{cursor:pointer;}
   .loading-note{font-size:12px;color:var(--sub);text-align:center;padding:10px;}
+  .login-overlay{position:fixed;inset:0;background:var(--bg);z-index:70;display:none;align-items:center;justify-content:center;padding:20px;}
+  .login-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 22px;max-width:360px;width:100%;}
+  .login-box h2{margin:0 0 4px;font-size:19px;}
+  .login-sub{margin:0 0 20px;color:var(--sub);font-size:13px;}
+  .login-box label{margin-top:2px;}
+  .login-error{color:#ffb4a8;background:rgba(255,90,60,.12);border:1px solid rgba(255,90,60,.35);border-radius:8px;padding:9px 11px;font-size:12.5px;margin-top:2px;margin-bottom:10px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>📦 Scrap Photo Capture <span class="tag">v2.9</span></h1>
-  <p>สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
-  <span class="mode" id="modeBadge">โหมด: เก็บข้อมูลในเครื่อง</span>
+  <div class="header-row">
+    <div>
+      <h1>📦 Scrap Photo Capture <span class="tag">v3.0</span></h1>
+      <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
+      <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <select class="lang-select" id="langSelect" title="Language">
+        <option value="th">TH</option>
+        <option value="en">EN</option>
+        <option value="ja">JP</option>
+      </select>
+      <button class="btn-logout" id="btnLogout" data-i18n="logoutButton" style="display:none;">Logout</button>
+    </div>
+  </div>
 </header>
 
-<main>
+<!-- หน้า Login (โหมด Cloud เท่านั้น) — ภาษาอังกฤษเสมอ ไม่ผูกกับตัวเลือกภาษาของแอป
+     ไม่มีปุ่ม cancel/ปิด — ไม่ login สำเร็จ จะเข้าแอปไม่ได้เลย -->
+<div class="login-overlay" id="loginScreen">
+  <div class="login-box">
+    <h2>📦 Scrap Photo Capture</h2>
+    <p class="login-sub">Sign in to continue</p>
+    <p class="login-error" id="loginError" style="display:none;"></p>
+    <label for="loginEmail">Email</label>
+    <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
+  </div>
+</div>
+
+<main id="appMain">
   <div class="card">
-    <h2>1) สแกน Barcode (Code 39)</h2>
-    <button class="btn btn-primary" id="btnStartScan">📷 เปิดกล้องสแกนรหัส</button>
+    <h2 data-i18n="sectionScanTitle">1) สแกน Barcode (Code 39)</h2>
+    <button class="btn btn-primary" id="btnStartScan" data-i18n="btnScanLabel">📷 เปิดกล้องสแกนรหัส</button>
     <div class="row2" id="scanControls" style="display:none;">
-      <button class="btn btn-secondary" id="btnTorch">🔦 ไฟฉาย</button>
-      <button class="btn btn-secondary" id="btnStopScan">⏹ หยุดสแกน</button>
+      <button class="btn btn-secondary" id="btnTorch" data-i18n="btnTorchLabel">🔦 ไฟฉาย</button>
+      <button class="btn btn-secondary" id="btnStopScan" data-i18n="btnStopLabel">⏹ หยุดสแกน</button>
     </div>
     <div id="reader" style="display:none;"></div>
-    <button class="btn btn-secondary" id="btnOcr" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
-    <p class="scan-note" id="scanNote" style="display:none;">
+    <button class="btn btn-secondary" id="btnOcr" data-i18n="btnOcrLabel" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
+    <p class="scan-note" id="scanNote" data-i18n="scanNoteText" style="display:none;">
       ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.
     </p>
-    <label style="margin-top:6px;">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
+    <label style="margin-top:6px;" data-i18n="orEnterManually">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
     <div class="code-row">
-      <input type="text" id="itemCode" placeholder="เช่น A06B-1407-B153">
-      <button class="btn-clear" id="btnClearCode" title="ล้างรหัสชิ้นงาน">✕</button>
+      <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
+      <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
     </div>
   </div>
 
   <div class="card">
-    <h2>2) ถ่ายภาพหลักฐาน</h2>
-    <p class="note">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+    <h2 data-i18n="sectionPhotoTitle">2) ถ่ายภาพหลักฐาน</h2>
+    <p class="note" data-i18n="sectionPhotoNote">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
 
     <div class="gallery-group">
-      <div class="gallery-label">📷 ก่อนทำลาย <b id="countBefore">(0 รูป)</b></div>
+      <div class="gallery-label"><span data-i18n="beforeLabel">📷 ก่อนทำลาย</span> <b id="countBefore">(0)</b></div>
       <div class="gallery" id="galleryBefore">
         <button class="thumb-add" id="btnBefore">+</button>
       </div>
     </div>
 
     <div class="gallery-group">
-      <div class="gallery-label">📷 หลังทำลาย <b id="countAfter">(0 รูป)</b></div>
+      <div class="gallery-label"><span data-i18n="afterLabel">📷 หลังทำลาย</span> <b id="countAfter">(0)</b></div>
       <div class="gallery" id="galleryAfter">
         <button class="thumb-add" id="btnAfter">+</button>
       </div>
     </div>
 
     <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
-    <button class="btn btn-ok" id="btnSave" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
+    <button class="btn btn-ok" id="btnSave" data-i18n="btnSaveLabel" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
   </div>
 
   <div class="card">
-    <h2>3) รายการที่บันทึกแล้ว (<span id="countTotal">0</span>)</h2>
+    <h2><span data-i18n="sectionListTitle">3) รายการที่บันทึกแล้ว</span> (<span id="countTotal">0</span>)</h2>
     <div class="code-row" id="searchRow" style="display:none;">
-      <input type="text" id="searchCode" placeholder="ค้นหาจากรหัสชิ้นงาน...">
-      <button class="btn-clear" id="btnRefreshList" title="รีเฟรชรายการ">⟳</button>
+      <input type="text" id="searchCode" data-i18n-placeholder="searchPlaceholder" placeholder="ค้นหาจากรหัสชิ้นงาน...">
+      <button class="btn-clear" id="btnRefreshList" data-i18n-title="refreshTitle" title="รีเฟรชรายการ">⟳</button>
     </div>
-    <div id="tableWrap"><div class="empty">ยังไม่มีรายการ</div></div>
+    <div id="tableWrap"><div class="empty" data-i18n="emptyList">ยังไม่มีรายการ</div></div>
     <div class="row2" style="margin-top:10px;">
       <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
       <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
     </div>
-    <p class="note" id="storageNote">
+    <p class="note" id="storageNote" data-i18n="storageNoteLocal">
       ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config
       ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
     </p>
@@ -193,7 +233,7 @@
 <!-- ============================================================
      ส่วนที่ 1: ตั้งค่า Supabase
      วิธีใช้: ไปที่ Supabase Dashboard > Project Settings > API
-     นำ "Project URL" และ "anon public key" มาใส่แทนค่าว่างด้านล่าง
+     นำ "Project URL" และ "Publishable key" มาใส่แทนค่าว่างด้านล่าง
      ระบบจะสลับไปโหมด Cloud อัตโนมัติ ถ้าปล่อยว่างไว้จะเก็บในเครื่องเหมือนเดิม
      ============================================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -203,6 +243,119 @@ const SUPABASE_CONFIG = {
   anonKey: "sb_publishable_IaJXmtk_atVnsgoCw1c4aw_p4MD7IPj"
 };
 const CLOUD_MODE = !!SUPABASE_CONFIG.url;
+</script>
+
+<script>
+/* ============================================================
+   ส่วนที่ 0: ระบบภาษา (TH / EN / JP) — ค่าเริ่มต้นเป็นไทยเสมอ
+   จำค่าไว้ต่อเครื่องผ่าน localStorage ไม่กระทบ user คนอื่น
+   หมายเหตุ: หน้า Login (ก่อนเข้าระบบ) ตั้งใจให้เป็นภาษาอังกฤษตายตัวเสมอ
+   ไม่ผูกกับระบบนี้ — ระบบนี้มีผลกับตัวแอปหลัง login แล้วเท่านั้น
+   ============================================================ */
+const TRANSLATIONS = {
+  appSubtitle:       { th:'สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน', en:'Scan Code 39 → Photograph before/after → Export report', ja:'Code 39をスキャン → 廃棄前後を撮影 → レポート出力' },
+  modeLocal:         { th:'โหมด: เก็บข้อมูลในเครื่อง', en:'Mode: Local storage', ja:'モード: ローカル保存' },
+  modeCloud:         { th:'โหมด: อัปโหลดขึ้น Cloud', en:'Mode: Cloud upload', ja:'モード: クラウドアップロード' },
+  logoutButton:      { th:'ออกจากระบบ', en:'Logout', ja:'ログアウト' },
+  sectionScanTitle:  { th:'1) สแกน Barcode (Code 39)', en:'1) Scan Barcode (Code 39)', ja:'1) バーコードをスキャン (Code 39)' },
+  btnScanLabel:      { th:'📷 เปิดกล้องสแกนรหัส', en:'📷 Open camera to scan', ja:'📷 カメラでスキャン' },
+  btnTorchLabel:     { th:'🔦 ไฟฉาย', en:'🔦 Flashlight', ja:'🔦 ライト' },
+  btnStopLabel:      { th:'⏹ หยุดสแกน', en:'⏹ Stop scanning', ja:'⏹ スキャン停止' },
+  btnOcrLabel:       { th:'🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)', en:'🔤 Read text from label (barcode damaged)', ja:'🔤 ラベルの文字を読む（バーコード破損時）' },
+  scanNoteText:      { th:'ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.', en:'Hold parallel to the barcode, keep it inside the horizontal frame • 15–25 cm away', ja:'バーコードに平行に持ち、横長の枠内に収めてください • 15〜25cm離す' },
+  orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
+  itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
+  btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
+  sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
+  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除' },
+  beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
+  afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
+  btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
+  searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
+  refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
+  emptyList:         { th:'ยังไม่มีรายการ', en:'No records yet', ja:'記録がありません' },
+  storageNoteLocal:  { th:'ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก', en:'Data is currently stored only in this browser. Once Supabase config is set, the system will automatically upload to Cloud Storage on every save.', ja:'現在データはこのブラウザにのみ保存されています。Supabaseの設定を行うと、保存の度に自動でクラウドへアップロードされます。' },
+  storageNoteCloud:  { th:'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก', en:'Photos are automatically uploaded to Supabase Storage every time you save.', ja:'保存の度に写真は自動的にSupabase Storageへアップロードされます。' },
+  colCode:   { th:'รหัส', en:'Code', ja:'品番' },
+  colBefore: { th:'ก่อน', en:'Before', ja:'廃棄前' },
+  colAfter:  { th:'หลัง', en:'After', ja:'廃棄後' },
+  colStatus: { th:'สถานะ', en:'Status', ja:'状態' },
+  colBy:     { th:'โดย', en:'By', ja:'記録者' },
+  colTime:   { th:'เวลา', en:'Time', ja:'日時' },
+  statusComplete: { th:'ครบก่อน/หลัง', en:'Complete', ja:'完了' },
+  statusPartial:  { th:'บันทึกบางส่วน', en:'Partial', ja:'一部のみ' },
+  viewPhotosBtn:  { th:'📷 ดูรูป', en:'📷 View photos', ja:'📷 写真を見る' },
+  noPhotos:       { th:'ไม่มีรูป', en:'No photos', ja:'写真なし' },
+  photoCountLabel:{ th:'({n} รูป)', en:'({n} photos)', ja:'（{n}枚）' },
+  loadingData:    { th:'⏳ กำลังโหลดข้อมูล...', en:'⏳ Loading data...', ja:'⏳ データ読み込み中...' },
+  generatingPdf:  { th:'⏳ กำลังสร้าง PDF...', en:'⏳ Generating PDF...', ja:'⏳ PDF作成中...' },
+  savingLabel:    { th:'⏳ กำลังบันทึก...', en:'⏳ Saving...', ja:'⏳ 保存中...' },
+  ocrReadingLabel:{ th:'⏳ กำลังอ่านตัวอักษร...', en:'⏳ Reading text...', ja:'⏳ 文字を読み取り中...' },
+  // ข้อความ toast แบบไดนามิก
+  codeCleared:       { th:'ล้างรหัสชิ้นงานแล้ว', en:'Item code cleared', ja:'品番をクリアしました' },
+  scanSuccess:       { th:'สแกนสำเร็จ: {code}', en:'Scan successful: {code}', ja:'スキャン成功: {code}' },
+  cameraOpenFail:    { th:'เปิดกล้องไม่ได้: {err}', en:'Could not open camera: {err}', ja:'カメラを開けません: {err}' },
+  torchUnsupported:  { th:'เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', en:'This device does not support flashlight control from the browser', ja:'この端末はブラウザからのライト制御に対応していません' },
+  torchOnMsg:        { th:'เปิดไฟฉาย', en:'Flashlight on', ja:'ライト点灯' },
+  torchOffMsg:       { th:'ปิดไฟฉาย', en:'Flashlight off', ja:'ライト消灯' },
+  libScanFail:       { th:'โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the scanner library. Check your internet connection and refresh.', ja:'スキャナーライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libOcrFail:        { th:'โหลดไลบรารี OCR ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the OCR library. Check your internet connection and refresh.', ja:'OCRライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libSupabaseFail:   { th:'โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the Supabase library. Check your internet connection and refresh.', ja:'Supabaseライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  ocrNeedCamera:     { th:'ยังไม่พร้อม กรุณาเปิดกล้องก่อน', en:'Not ready yet, please open the camera first', ja:'準備ができていません。先にカメラを開いてください' },
+  ocrReadSuccess:    { th:'อ่านได้: {part} (กรุณาตรวจสอบความถูกต้อง)', en:'Read: {part} (please verify it is correct)', ja:'読み取り結果: {part}（正しいか確認してください）' },
+  ocrNoPattern:      { th:'ไม่พบรูปแบบรหัสที่ถูกต้อง อ่านได้: {preview}', en:'No valid code pattern found. Read: {preview}', ja:'正しい形式のコードが見つかりません。読み取り内容: {preview}' },
+  ocrUnreadable:     { th:'อ่านตัวอักษรไม่ได้ ลองขยับให้ป้ายชัดขึ้น', en:'Could not read any text. Try repositioning for a clearer view.', ja:'文字を読み取れませんでした。ラベルがはっきり見えるよう位置を調整してください' },
+  ocrError:          { th:'OCR ผิดพลาด: {err}', en:'OCR error: {err}', ja:'OCRエラー: {err}' },
+  readImageFail:     { th:'อ่านไฟล์ภาพไม่สำเร็จ', en:'Failed to read the image file', ja:'画像ファイルの読み込みに失敗しました' },
+  readFileFail:      { th:'อ่านไฟล์ไม่สำเร็จ', en:'Failed to read the file', ja:'ファイルの読み込みに失敗しました' },
+  photoAdded:        { th:'เพิ่มภาพ{phase}ทำลายแล้ว (~{kb} KB) รวม {count} รูป', en:'Added {phase} photo (~{kb} KB), {count} total', ja:'{phase}の写真を追加しました（約{kb}KB）、合計{count}枚' },
+  phaseBeforeWord:   { th:'ก่อน', en:'before-destruction', ja:'廃棄前' },
+  phaseAfterWord:    { th:'หลัง', en:'after-destruction', ja:'廃棄後' },
+  photoLimitWarning: { th:'ถ่ายไปแล้ว {limit} รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', en:'You have taken {limit} photos — check you did not tap by mistake', ja:'{limit}枚撮影しました。誤って連続タップしていないか確認してください' },
+  needCodeFirst:     { th:'กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', en:'Please scan or enter the item code first', ja:'先に品番をスキャンまたは入力してください' },
+  photoDeleted:      { th:'ลบรูปแล้ว', en:'Photo deleted', ja:'写真を削除しました' },
+  needItemCode:      { th:'กรุณาระบุรหัสชิ้นงาน', en:'Please enter an item code', ja:'品番を入力してください' },
+  needAtLeastOnePhoto:{ th:'กรุณาถ่ายภาพอย่างน้อย 1 รูป', en:'Please take at least 1 photo', ja:'最低1枚は撮影してください' },
+  saveSuccess:       { th:'บันทึกรายการสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Record saved successfully ✅ ({before} before / {after} after)', ja:'保存に成功しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
+  cloudUploadFail:   { th:'อัปโหลดขึ้น Cloud ไม่สำเร็จ: {err}', en:'Cloud upload failed: {err}', ja:'クラウドへのアップロードに失敗しました: {err}' },
+  cloudLoadFail:     { th:'โหลดรายการจาก Cloud ไม่สำเร็จ: {err}', en:'Failed to load records from the cloud: {err}', ja:'クラウドからの記録読み込みに失敗しました: {err}' },
+  exportNoData:      { th:'ยังไม่มีข้อมูลให้ export', en:'No data available to export', ja:'エクスポートするデータがありません' },
+  exportLoadFail:    { th:'โหลดข้อมูลไม่สำเร็จ: {err}', en:'Failed to load data: {err}', ja:'データの読み込みに失敗しました: {err}' },
+  loginSuccessToast: { th:'เข้าสู่ระบบสำเร็จ', en:'Signed in successfully', ja:'ログインに成功しました' },
+  supabaseConnectFail:{ th:'เชื่อมต่อ Supabase ไม่สำเร็จ: {err}', en:'Failed to connect to Supabase: {err}', ja:'Supabaseへの接続に失敗しました: {err}' }
+};
+
+let currentLang = localStorage.getItem('uiLang') || 'th';
+
+function t(key, vars){
+  const entry = TRANSLATIONS[key];
+  let str = (entry && entry[currentLang]) || (entry && entry.th) || key;
+  if (vars) Object.keys(vars).forEach(k => { str = str.split('{' + k + '}').join(vars[k]); });
+  return str;
+}
+
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.documentElement.lang = currentLang;
+}
+
+// เรียกตอนสลับภาษา: อัปเดตทั้งข้อความ static และเนื้อหาที่ render แบบไดนามิก (ตาราง/แกลเลอรี่)
+function setLanguage(lang){
+  currentLang = lang;
+  localStorage.setItem('uiLang', lang);
+  applyStaticI18n();
+  document.getElementById('modeBadge').textContent = CLOUD_MODE ? t('modeCloud') : t('modeLocal');
+  renderGallery('before');
+  renderGallery('after');
+  if (CLOUD_MODE) { renderCloudTable(); } else { renderTable(); }
+}
+
+document.getElementById('langSelect').value = currentLang;
+document.getElementById('langSelect').onchange = (e) => setLanguage(e.target.value);
+applyStaticI18n(); // เซ็ตข้อความเริ่มต้นก่อน DOM อื่นๆ ทำงาน
 </script>
 
 <script>
@@ -234,7 +387,7 @@ function toast(msg, isError){
 document.getElementById('btnClearCode').onclick = () => {
   itemCodeInput.value = '';
   itemCodeInput.focus();
-  toast('ล้างรหัสชิ้นงานแล้ว');
+  toast(t('codeCleared'));
 };
 
 /* ============================================================
@@ -254,7 +407,7 @@ function cleanCode(raw){
 
 btnStartScan.onclick = async () => {
   if (typeof Html5Qrcode === 'undefined') {
-    toast('โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', true);
+    toast(t('libScanFail'), true);
     return;
   }
   try {
@@ -286,7 +439,7 @@ btnStartScan.onclick = async () => {
         const code = cleanCode(decodedText);
         if (!code) return;
         itemCodeInput.value = code;
-        toast('สแกนสำเร็จ: ' + code);
+        toast(t('scanSuccess', { code }));
         if (navigator.vibrate) navigator.vibrate(120);
         stopScan();
       },
@@ -300,7 +453,7 @@ btnStartScan.onclick = async () => {
     scanNote.style.display = 'block';
   } catch (e) {
     document.getElementById('reader').style.display = 'none';
-    toast('เปิดกล้องไม่ได้: ' + (e.message || e), true);
+    toast(t('cameraOpenFail', { err: e.message || e }), true);
   }
 };
 
@@ -327,10 +480,10 @@ document.getElementById('btnTorch').onclick = async () => {
     await html5QrCode.applyVideoConstraints({
       advanced: [{ torch: torchOn }]
     });
-    toast(torchOn ? 'เปิดไฟฉาย' : 'ปิดไฟฉาย');
+    toast(torchOn ? t('torchOnMsg') : t('torchOffMsg'));
   } catch (e) {
     torchOn = false;
-    toast('เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', true);
+    toast(t('torchUnsupported'), true);
   }
 };
 
@@ -412,17 +565,17 @@ let ocrRunning = false;
 document.getElementById('btnOcr').onclick = async () => {
   if (ocrRunning) return;
   if (typeof Tesseract === 'undefined'){
-    toast('โหลดไลบรารี OCR ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', true);
+    toast(t('libOcrFail'), true);
     return;
   }
   const canvas = grabFrameForOcr();
-  if (!canvas){ toast('ยังไม่พร้อม กรุณาเปิดกล้องก่อน', true); return; }
+  if (!canvas){ toast(t('ocrNeedCamera'), true); return; }
 
   const btn = document.getElementById('btnOcr');
   const original = btn.textContent;
   ocrRunning = true;
   btn.disabled = true;
-  btn.textContent = '⏳ กำลังอ่านตัวอักษร...';
+  btn.textContent = t('ocrReadingLabel');
 
   try {
     const { data } = await Tesseract.recognize(canvas, 'eng', {
@@ -434,17 +587,15 @@ document.getElementById('btnOcr').onclick = async () => {
     const part = extractPartNo(data.text || '');
     if (part){
       itemCodeInput.value = part;
-      toast('อ่านได้: ' + part + ' (กรุณาตรวจสอบความถูกต้อง)');
+      toast(t('ocrReadSuccess', { part }));
       if (navigator.vibrate) navigator.vibrate(120);
       stopScan();
     } else {
       const preview = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
-      toast(preview
-        ? 'ไม่พบรูปแบบรหัสที่ถูกต้อง อ่านได้: ' + preview
-        : 'อ่านตัวอักษรไม่ได้ ลองขยับให้ป้ายชัดขึ้น', true);
+      toast(preview ? t('ocrNoPattern', { preview }) : t('ocrUnreadable'), true);
     }
   } catch (e) {
-    toast('OCR ผิดพลาด: ' + (e.message || e), true);
+    toast(t('ocrError', { err: e.message || e }), true);
   } finally {
     ocrRunning = false;
     btn.disabled = false;
@@ -454,7 +605,7 @@ document.getElementById('btnOcr').onclick = async () => {
 
 /* ============================================================
    ส่วนที่ 4: ถ่ายภาพและย่อขนาดก่อนบันทึก
-   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase
+   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase/Supabase
    ย่อเหลือกว้าง 1280 px คุณภาพ 0.75 จะเหลือประมาณ 150–250 KB ต่อใบ
    ============================================================ */
 const MAX_WIDTH = 1280;
@@ -474,10 +625,10 @@ function compressImage(file){
         cv.getContext('2d').drawImage(img, 0, 0, w, h);
         resolve(cv.toDataURL('image/jpeg', JPEG_QUALITY));
       };
-      img.onerror = () => reject(new Error('อ่านไฟล์ภาพไม่สำเร็จ'));
+      img.onerror = () => reject(new Error(t('readImageFail')));
       img.src = ev.target.result;
     };
-    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    reader.onerror = () => reject(new Error(t('readFileFail')));
     reader.readAsDataURL(file);
   });
 }
@@ -496,9 +647,12 @@ fileInput.onchange = async (e) => {
     arr.push(dataUrl);
     renderGallery(capturingMode);
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
-    toast('เพิ่มภาพ' + (capturingMode==='before'?'ก่อน':'หลัง') + 'ทำลายแล้ว (~' + kb + ' KB) รวม ' + arr.length + ' รูป');
+    toast(t('photoAdded', {
+      phase: capturingMode === 'before' ? t('phaseBeforeWord') : t('phaseAfterWord'),
+      kb, count: arr.length
+    }));
     if (arr.length === PHOTO_SOFT_LIMIT) {
-      toast('ถ่ายไปแล้ว ' + PHOTO_SOFT_LIMIT + ' รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', true);
+      toast(t('photoLimitWarning', { limit: PHOTO_SOFT_LIMIT }), true);
     }
   } catch (err) {
     toast(err.message, true);
@@ -511,7 +665,7 @@ function renderGallery(phase){
   const gallery = document.getElementById(phase === 'before' ? 'galleryBefore' : 'galleryAfter');
   const countEl = document.getElementById(phase === 'before' ? 'countBefore' : 'countAfter');
 
-  countEl.textContent = `(${arr.length} รูป)`;
+  countEl.textContent = t('photoCountLabel', { n: arr.length });
 
   let html = '';
   arr.forEach((dataUrl, idx) => {
@@ -525,7 +679,7 @@ function renderGallery(phase){
 
   // ผูก event ปุ่ม + ใหม่ (เพราะ innerHTML เขียนทับ element เดิม)
   document.getElementById(phase === 'before' ? 'btnBefore' : 'btnAfter').onclick = () => {
-    if(!itemCodeInput.value.trim()){ toast('กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', true); return; }
+    if(!itemCodeInput.value.trim()){ toast(t('needCodeFirst'), true); return; }
     capturingMode = phase; fileInput.click();
   };
 
@@ -537,7 +691,7 @@ function renderGallery(phase){
       const targetArr = (p === 'before') ? currentBefore : currentAfter;
       targetArr.splice(i, 1);
       renderGallery(p);
-      toast('ลบรูปแล้ว');
+      toast(t('photoDeleted'));
     };
   });
 }
@@ -549,9 +703,9 @@ const btnSave = document.getElementById('btnSave');
 
 btnSave.onclick = async () => {
   const code = itemCodeInput.value.trim();
-  if(!code){ toast('กรุณาระบุรหัสชิ้นงาน', true); return; }
+  if(!code){ toast(t('needItemCode'), true); return; }
   if(currentBefore.length === 0 && currentAfter.length === 0){
-    toast('กรุณาถ่ายภาพอย่างน้อย 1 รูป', true); return;
+    toast(t('needAtLeastOnePhoto'), true); return;
   }
 
   const now = new Date();
@@ -565,7 +719,7 @@ btnSave.onclick = async () => {
   // ล็อกปุ่มระหว่างบันทึก กันกดซ้ำ (ซ้ำแล้วจะได้ record/รูปซ้ำขึ้น Cloud)
   btnSave.disabled = true;
   const originalLabel = btnSave.textContent;
-  btnSave.textContent = '⏳ กำลังบันทึก...';
+  btnSave.textContent = t('savingLabel');
 
   try {
     if (CLOUD_MODE) {
@@ -577,7 +731,7 @@ btnSave.onclick = async () => {
         localStorage.setItem('scrapRecords', JSON.stringify(records));
       } catch (e) {
         // localStorage เต็ม (ภาพเยอะ) แต่ข้อมูลยังอยู่ในหน่วยความจำ ยัง export ได้
-        toast('พื้นที่เบราว์เซอร์เต็ม แนะนำให้ Export แล้วรีเฟรชหน้า', true);
+        toast('Storage is full, please export then refresh the page', true);
       }
       renderTable();
     }
@@ -586,9 +740,9 @@ btnSave.onclick = async () => {
     renderGallery('before');
     renderGallery('after');
     itemCodeInput.value = '';
-    toast('บันทึกรายการสำเร็จ ✅ (' + record.before.length + ' ก่อน / ' + record.after.length + ' หลัง)');
+    toast(t('saveSuccess', { before: record.before.length, after: record.after.length }));
   } catch (e) {
-    toast('อัปโหลดขึ้น Cloud ไม่สำเร็จ: ' + e.message, true);
+    toast(t('cloudUploadFail', { err: e.message }), true);
   } finally {
     btnSave.disabled = false;
     btnSave.textContent = originalLabel;
@@ -599,13 +753,13 @@ btnSave.onclick = async () => {
 function renderTable(){
   document.getElementById('countTotal').textContent = records.length;
   const wrap = document.getElementById('tableWrap');
-  if(records.length === 0){ wrap.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>'; return; }
-  let html = '<table><tr><th>รหัสชิ้นงาน</th><th>ก่อน</th><th>หลัง</th><th>สถานะ</th><th>เวลา</th></tr>';
+  if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
   records.forEach(r => {
     const nBefore = (r.before || []).length;
     const nAfter = (r.after || []).length;
     const done = nBefore > 0 && nAfter > 0;
-    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td><td>${r.savedAt}</td></tr>`;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
@@ -636,15 +790,15 @@ async function refreshCloudRecords(){
     cloudRecords = await fetchCloudRecords(searchCodeInput.value.trim());
     renderCloudTable();
   } catch (e) {
-    toast('โหลดรายการจาก Cloud ไม่สำเร็จ: ' + e.message, true);
+    toast(t('cloudLoadFail', { err: e.message }), true);
   }
 }
 
 function renderCloudTable(){
   document.getElementById('countTotal').textContent = cloudRecords.length;
   const wrap = document.getElementById('tableWrap');
-  if (cloudRecords.length === 0){ wrap.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>'; return; }
-  let html = '<table><tr><th>รหัส</th><th>ก่อน</th><th>หลัง</th><th>สถานะ</th><th>โดย</th><th>เวลา</th><th></th></tr>';
+  if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th></th></tr>`;
   cloudRecords.forEach(r => {
     const photos  = r.scrap_photos || [];
     const nBefore = photos.filter(p => p.phase === 'before').length;
@@ -653,9 +807,9 @@ function renderCloudTable(){
     const dt      = new Date(r.created_at).toLocaleString('th-TH');
     html += `<tr>
       <td>${r.item_code}</td><td>${nBefore}</td><td>${nAfter}</td>
-      <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?'ครบก่อน/หลัง':'บันทึกบางส่วน'}</span></td>
+      <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
       <td>${r.created_by_email || '-'}</td><td>${dt}</td>
-      <td><button class="btn-view" data-id="${r.id}">📷 ดูรูป</button></td>
+      <td><button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button></td>
     </tr>`;
   });
   html += '</table>';
@@ -683,15 +837,15 @@ function showPhotoModal(record){
   document.getElementById('modalTitle').textContent = record.item_code;
 
   const galleryHtml = (list) => {
-    if (list.length === 0) return '<div class="empty" style="padding:6px 0;">ไม่มีรูป</div>';
+    if (list.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
     return '<div class="gallery">' + list.map(p =>
       `<div class="thumb"><img src="${p.photo_url}" alt="" onclick="window.open('${p.photo_url}','_blank')"></div>`
     ).join('') + '</div>';
   };
 
   document.getElementById('modalBody').innerHTML =
-    `<h3>ก่อนทำลาย (${before.length} รูป)</h3>${galleryHtml(before)}` +
-    `<h3>หลังทำลาย (${after.length} รูป)</h3>${galleryHtml(after)}`;
+    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(before)}` +
+    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(after)}`;
 
   document.getElementById('photoModal').style.display = 'flex';
 }
@@ -736,15 +890,15 @@ document.getElementById('btnExportExcel').onclick = async () => {
   let sourceRows;
 
   if (CLOUD_MODE) {
-    btn.disabled = true; const original = btn.textContent; btn.textContent = '⏳ กำลังโหลดข้อมูล...';
+    btn.disabled = true; const original = btn.textContent; btn.textContent = t('loadingData');
     try { sourceRows = await fetchAllCloudRecords(); }
-    catch (e) { toast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, true); btn.disabled = false; btn.textContent = original; return; }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btn.disabled = false; btn.textContent = original; return; }
     btn.disabled = false; btn.textContent = original;
   } else {
     sourceRows = records;
   }
 
-  if (sourceRows.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
 
   const rows = sourceRows.map((r, i) => {
     if (CLOUD_MODE) {
@@ -783,13 +937,13 @@ function blobToDataURL(blob){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
-    r.onerror = () => reject(new Error('อ่านไฟล์รูปไม่สำเร็จ'));
+    r.onerror = () => reject(new Error(t('readImageFail')));
     r.readAsDataURL(blob);
   });
 }
 async function urlToDataURL(url){
   const res = await fetch(url);
-  if (!res.ok) throw new Error('โหลดรูปไม่สำเร็จ');
+  if (!res.ok) throw new Error(t('readImageFail'));
   return blobToDataURL(await res.blob());
 }
 
@@ -808,17 +962,17 @@ document.getElementById('btnExportPdf').onclick = async () => {
   let sourceRows;
 
   if (CLOUD_MODE) {
-    btnPdf.disabled = true; const original = btnPdf.textContent; btnPdf.textContent = '⏳ กำลังโหลดข้อมูล...';
+    btnPdf.disabled = true; const original = btnPdf.textContent; btnPdf.textContent = t('loadingData');
     try { sourceRows = await fetchAllCloudRecords(); }
-    catch (e) { toast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, true); btnPdf.disabled = false; btnPdf.textContent = original; return; }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btnPdf.disabled = false; btnPdf.textContent = original; return; }
     btnPdf.disabled = false; btnPdf.textContent = original;
   } else {
     sourceRows = records;
   }
 
-  if (sourceRows.length === 0){ toast('ยังไม่มีข้อมูลให้ export', true); return; }
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
 
-  btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = '⏳ กำลังสร้าง PDF...';
+  btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
 
   try {
     const { jsPDF } = window.jspdf;
@@ -835,7 +989,7 @@ document.getElementById('btnExportPdf').onclick = async () => {
     async function drawPhotoGrid(label, photoDataUrls, startY){
       let yy = startY;
       pdf.setFontSize(10); pdf.setTextColor(90);
-      pdf.text(label + ' (' + photoDataUrls.length + ' รูป)', 40, yy); yy += 6;
+      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 6;
       pdf.setTextColor(0);
       if (photoDataUrls.length === 0){ yy += 14; return yy; }
 
@@ -898,36 +1052,79 @@ const BUCKET = 'scrap-photos';
 const TABLE_RECORDS = 'scrap_records';
 const TABLE_PHOTOS  = 'scrap_photos';
 
+function showLoginScreen(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appMain').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+}
+function showAppScreen(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appMain').style.display = 'block';
+  document.getElementById('headerActions').style.display = 'flex';
+  if (CLOUD_MODE) document.getElementById('btnLogout').style.display = 'inline-flex';
+}
+
 async function initSupabase(){
-  if (!CLOUD_MODE) return;
+  document.getElementById('headerActions').style.display = 'flex'; // เลือกภาษาใช้ได้ทั้ง 2 โหมด
+
+  if (!CLOUD_MODE) { showAppScreen(); return; } // โหมดเก็บในเครื่อง ไม่มีระบบ login
+
   if (typeof window.supabase === 'undefined'){
-    toast('โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', true);
+    toast(t('libSupabaseFail'), true);
     return;
   }
   sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
-  document.getElementById('modeBadge').textContent = 'โหมด: อัปโหลดขึ้น Cloud';
-  document.getElementById('storageNote').textContent =
-    'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก';
+  document.getElementById('modeBadge').textContent = t('modeCloud');
+  document.getElementById('storageNote').textContent = t('storageNoteCloud');
   document.getElementById('searchRow').style.display = 'flex';
 
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { await promptLogin(); }
-  await refreshCloudRecords();
+  if (session) { showAppScreen(); await refreshCloudRecords(); }
+  else { showLoginScreen(); }
 
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') { toast('เข้าสู่ระบบสำเร็จ'); refreshCloudRecords(); }
+    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
+    if (event === 'SIGNED_OUT') { showLoginScreen(); }
   });
 }
 
-async function promptLogin(){
-  const email = prompt('อีเมลสำหรับเข้าใช้ระบบ');
-  if (!email) return;
-  const password = prompt('รหัสผ่าน');
-  if (!password) return;
+// ฟอร์ม login ในหน้าเว็บ (แทนที่ prompt() เดิม) — ไม่มีปุ่ม cancel/ปิด
+// ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย ต่างจาก prompt() เดิมที่กด Cancel แล้วยังเห็นแอปอยู่ดี
+const btnLogin      = document.getElementById('btnLogin');
+const loginEmailEl  = document.getElementById('loginEmail');
+const loginPassEl   = document.getElementById('loginPassword');
+const loginErrorEl  = document.getElementById('loginError');
+
+async function doLogin(){
+  const email = loginEmailEl.value.trim();
+  const password = loginPassEl.value;
+  loginErrorEl.style.display = 'none';
+  if (!email || !password){
+    loginErrorEl.textContent = 'Please enter both email and password.';
+    loginErrorEl.style.display = 'block';
+    return;
+  }
+  btnLogin.disabled = true;
+  const original = btnLogin.textContent;
+  btnLogin.textContent = 'Signing in...';
   const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) toast('เข้าสู่ระบบไม่สำเร็จ: ' + error.message, true);
+  btnLogin.disabled = false;
+  btnLogin.textContent = original;
+  if (error){
+    loginErrorEl.textContent = 'Login failed: ' + error.message;
+    loginErrorEl.style.display = 'block';
+  } else {
+    loginPassEl.value = '';
+  }
 }
+btnLogin.onclick = doLogin;
+loginPassEl.onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
+loginEmailEl.onkeydown = (e) => { if (e.key === 'Enter') loginPassEl.focus(); };
+
+document.getElementById('btnLogout').onclick = async () => {
+  if (sb) await sb.auth.signOut();
+};
 
 function dataUrlToBlob(dataUrl){
   const [head, b64] = dataUrl.split(',');
@@ -964,7 +1161,7 @@ async function uploadPhaseAll(itemCode, photos, phase){
 // สลับลำดับแบบนี้ ถ้าพลาดตรงไหนจะเห็น record ตั้งแต่ขั้นแรกเสมอ ตรวจสอบ/แก้ไขทีหลังง่ายกว่า
 async function uploadToCloud(record){
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
+  if (!user) throw new Error('Please sign in first');
 
   const status = (record.before.length > 0 && record.after.length > 0) ? 'complete' : 'partial';
   const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
@@ -991,7 +1188,7 @@ async function uploadToCloud(record){
 }
 
 initSupabase().catch(e => {
-  toast('เชื่อมต่อ Supabase ไม่สำเร็จ: ' + e.message, true);
+  toast(t('supabaseConnectFail', { err: e.message }), true);
 });
 </script>
 </body>
