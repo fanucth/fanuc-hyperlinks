@@ -427,13 +427,8 @@ btnStartScan.onclick = async () => {
     });
 
     await html5QrCode.start(
-      // v3.0 Hi-Res: บังคับขอความละเอียดกล้องสูงขึ้น (เดิมปล่อยให้เบราว์เซอร์เลือกเอง มักได้แค่ ~640x480)
-      // "ideal" = ขอเท่านี้ถ้าเครื่องทำได้ ถ้าทำไม่ได้ก็ใช้ค่าที่ใกล้เคียงสุด ไม่บล็อกเครื่องรุ่นเก่า
-      {
-        facingMode: "environment",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
+      // parameter แรกต้องมี key เดียวเท่านั้น (ข้อจำกัดของไลบรารี html5-qrcode)
+      { facingMode: "environment" },
       {
         fps: 20,
         // กลับไปใช้กรอบแถบแนวนอน เหมาะกับ Code 39 โดยเฉพาะ (ไม่ต้องรองรับ QR แล้ว)
@@ -445,7 +440,15 @@ btnStartScan.onclick = async () => {
         },
         aspectRatio: 1.777,
         disableFlip: true, // Code 39 ไม่ใช่ QR ไม่ต้องลองพลิกภาพ ช่วยลดงานประมวลผลต่อเฟรม
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        // v3.0 Hi-Res: บังคับขอความละเอียดกล้องสูงขึ้นผ่าน videoConstraints แทน
+        // (เดิมปล่อยให้เบราว์เซอร์เลือกเอง มักได้แค่ ~640x480) "ideal" = ขอเท่านี้ถ้าเครื่องทำได้
+        // ถ้าทำไม่ได้ก็ใช้ค่าที่ใกล้เคียงสุด ไม่บล็อกเครื่องรุ่นเก่า
+        videoConstraints: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
       },
       (decodedText) => {
         const code = cleanCode(decodedText);
