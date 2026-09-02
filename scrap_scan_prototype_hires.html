@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Scrap Photo Capture - v3.0 (Hi-Res Camera Test)</title>
+<!-- VERSION: v3.0 (Hi-Res Camera Test) | Updated: 2026-09-02
+     ไฟล์นี้เหมือน scrap_scan_prototype.html ทุกอย่าง ต่างกันแค่จุดเดียว:
+     บังคับขอความละเอียดกล้อง 1920x1080 (ideal) ตอนสแกน แทนที่จะปล่อยให้เบราว์เซอร์เลือกเอง
+     สร้างไว้เปรียบเทียบว่าความละเอียดสูงขึ้นช่วยให้สแกนบาร์โค้ดที่พิมพ์มาเล็ก/อ่านยากได้ดีขึ้นจริงไหม
+     ถ้าทดสอบแล้วดีขึ้นชัดเจน ค่อยย้ายการเปลี่ยนแปลงนี้ไปใส่ในไฟล์หลัก scrap_scan_prototype.html
+     -->
+<!-- VERSION: v3.0 | Updated: 2026-09-02
+     Changes (v3.0):
+       - เปลี่ยนหน้า login จาก prompt() ของเบราว์เซอร์ เป็นหน้าฟอร์ม login จริงในตัวเว็บ (ภาษาอังกฤษเสมอ)
+       - บังคับ login ก่อนถึงจะเห็น/ใช้แอปได้เลย (โหมด Cloud) — ไม่กด login (หรือปิดฟอร์มไม่ได้เลยเพราะไม่มีปุ่ม cancel)
+         จะเข้าแอปไม่ได้ ต่างจากของเดิมที่กด Cancel บน prompt() แล้วยังเห็นหน้าแอปอยู่ดี
+       - เพิ่มปุ่ม Logout ในหัวเว็บ (โชว์เฉพาะตอน login แล้ว)
+       - เพิ่มตัวเลือกภาษา TH / EN / JP ในหัวเว็บ (โชว์หลัง login) ค่าเริ่มต้นเป็นไทยเสมอ
+         จำค่าไว้ต่อเครื่อง (localStorage) ไม่กระทบ user อื่น
+     Changes (v2.9):
+       - เพิ่มหน้า "รายการที่บันทึกแล้ว" ให้ดึงข้อมูลจริงจาก Supabase (โหมด Cloud)
+         แทนที่จะโชว์แค่ของ session/เครื่องนี้ — มีช่องค้นหาตามรหัสชิ้นงาน + ปุ่มรีเฟรช
+       - เพิ่มปุ่ม "📷 ดูรูป" เปิด modal แสดงรูปก่อน/หลังทำลายของแต่ละรายการ (คลิกรูปเพื่อดูเต็มจอ)
+       - Export Excel/PDF (โหมด Cloud) ดึงข้อมูลทุกแถวจริงจาก Supabase ตอนกด export
+         (ไม่ใช่แค่ 200 แถวที่โชว์ในตาราง) รองรับ scale ถึงหลักพันรายการ
+       - Export PDF: แก้รูปที่เคยถูกยืดเป็นสี่เหลี่ยมจัตุรัส ให้รักษาสัดส่วนภาพจริงแทน (contain)
+       - Export Excel/PDF: ใส่วันที่-เวลาในชื่อไฟล์ กันไฟล์ทับกันตอน export ซ้ำ
+       - แก้บั๊ก: เปลี่ยนจาก sessionStorage เป็น localStorage (โหมดเก็บในเครื่อง) กันข้อมูลหายตอนปิดแท็บ
+       - แก้บั๊ก: ล็อกปุ่ม "บันทึกรายการนี้" ระหว่างกำลังอัปโหลด กันกดซ้ำเกิด record/รูปซ้ำ
+       - แก้บั๊ก: สลับลำดับ uploadToCloud ให้ insert record ก่อนอัปโหลดรูป
+         กันรูปค้างเป็น orphan ใน Storage เวลา insert ล้มเหลว
+       - เพิ่ม <meta name="robots" content="noindex, nofollow"> กัน Google index หน้าเว็บภายใน
+     Changes (v2.8):
+       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode
+       - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
+       - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
+       - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
+       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL)
+       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
+       - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
+       - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
+       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" สแกนเร็วขึ้น+แม่นยำขึ้น
+       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป
+         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records + scrap_photos
+-->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
+    --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 80%,transparent);z-index:5;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:520px;margin:0 auto;}
+  header h1{font-size:18px;margin:0 0 2px;}
+  header p{margin:0;color:var(--sub);font-size:12.5px;}
+  .header-actions{display:none;align-items:center;gap:8px;flex:0 0 auto;}
+  .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
+  .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .btn-logout:active{background:var(--accent2);color:#fff;}
+  main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
+  .btn-primary{background:var(--accent);color:#1a1500;}
+  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:var(--accent2);color:#fff;}
+  .btn-ok{background:var(--ok);color:#062f18;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  #reader{width:100%;height:180px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
+  #reader video{width:100%!important;height:180px!important;object-fit:cover;display:block;}
+  #reader__scan_region{height:180px!important;}
+  #reader__scan_region img{display:none!important;}
+  #reader__dashboard{display:none!important;}
+  #reader img[alt="Info icon"]{display:none;}
+  .scan-note{font-size:11px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.4;}
+  .gallery-group{margin-top:10px;}
+  .gallery-label{font-size:12px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .gallery-label b{color:var(--text);font-weight:600;}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;}
+  .thumb{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#0a0e17;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb .del:active{background:var(--accent2);}
+  .thumb-add{aspect-ratio:1/1;border-radius:8px;border:2px dashed var(--line);background:var(--card2);color:var(--sub);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb-add:active{background:var(--accent);color:#1a1500;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
+  .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
+  th{color:var(--sub);font-weight:600;font-size:11px;}
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+  .toast.err{background:var(--accent2);color:#fff;}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
+  .row2{display:flex;gap:8px;}
+  .row2 .btn{flex:1;}
+  .code-row{display:flex;gap:8px;align-items:stretch;}
+  .code-row input{flex:1;margin-bottom:10px;}
+  .btn-clear{flex:0 0 auto;width:44px;height:44px;margin-top:0;margin-bottom:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--sub);font-size:16px;font-weight:700;cursor:pointer;}
+  .btn-clear:active{background:var(--accent2);color:#fff;}
+  .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
+  .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
+  .btn-view{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;font-size:12px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line);}
+  .modal-close{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;}
+  .modal-body{padding:14px;overflow-y:auto;}
+  .modal-body h3{font-size:12px;color:var(--sub);margin:12px 0 8px;}
+  .modal-body .gallery{margin-bottom:4px;}
+  .modal-body .thumb{cursor:pointer;}
+  .loading-note{font-size:12px;color:var(--sub);text-align:center;padding:10px;}
+  .login-overlay{position:fixed;inset:0;background:var(--bg);z-index:70;display:none;align-items:center;justify-content:center;padding:20px;}
+  .login-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 22px;max-width:360px;width:100%;}
+  .login-box h2{margin:0 0 4px;font-size:19px;}
+  .login-sub{margin:0 0 20px;color:var(--sub);font-size:13px;}
+  .login-box label{margin-top:2px;}
+  .login-error{color:#ffb4a8;background:rgba(255,90,60,.12);border:1px solid rgba(255,90,60,.35);border-radius:8px;padding:9px 11px;font-size:12.5px;margin-top:2px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div>
+      <h1>📦 Scrap Photo Capture <span class="tag">v3.0 Hi-Res</span></h1>
+      <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
+      <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <select class="lang-select" id="langSelect" title="Language">
+        <option value="th">TH</option>
+        <option value="en">EN</option>
+        <option value="ja">JP</option>
+      </select>
+      <button class="btn-logout" id="btnLogout" data-i18n="logoutButton" style="display:none;">Logout</button>
+    </div>
+  </div>
+</header>
+
+<!-- หน้า Login (โหมด Cloud เท่านั้น) — ภาษาอังกฤษเสมอ ไม่ผูกกับตัวเลือกภาษาของแอป
+     ไม่มีปุ่ม cancel/ปิด — ไม่ login สำเร็จ จะเข้าแอปไม่ได้เลย -->
+<div class="login-overlay" id="loginScreen">
+  <div class="login-box">
+    <h2>📦 Scrap Photo Capture</h2>
+    <p class="login-sub">Sign in to continue</p>
+    <p class="login-error" id="loginError" style="display:none;"></p>
+    <label for="loginEmail">Email</label>
+    <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
+  </div>
+</div>
+
+<main id="appMain">
+  <div class="card">
+    <h2 data-i18n="sectionScanTitle">1) สแกน Barcode (Code 39)</h2>
+    <button class="btn btn-primary" id="btnStartScan" data-i18n="btnScanLabel">📷 เปิดกล้องสแกนรหัส</button>
+    <div class="row2" id="scanControls" style="display:none;">
+      <button class="btn btn-secondary" id="btnTorch" data-i18n="btnTorchLabel">🔦 ไฟฉาย</button>
+      <button class="btn btn-secondary" id="btnStopScan" data-i18n="btnStopLabel">⏹ หยุดสแกน</button>
+    </div>
+    <div id="reader" style="display:none;"></div>
+    <button class="btn btn-secondary" id="btnOcr" data-i18n="btnOcrLabel" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
+    <p class="scan-note" id="scanNote" data-i18n="scanNoteText" style="display:none;">
+      ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.
+    </p>
+    <label style="margin-top:6px;" data-i18n="orEnterManually">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
+    <div class="code-row">
+      <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
+      <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="sectionPhotoTitle">2) ถ่ายภาพหลักฐาน</h2>
+    <p class="note" data-i18n="sectionPhotoNote">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+
+    <div class="gallery-group">
+      <div class="gallery-label"><span data-i18n="beforeLabel">📷 ก่อนทำลาย</span> <b id="countBefore">(0)</b></div>
+      <div class="gallery" id="galleryBefore">
+        <button class="thumb-add" id="btnBefore">+</button>
+      </div>
+    </div>
+
+    <div class="gallery-group">
+      <div class="gallery-label"><span data-i18n="afterLabel">📷 หลังทำลาย</span> <b id="countAfter">(0)</b></div>
+      <div class="gallery" id="galleryAfter">
+        <button class="thumb-add" id="btnAfter">+</button>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="btn btn-ok" id="btnSave" data-i18n="btnSaveLabel" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="sectionListTitle">3) รายการที่บันทึกแล้ว</span> (<span id="countTotal">0</span>)</h2>
+    <div class="code-row" id="searchRow" style="display:none;">
+      <input type="text" id="searchCode" data-i18n-placeholder="searchPlaceholder" placeholder="ค้นหาจากรหัสชิ้นงาน...">
+      <button class="btn-clear" id="btnRefreshList" data-i18n-title="refreshTitle" title="รีเฟรชรายการ">⟳</button>
+    </div>
+    <div id="tableWrap"><div class="empty" data-i18n="emptyList">ยังไม่มีรายการ</div></div>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
+      <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
+    </div>
+    <p class="note" id="storageNote" data-i18n="storageNoteLocal">
+      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config
+      ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
+    </p>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- Modal ดูรูปของแต่ละรายการ (ใช้เฉพาะโหมด Cloud) -->
+<div id="photoModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <b id="modalTitle">รายละเอียด</b>
+      <button id="modalClose" class="modal-close">✕</button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ส่วนที่ 1: ตั้งค่า Supabase
+     วิธีใช้: ไปที่ Supabase Dashboard > Project Settings > API
+     นำ "Project URL" และ "Publishable key" มาใส่แทนค่าว่างด้านล่าง
+     ระบบจะสลับไปโหมด Cloud อัตโนมัติ ถ้าปล่อยว่างไว้จะเก็บในเครื่องเหมือนเดิม
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_CONFIG = {
+  url: "https://xyqtuomhaxwsadrflafa.supabase.co",
+  anonKey: "sb_publishable_IaJXmtk_atVnsgoCw1c4aw_p4MD7IPj"
+};
+const CLOUD_MODE = !!SUPABASE_CONFIG.url;
+</script>
+
+<script>
+/* ============================================================
+   ส่วนที่ 0: ระบบภาษา (TH / EN / JP) — ค่าเริ่มต้นเป็นไทยเสมอ
+   จำค่าไว้ต่อเครื่องผ่าน localStorage ไม่กระทบ user คนอื่น
+   หมายเหตุ: หน้า Login (ก่อนเข้าระบบ) ตั้งใจให้เป็นภาษาอังกฤษตายตัวเสมอ
+   ไม่ผูกกับระบบนี้ — ระบบนี้มีผลกับตัวแอปหลัง login แล้วเท่านั้น
+   ============================================================ */
+const TRANSLATIONS = {
+  appSubtitle:       { th:'สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน', en:'Scan Code 39 → Photograph before/after → Export report', ja:'Code 39をスキャン → 廃棄前後を撮影 → レポート出力' },
+  modeLocal:         { th:'โหมด: เก็บข้อมูลในเครื่อง', en:'Mode: Local storage', ja:'モード: ローカル保存' },
+  modeCloud:         { th:'โหมด: อัปโหลดขึ้น Cloud', en:'Mode: Cloud upload', ja:'モード: クラウドアップロード' },
+  logoutButton:      { th:'ออกจากระบบ', en:'Logout', ja:'ログアウト' },
+  sectionScanTitle:  { th:'1) สแกน Barcode (Code 39)', en:'1) Scan Barcode (Code 39)', ja:'1) バーコードをスキャン (Code 39)' },
+  btnScanLabel:      { th:'📷 เปิดกล้องสแกนรหัส', en:'📷 Open camera to scan', ja:'📷 カメラでスキャン' },
+  btnTorchLabel:     { th:'🔦 ไฟฉาย', en:'🔦 Flashlight', ja:'🔦 ライト' },
+  btnStopLabel:      { th:'⏹ หยุดสแกน', en:'⏹ Stop scanning', ja:'⏹ スキャン停止' },
+  btnOcrLabel:       { th:'🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)', en:'🔤 Read text from label (barcode damaged)', ja:'🔤 ラベルの文字を読む（バーコード破損時）' },
+  scanNoteText:      { th:'ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.', en:'Hold parallel to the barcode, keep it inside the horizontal frame • 15–25 cm away', ja:'バーコードに平行に持ち、横長の枠内に収めてください • 15〜25cm離す' },
+  orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
+  itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
+  btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
+  sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
+  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除' },
+  beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
+  afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
+  btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
+  searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
+  refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
+  emptyList:         { th:'ยังไม่มีรายการ', en:'No records yet', ja:'記録がありません' },
+  storageNoteLocal:  { th:'ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก', en:'Data is currently stored only in this browser. Once Supabase config is set, the system will automatically upload to Cloud Storage on every save.', ja:'現在データはこのブラウザにのみ保存されています。Supabaseの設定を行うと、保存の度に自動でクラウドへアップロードされます。' },
+  storageNoteCloud:  { th:'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก', en:'Photos are automatically uploaded to Supabase Storage every time you save.', ja:'保存の度に写真は自動的にSupabase Storageへアップロードされます。' },
+  colCode:   { th:'รหัส', en:'Code', ja:'品番' },
+  colBefore: { th:'ก่อน', en:'Before', ja:'廃棄前' },
+  colAfter:  { th:'หลัง', en:'After', ja:'廃棄後' },
+  colStatus: { th:'สถานะ', en:'Status', ja:'状態' },
+  colBy:     { th:'โดย', en:'By', ja:'記録者' },
+  colTime:   { th:'เวลา', en:'Time', ja:'日時' },
+  statusComplete: { th:'ครบก่อน/หลัง', en:'Complete', ja:'完了' },
+  statusPartial:  { th:'บันทึกบางส่วน', en:'Partial', ja:'一部のみ' },
+  viewPhotosBtn:  { th:'📷 ดูรูป', en:'📷 View photos', ja:'📷 写真を見る' },
+  noPhotos:       { th:'ไม่มีรูป', en:'No photos', ja:'写真なし' },
+  photoCountLabel:{ th:'({n} รูป)', en:'({n} photos)', ja:'（{n}枚）' },
+  loadingData:    { th:'⏳ กำลังโหลดข้อมูล...', en:'⏳ Loading data...', ja:'⏳ データ読み込み中...' },
+  generatingPdf:  { th:'⏳ กำลังสร้าง PDF...', en:'⏳ Generating PDF...', ja:'⏳ PDF作成中...' },
+  savingLabel:    { th:'⏳ กำลังบันทึก...', en:'⏳ Saving...', ja:'⏳ 保存中...' },
+  ocrReadingLabel:{ th:'⏳ กำลังอ่านตัวอักษร...', en:'⏳ Reading text...', ja:'⏳ 文字を読み取り中...' },
+  // ข้อความ toast แบบไดนามิก
+  codeCleared:       { th:'ล้างรหัสชิ้นงานแล้ว', en:'Item code cleared', ja:'品番をクリアしました' },
+  scanSuccess:       { th:'สแกนสำเร็จ: {code}', en:'Scan successful: {code}', ja:'スキャン成功: {code}' },
+  cameraOpenFail:    { th:'เปิดกล้องไม่ได้: {err}', en:'Could not open camera: {err}', ja:'カメラを開けません: {err}' },
+  torchUnsupported:  { th:'เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', en:'This device does not support flashlight control from the browser', ja:'この端末はブラウザからのライト制御に対応していません' },
+  torchOnMsg:        { th:'เปิดไฟฉาย', en:'Flashlight on', ja:'ライト点灯' },
+  torchOffMsg:       { th:'ปิดไฟฉาย', en:'Flashlight off', ja:'ライト消灯' },
+  libScanFail:       { th:'โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the scanner library. Check your internet connection and refresh.', ja:'スキャナーライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libOcrFail:        { th:'โหลดไลบรารี OCR ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the OCR library. Check your internet connection and refresh.', ja:'OCRライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libSupabaseFail:   { th:'โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the Supabase library. Check your internet connection and refresh.', ja:'Supabaseライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  ocrNeedCamera:     { th:'ยังไม่พร้อม กรุณาเปิดกล้องก่อน', en:'Not ready yet, please open the camera first', ja:'準備ができていません。先にカメラを開いてください' },
+  ocrReadSuccess:    { th:'อ่านได้: {part} (กรุณาตรวจสอบความถูกต้อง)', en:'Read: {part} (please verify it is correct)', ja:'読み取り結果: {part}（正しいか確認してください）' },
+  ocrNoPattern:      { th:'ไม่พบรูปแบบรหัสที่ถูกต้อง อ่านได้: {preview}', en:'No valid code pattern found. Read: {preview}', ja:'正しい形式のコードが見つかりません。読み取り内容: {preview}' },
+  ocrUnreadable:     { th:'อ่านตัวอักษรไม่ได้ ลองขยับให้ป้ายชัดขึ้น', en:'Could not read any text. Try repositioning for a clearer view.', ja:'文字を読み取れませんでした。ラベルがはっきり見えるよう位置を調整してください' },
+  ocrError:          { th:'OCR ผิดพลาด: {err}', en:'OCR error: {err}', ja:'OCRエラー: {err}' },
+  readImageFail:     { th:'อ่านไฟล์ภาพไม่สำเร็จ', en:'Failed to read the image file', ja:'画像ファイルの読み込みに失敗しました' },
+  readFileFail:      { th:'อ่านไฟล์ไม่สำเร็จ', en:'Failed to read the file', ja:'ファイルの読み込みに失敗しました' },
+  photoAdded:        { th:'เพิ่มภาพ{phase}ทำลายแล้ว (~{kb} KB) รวม {count} รูป', en:'Added {phase} photo (~{kb} KB), {count} total', ja:'{phase}の写真を追加しました（約{kb}KB）、合計{count}枚' },
+  phaseBeforeWord:   { th:'ก่อน', en:'before-destruction', ja:'廃棄前' },
+  phaseAfterWord:    { th:'หลัง', en:'after-destruction', ja:'廃棄後' },
+  photoLimitWarning: { th:'ถ่ายไปแล้ว {limit} รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', en:'You have taken {limit} photos — check you did not tap by mistake', ja:'{limit}枚撮影しました。誤って連続タップしていないか確認してください' },
+  needCodeFirst:     { th:'กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', en:'Please scan or enter the item code first', ja:'先に品番をスキャンまたは入力してください' },
+  photoDeleted:      { th:'ลบรูปแล้ว', en:'Photo deleted', ja:'写真を削除しました' },
+  needItemCode:      { th:'กรุณาระบุรหัสชิ้นงาน', en:'Please enter an item code', ja:'品番を入力してください' },
+  needAtLeastOnePhoto:{ th:'กรุณาถ่ายภาพอย่างน้อย 1 รูป', en:'Please take at least 1 photo', ja:'最低1枚は撮影してください' },
+  saveSuccess:       { th:'บันทึกรายการสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Record saved successfully ✅ ({before} before / {after} after)', ja:'保存に成功しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
+  cloudUploadFail:   { th:'อัปโหลดขึ้น Cloud ไม่สำเร็จ: {err}', en:'Cloud upload failed: {err}', ja:'クラウドへのアップロードに失敗しました: {err}' },
+  cloudLoadFail:     { th:'โหลดรายการจาก Cloud ไม่สำเร็จ: {err}', en:'Failed to load records from the cloud: {err}', ja:'クラウドからの記録読み込みに失敗しました: {err}' },
+  exportNoData:      { th:'ยังไม่มีข้อมูลให้ export', en:'No data available to export', ja:'エクスポートするデータがありません' },
+  exportLoadFail:    { th:'โหลดข้อมูลไม่สำเร็จ: {err}', en:'Failed to load data: {err}', ja:'データの読み込みに失敗しました: {err}' },
+  loginSuccessToast: { th:'เข้าสู่ระบบสำเร็จ', en:'Signed in successfully', ja:'ログインに成功しました' },
+  supabaseConnectFail:{ th:'เชื่อมต่อ Supabase ไม่สำเร็จ: {err}', en:'Failed to connect to Supabase: {err}', ja:'Supabaseへの接続に失敗しました: {err}' }
+};
+
+let currentLang = localStorage.getItem('uiLang') || 'th';
+
+function t(key, vars){
+  const entry = TRANSLATIONS[key];
+  let str = (entry && entry[currentLang]) || (entry && entry.th) || key;
+  if (vars) Object.keys(vars).forEach(k => { str = str.split('{' + k + '}').join(vars[k]); });
+  return str;
+}
+
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.documentElement.lang = currentLang;
+}
+
+// เรียกตอนสลับภาษา: อัปเดตทั้งข้อความ static และเนื้อหาที่ render แบบไดนามิก (ตาราง/แกลเลอรี่)
+function setLanguage(lang){
+  currentLang = lang;
+  localStorage.setItem('uiLang', lang);
+  applyStaticI18n();
+  document.getElementById('modeBadge').textContent = CLOUD_MODE ? t('modeCloud') : t('modeLocal');
+  renderGallery('before');
+  renderGallery('after');
+  if (CLOUD_MODE) { renderCloudTable(); } else { renderTable(); }
+}
+
+document.getElementById('langSelect').value = currentLang;
+document.getElementById('langSelect').onchange = (e) => setLanguage(e.target.value);
+applyStaticI18n(); // เซ็ตข้อความเริ่มต้นก่อน DOM อื่นๆ ทำงาน
+</script>
+
+<script>
+/* ============================================================
+   ส่วนที่ 2: ตัวแปรหลักและฟังก์ชันช่วย
+   ============================================================ */
+let html5QrCode = null;
+let scanning = false;
+let torchOn = false;
+let currentBefore = [], currentAfter = [], capturingMode = null;   // เก็บเป็น array รองรับหลายรูป/เฟส
+const PHOTO_SOFT_LIMIT = 10; // เตือนกันมือลั่นถ้าถ่ายเกินจำนวนนี้ ไม่ได้บล็อก
+let records = JSON.parse(localStorage.getItem('scrapRecords') || '[]'); // ใช้เฉพาะโหมดเก็บในเครื่อง (ไม่มี Supabase config)
+let cloudRecords = []; // แคชรายการล่าสุดที่ดึงจาก Supabase มาแสดง (โหมด Cloud)
+
+const itemCodeInput = document.getElementById('itemCode');
+const scanControls  = document.getElementById('scanControls');
+const scanNote      = document.getElementById('scanNote');
+const btnStartScan  = document.getElementById('btnStartScan');
+
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isError);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ล้างรหัสชิ้นงาน กรณีสแกนมาแล้วไม่ตรง อยากลบแล้วสแกน/พิมพ์ใหม่
+document.getElementById('btnClearCode').onclick = () => {
+  itemCodeInput.value = '';
+  itemCodeInput.focus();
+  toast(t('codeCleared'));
+};
+
+/* ============================================================
+   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 อย่างเดียว)
+   จำกัดแค่รูปแบบเดียว ช่วยให้ไลบรารีถอดรหัสเร็วขึ้นและแม่นยำขึ้น
+   (ไม่ต้องเสียเวลาไล่เช็คหลายรูปแบบต่อเฟรม + ลดโอกาสอ่านผิดรูปแบบ)
+   ============================================================ */
+function supportedFormats(){
+  const F = Html5QrcodeSupportedFormats;
+  return [ F.CODE_39 ];   // รูปแบบเดียวที่ป้ายอะไหล่ FANUC ใช้
+}
+
+// Code 39 อาจคืนค่ามาพร้อมเครื่องหมาย * ครอบหัวท้าย ต้องตัดออก
+function cleanCode(raw){
+  return String(raw).trim().replace(/^\*+/, '').replace(/\*+$/, '');
+}
+
+btnStartScan.onclick = async () => {
+  if (typeof Html5Qrcode === 'undefined') {
+    toast(t('libScanFail'), true);
+    return;
+  }
+  try {
+    // ต้องโชว์กล้องก่อน start เสมอ ไม่งั้นไลบรารีจะคำนวณขนาดกรอบสแกนเป็น 0
+    // (เจอปัญหานี้มาแล้ว: ซ่อนกล้องไว้ตอน start ทำให้สแกนไม่ติดเลยทั้ง Code 39 และ QR)
+    document.getElementById('reader').style.display = 'block';
+
+    html5QrCode = new Html5Qrcode("reader", {
+      formatsToSupport: supportedFormats(),
+      verbose: false
+    });
+
+    await html5QrCode.start(
+      // v3.0 Hi-Res: บังคับขอความละเอียดกล้องสูงขึ้น (เดิมปล่อยให้เบราว์เซอร์เลือกเอง มักได้แค่ ~640x480)
+      // "ideal" = ขอเท่านี้ถ้าเครื่องทำได้ ถ้าทำไม่ได้ก็ใช้ค่าที่ใกล้เคียงสุด ไม่บล็อกเครื่องรุ่นเก่า
+      {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      {
+        fps: 20,
+        // กลับไปใช้กรอบแถบแนวนอน เหมาะกับ Code 39 โดยเฉพาะ (ไม่ต้องรองรับ QR แล้ว)
+        // กรอบกว้าง+เตี้ย ช่วยให้เล็งง่าย ถือโทรศัพท์ขนานกับบาร์โค้ดแล้วสแกนติดทันที
+        qrbox: (vw, vh) => {
+          const w = Math.floor(Math.min(vw, vh * 2.5) * 0.9);
+          const h = Math.floor(w * 0.38);
+          return { width: w, height: h };
+        },
+        aspectRatio: 1.777,
+        disableFlip: true, // Code 39 ไม่ใช่ QR ไม่ต้องลองพลิกภาพ ช่วยลดงานประมวลผลต่อเฟรม
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      },
+      (decodedText) => {
+        const code = cleanCode(decodedText);
+        if (!code) return;
+        itemCodeInput.value = code;
+        toast(t('scanSuccess', { code }));
+        if (navigator.vibrate) navigator.vibrate(120);
+        stopScan();
+      },
+      () => { /* ไม่พบรหัสในเฟรมนี้ เป็นเรื่องปกติ ไม่ต้องแจ้งผู้ใช้ */ }
+    );
+
+    scanning = true;
+    btnStartScan.style.display = 'none';
+    scanControls.style.display = 'flex';
+    document.getElementById('btnOcr').style.display = 'block';
+    scanNote.style.display = 'block';
+  } catch (e) {
+    document.getElementById('reader').style.display = 'none';
+    toast(t('cameraOpenFail', { err: e.message || e }), true);
+  }
+};
+
+document.getElementById('btnStopScan').onclick = stopScan;
+
+async function stopScan(){
+  if (!html5QrCode || !scanning) return;
+  scanning = false;
+  torchOn = false;
+  try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){}
+  html5QrCode = null;
+  btnStartScan.style.display = 'block';
+  scanControls.style.display = 'none';
+  document.getElementById('reader').style.display = 'none';
+  document.getElementById('btnOcr').style.display = 'none';
+  scanNote.style.display = 'none';
+}
+
+// ไฟฉาย ช่วยมากเวลาสแกนในโกดังที่แสงน้อย (บางเครื่อง/เบราว์เซอร์ไม่รองรับ)
+document.getElementById('btnTorch').onclick = async () => {
+  if (!html5QrCode || !scanning) return;
+  try {
+    torchOn = !torchOn;
+    await html5QrCode.applyVideoConstraints({
+      advanced: [{ torch: torchOn }]
+    });
+    toast(torchOn ? t('torchOnMsg') : t('torchOffMsg'));
+  } catch (e) {
+    torchOn = false;
+    toast(t('torchUnsupported'), true);
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 3.5: OCR อ่าน Part No. จากตัวอักษรบนป้าย
+   ใช้เมื่อบาร์โค้ดชำรุด ซีด หรือมีรอยขีดเขียนทับจนสแกนไม่ติด
+   ============================================================ */
+
+// รูปแบบรหัสอะไหล่ FANUC เช่น A06B-1407-B153, A290-7321-X911, A860-2020-T301
+const PART_NO_PATTERN = /\b([A-Z]\d{2}[A-Z0-9])[-\s]?(\d{4})[-\s]?([A-Z]\d{3})\b/;
+
+// OCR มักสับสนระหว่างตัวอักษรกับตัวเลขที่หน้าตาคล้ายกัน
+// แก้ให้ตรงตำแหน่งตามรูปแบบรหัส FANUC
+function fixOcrConfusion(text){
+  return text
+    .toUpperCase()
+    .replace(/[·•・．]/g, '-')     // จุดที่ OCR อ่านผิดเป็นขีด
+    .replace(/[–—―]/g, '-')       // ขีดยาวรูปแบบต่าง ๆ
+    .replace(/\s+/g, ' ');
+}
+
+// ลองสลับตัวที่สับสนบ่อย แล้วหาว่ารูปแบบไหนตรง pattern
+function extractPartNo(rawText){
+  const base = fixOcrConfusion(rawText);
+
+  // ลองจากข้อความดิบก่อน
+  let m = base.match(PART_NO_PATTERN);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  // ถ้ายังไม่เจอ ลองแก้ตัวที่ OCR สับสนบ่อย แล้วหาใหม่
+  const swapped = base
+    .replace(/O/g, '0')
+    .replace(/I/g, '1')
+    .replace(/L/g, '1')
+    .replace(/S/g, '5')
+    .replace(/Z/g, '2');
+  m = swapped.match(PART_NO_PATTERN);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  // สุดท้าย หาอะไรก็ได้ที่มีรูปแบบ กลุ่ม-กลุ่ม-กลุ่ม
+  m = base.match(/\b([A-Z0-9]{4})[-\s]([A-Z0-9]{4})[-\s]([A-Z0-9]{4})\b/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  return null;
+}
+
+// ตัดเฉพาะแถบกลางภาพมาทำ OCR จะเร็วและแม่นกว่าส่งทั้งเฟรม
+function grabFrameForOcr(){
+  const video = document.querySelector('#reader video');
+  if (!video || !video.videoWidth) return null;
+
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const cropW = Math.floor(vw * 0.9);
+  const cropH = Math.floor(vh * 0.5);
+  const sx = Math.floor((vw - cropW) / 2);
+  const sy = Math.floor((vh - cropH) / 2);
+
+  const cv = document.createElement('canvas');
+  // ขยาย 2 เท่า ช่วยให้ OCR อ่านตัวอักษรเล็กได้ดีขึ้น
+  cv.width = cropW * 2;
+  cv.height = cropH * 2;
+  const c = cv.getContext('2d');
+  c.drawImage(video, sx, sy, cropW, cropH, 0, 0, cv.width, cv.height);
+
+  // แปลงเป็นขาวดำ contrast สูง ช่วย OCR มากกับป้ายสติกเกอร์
+  const img = c.getImageData(0, 0, cv.width, cv.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4){
+    const gray = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    const v = gray > 140 ? 255 : 0;
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+
+let ocrRunning = false;
+
+document.getElementById('btnOcr').onclick = async () => {
+  if (ocrRunning) return;
+  if (typeof Tesseract === 'undefined'){
+    toast(t('libOcrFail'), true);
+    return;
+  }
+  const canvas = grabFrameForOcr();
+  if (!canvas){ toast(t('ocrNeedCamera'), true); return; }
+
+  const btn = document.getElementById('btnOcr');
+  const original = btn.textContent;
+  ocrRunning = true;
+  btn.disabled = true;
+  btn.textContent = t('ocrReadingLabel');
+
+  try {
+    const { data } = await Tesseract.recognize(canvas, 'eng', {
+      // จำกัดตัวอักษรที่เป็นไปได้ ช่วยลดการอ่านผิดอย่างมาก
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
+      tessedit_pageseg_mode: '6'   // มองภาพเป็นบล็อกข้อความเดียว
+    });
+
+    const part = extractPartNo(data.text || '');
+    if (part){
+      itemCodeInput.value = part;
+      toast(t('ocrReadSuccess', { part }));
+      if (navigator.vibrate) navigator.vibrate(120);
+      stopScan();
+    } else {
+      const preview = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      toast(preview ? t('ocrNoPattern', { preview }) : t('ocrUnreadable'), true);
+    }
+  } catch (e) {
+    toast(t('ocrError', { err: e.message || e }), true);
+  } finally {
+    ocrRunning = false;
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 4: ถ่ายภาพและย่อขนาดก่อนบันทึก
+   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase/Supabase
+   ย่อเหลือกว้าง 1280 px คุณภาพ 0.75 จะเหลือประมาณ 150–250 KB ต่อใบ
+   ============================================================ */
+const MAX_WIDTH = 1280;
+const JPEG_QUALITY = 0.75;
+
+function compressImage(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', JPEG_QUALITY));
+      };
+      img.onerror = () => reject(new Error(t('readImageFail')));
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => reject(new Error(t('readFileFail')));
+    reader.readAsDataURL(file);
+  });
+}
+
+const fileInput = document.getElementById('fileInput');
+// หมายเหตุ: ปุ่ม "+" ในแกลเลอรี่ถูก re-render บ่อย (ทุกครั้งที่เพิ่ม/ลบรูป)
+// จึงผูก event ให้ปุ่ม "+" ไว้ในฟังก์ชัน renderGallery() แทนการผูกครั้งเดียวตรงนี้
+
+fileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  fileInput.value = '';
+  if(!file) return;
+  try {
+    const dataUrl = await compressImage(file);
+    const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
+    arr.push(dataUrl);
+    renderGallery(capturingMode);
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+    toast(t('photoAdded', {
+      phase: capturingMode === 'before' ? t('phaseBeforeWord') : t('phaseAfterWord'),
+      kb, count: arr.length
+    }));
+    if (arr.length === PHOTO_SOFT_LIMIT) {
+      toast(t('photoLimitWarning', { limit: PHOTO_SOFT_LIMIT }), true);
+    }
+  } catch (err) {
+    toast(err.message, true);
+  }
+};
+
+// วาดแกลเลอรี่รูปภาพของเฟสนั้นๆ ใหม่ (ใช้ทั้งตอนเพิ่มและตอนลบรูป)
+function renderGallery(phase){
+  const arr = (phase === 'before') ? currentBefore : currentAfter;
+  const gallery = document.getElementById(phase === 'before' ? 'galleryBefore' : 'galleryAfter');
+  const countEl = document.getElementById(phase === 'before' ? 'countBefore' : 'countAfter');
+
+  countEl.textContent = t('photoCountLabel', { n: arr.length });
+
+  let html = '';
+  arr.forEach((dataUrl, idx) => {
+    html += `<div class="thumb">
+      <img src="${dataUrl}" alt="">
+      <button class="del" data-phase="${phase}" data-idx="${idx}" title="ลบรูปนี้">✕</button>
+    </div>`;
+  });
+  html += `<button class="thumb-add" id="btn${phase === 'before' ? 'Before' : 'After'}">+</button>`;
+  gallery.innerHTML = html;
+
+  // ผูก event ปุ่ม + ใหม่ (เพราะ innerHTML เขียนทับ element เดิม)
+  document.getElementById(phase === 'before' ? 'btnBefore' : 'btnAfter').onclick = () => {
+    if(!itemCodeInput.value.trim()){ toast(t('needCodeFirst'), true); return; }
+    capturingMode = phase; fileInput.click();
+  };
+
+  // ผูก event ปุ่มลบทุกปุ่มในแกลเลอรี่นี้
+  gallery.querySelectorAll('.del').forEach(btn => {
+    btn.onclick = () => {
+      const p = btn.dataset.phase;
+      const i = parseInt(btn.dataset.idx, 10);
+      const targetArr = (p === 'before') ? currentBefore : currentAfter;
+      targetArr.splice(i, 1);
+      renderGallery(p);
+      toast(t('photoDeleted'));
+    };
+  });
+}
+
+/* ============================================================
+   ส่วนที่ 5: บันทึกรายการ
+   ============================================================ */
+const btnSave = document.getElementById('btnSave');
+
+btnSave.onclick = async () => {
+  const code = itemCodeInput.value.trim();
+  if(!code){ toast(t('needItemCode'), true); return; }
+  if(currentBefore.length === 0 && currentAfter.length === 0){
+    toast(t('needAtLeastOnePhoto'), true); return;
+  }
+
+  const now = new Date();
+  const record = {
+    code,
+    before: currentBefore.slice(),   // copy array ไว้ก่อนเคลียร์
+    after: currentAfter.slice(),
+    savedAt: now.toLocaleString('th-TH')
+  };
+
+  // ล็อกปุ่มระหว่างบันทึก กันกดซ้ำ (ซ้ำแล้วจะได้ record/รูปซ้ำขึ้น Cloud)
+  btnSave.disabled = true;
+  const originalLabel = btnSave.textContent;
+  btnSave.textContent = t('savingLabel');
+
+  try {
+    if (CLOUD_MODE) {
+      await uploadToCloud(record);
+      await refreshCloudRecords();
+    } else {
+      records.push(record);
+      try {
+        localStorage.setItem('scrapRecords', JSON.stringify(records));
+      } catch (e) {
+        // localStorage เต็ม (ภาพเยอะ) แต่ข้อมูลยังอยู่ในหน่วยความจำ ยัง export ได้
+        toast('Storage is full, please export then refresh the page', true);
+      }
+      renderTable();
+    }
+
+    currentBefore = []; currentAfter = [];
+    renderGallery('before');
+    renderGallery('after');
+    itemCodeInput.value = '';
+    toast(t('saveSuccess', { before: record.before.length, after: record.after.length }));
+  } catch (e) {
+    toast(t('cloudUploadFail', { err: e.message }), true);
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = originalLabel;
+  }
+};
+
+// แสดงรายการที่เก็บในเครื่อง (โหมดไม่มี Supabase config เท่านั้น)
+function renderTable(){
+  document.getElementById('countTotal').textContent = records.length;
+  const wrap = document.getElementById('tableWrap');
+  if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
+  records.forEach(r => {
+    const nBefore = (r.before || []).length;
+    const nAfter = (r.after || []).length;
+    const done = nBefore > 0 && nAfter > 0;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
+  });
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+if (!CLOUD_MODE) renderTable();
+renderGallery('before');
+renderGallery('after');
+
+/* ============================================================
+   ส่วนที่ 5.5: แสดงรายการจาก Supabase (โหมด Cloud) + ดูรูปรายตัว
+   ดึงข้อมูลจริงจาก scrap_records + scrap_photos ทุกครั้งที่บันทึกใหม่/กดรีเฟรช/ค้นหา
+   ============================================================ */
+const searchCodeInput = document.getElementById('searchCode');
+
+async function fetchCloudRecords(searchTerm){
+  let query = sb.from(TABLE_RECORDS)
+    .select('*, scrap_photos(id, phase, photo_url)')
+    .order('created_at', { ascending: false })
+    .limit(200); // แสดงล่าสุด 200 รายการพอสำหรับตรวจสอบ ส่วน Export ดึงครบทุกแถวแยกต่างหาก
+  if (searchTerm) query = query.ilike('item_code', `%${searchTerm}%`);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+async function refreshCloudRecords(){
+  try {
+    cloudRecords = await fetchCloudRecords(searchCodeInput.value.trim());
+    renderCloudTable();
+  } catch (e) {
+    toast(t('cloudLoadFail', { err: e.message }), true);
+  }
+}
+
+function renderCloudTable(){
+  document.getElementById('countTotal').textContent = cloudRecords.length;
+  const wrap = document.getElementById('tableWrap');
+  if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th></th></tr>`;
+  cloudRecords.forEach(r => {
+    const photos  = r.scrap_photos || [];
+    const nBefore = photos.filter(p => p.phase === 'before').length;
+    const nAfter  = photos.filter(p => p.phase === 'after').length;
+    const done    = r.status === 'complete';
+    const dt      = new Date(r.created_at).toLocaleString('th-TH');
+    html += `<tr>
+      <td>${r.item_code}</td><td>${nBefore}</td><td>${nAfter}</td>
+      <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
+      <td>${r.created_by_email || '-'}</td><td>${dt}</td>
+      <td><button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button></td>
+    </tr>`;
+  });
+  html += '</table>';
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.btn-view').forEach(btn => {
+    btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+}
+
+document.getElementById('btnRefreshList').onclick = refreshCloudRecords;
+let searchDebounce;
+searchCodeInput.oninput = () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(refreshCloudRecords, 400); // รอพิมพ์นิ่งก่อนค่อยค้นหา กันยิง query รัวๆ
+};
+
+// เปิด modal แสดงรูปก่อน/หลังของ record ที่เลือก
+function showPhotoModal(record){
+  if (!record) return;
+  const photos = record.scrap_photos || [];
+  const before = photos.filter(p => p.phase === 'before');
+  const after  = photos.filter(p => p.phase === 'after');
+
+  document.getElementById('modalTitle').textContent = record.item_code;
+
+  const galleryHtml = (list) => {
+    if (list.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
+    return '<div class="gallery">' + list.map(p =>
+      `<div class="thumb"><img src="${p.photo_url}" alt="" onclick="window.open('${p.photo_url}','_blank')"></div>`
+    ).join('') + '</div>';
+  };
+
+  document.getElementById('modalBody').innerHTML =
+    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(before)}` +
+    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(after)}`;
+
+  document.getElementById('photoModal').style.display = 'flex';
+}
+document.getElementById('modalClose').onclick = () => {
+  document.getElementById('photoModal').style.display = 'none';
+};
+document.getElementById('photoModal').onclick = (e) => {
+  if (e.target.id === 'photoModal') e.target.style.display = 'none';
+};
+
+/* ============================================================
+   ส่วนที่ 6: Export
+   โหมด Cloud: ดึงข้อมูล "ทั้งหมด" จาก Supabase ตอนกด export (ไม่ใช่แค่ 200 แถวที่โชว์อยู่)
+   โหมดเก็บในเครื่อง: ใช้ array records ตรงๆ เหมือนเดิม
+   ============================================================ */
+
+// วน .range() ทีละหน้าจนกว่าจะได้ครบทุกแถว ป้องกันข้อมูลตกหล่นตอน scale ใหญ่ (~3000 รายการ)
+async function fetchAllCloudRecords(){
+  const pageSize = 500;
+  let from = 0, all = [];
+  while (true){
+    const { data, error } = await sb.from(TABLE_RECORDS)
+      .select('*, scrap_photos(id, phase, photo_url)')
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    all = all.concat(data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+function timestampForFilename(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+document.getElementById('btnExportExcel').onclick = async () => {
+  const btn = document.getElementById('btnExportExcel');
+  let sourceRows;
+
+  if (CLOUD_MODE) {
+    btn.disabled = true; const original = btn.textContent; btn.textContent = t('loadingData');
+    try { sourceRows = await fetchAllCloudRecords(); }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btn.disabled = false; btn.textContent = original; return; }
+    btn.disabled = false; btn.textContent = original;
+  } else {
+    sourceRows = records;
+  }
+
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
+
+  const rows = sourceRows.map((r, i) => {
+    if (CLOUD_MODE) {
+      const photos  = r.scrap_photos || [];
+      const nBefore = photos.filter(p => p.phase === 'before').length;
+      const nAfter  = photos.filter(p => p.phase === 'after').length;
+      return {
+        'ลำดับ': i+1,
+        'รหัสชิ้นงาน': r.item_code,
+        'จำนวนภาพก่อนทำลาย': nBefore,
+        'จำนวนภาพหลังทำลาย': nAfter,
+        'สถานะ': r.status === 'complete' ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+        'บันทึกโดย': r.created_by_email || '-',
+        'เวลาบันทึก': new Date(r.created_at).toLocaleString('th-TH')
+      };
+    }
+    const nBefore = (r.before || []).length;
+    const nAfter  = (r.after  || []).length;
+    return {
+      'ลำดับ': i+1,
+      'รหัสชิ้นงาน': r.code,
+      'จำนวนภาพก่อนทำลาย': nBefore,
+      'จำนวนภาพหลังทำลาย': nAfter,
+      'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+      'เวลาบันทึก': r.savedAt
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ScrapRecords');
+  XLSX.writeFile(wb, `scrap_records_${timestampForFilename()}.xlsx`);
+};
+
+// แปลง URL รูป (คนละ origin กับหน้าเว็บ) เป็น dataURL เพื่อฝังลง PDF ได้ (jsPDF ใส่ remote URL ตรงๆ ไม่ได้)
+function blobToDataURL(blob){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error(t('readImageFail')));
+    r.readAsDataURL(blob);
+  });
+}
+async function urlToDataURL(url){
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(t('readImageFail'));
+  return blobToDataURL(await res.blob());
+}
+
+// โหลดขนาดจริงของรูป จะได้วางลง PDF แบบรักษาสัดส่วน ไม่ยืด/บีบภาพให้ผิดรูป
+function getImageSize(dataUrl){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+    img.onerror = () => resolve({ w: 1, h: 1 });
+    img.src = dataUrl;
+  });
+}
+
+document.getElementById('btnExportPdf').onclick = async () => {
+  const btnPdf = document.getElementById('btnExportPdf');
+  let sourceRows;
+
+  if (CLOUD_MODE) {
+    btnPdf.disabled = true; const original = btnPdf.textContent; btnPdf.textContent = t('loadingData');
+    try { sourceRows = await fetchAllCloudRecords(); }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btnPdf.disabled = false; btnPdf.textContent = original; return; }
+    btnPdf.disabled = false; btnPdf.textContent = original;
+  } else {
+    sourceRows = records;
+  }
+
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
+
+  btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'pt', format:'a4'});
+    const PAGE_BOTTOM = 780;
+    const THUMB = 110, GAP = 10, COLS = 4;
+    let y = 40;
+
+    pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
+    pdf.setFontSize(10);
+
+    // วางรูปเป็นกริด รักษาสัดส่วนภาพจริง (contain ภายในกรอบ THUMB x THUMB แทนการยืดเป็นสี่เหลี่ยมจัตุรัส)
+    // รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
+    async function drawPhotoGrid(label, photoDataUrls, startY){
+      let yy = startY;
+      pdf.setFontSize(10); pdf.setTextColor(90);
+      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 6;
+      pdf.setTextColor(0);
+      if (photoDataUrls.length === 0){ yy += 14; return yy; }
+
+      let col = 0;
+      for (const dataUrl of photoDataUrls){
+        if (col === 0) yy += 10;
+        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; }
+        const x = 40 + col * (THUMB + GAP);
+        try {
+          const { w, h } = await getImageSize(dataUrl);
+          const scale = Math.min(THUMB / w, THUMB / h);
+          const dw = w * scale, dh = h * scale;
+          const dx = x + (THUMB - dw) / 2, dy = yy + (THUMB - dh) / 2; // จัดกึ่งกลางกรอบ
+          pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
+        } catch(e){}
+        col++;
+        if (col >= COLS){ col = 0; yy += THUMB + GAP; }
+      }
+      if (col !== 0) yy += THUMB + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลง
+      return yy;
+    }
+
+    for (const r of sourceRows){
+      if (y > PAGE_BOTTOM - 60){ pdf.addPage(); y = 40; }
+
+      let itemCode, savedAt, beforePhotos, afterPhotos;
+      if (CLOUD_MODE) {
+        const photos = r.scrap_photos || [];
+        itemCode = r.item_code;
+        savedAt  = new Date(r.created_at).toLocaleString('th-TH');
+        // รูปจาก cloud เป็น URL ต้อง fetch มาแปลงเป็น dataURL ก่อนถึงจะฝังใน PDF ได้
+        beforePhotos = await Promise.all(photos.filter(p=>p.phase==='before').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
+        afterPhotos  = await Promise.all(photos.filter(p=>p.phase==='after').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
+        beforePhotos = beforePhotos.filter(Boolean);
+        afterPhotos  = afterPhotos.filter(Boolean);
+      } else {
+        itemCode = r.code; savedAt = r.savedAt;
+        beforePhotos = r.before || []; afterPhotos = r.after || [];
+      }
+
+      pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
+      pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
+
+      y = await drawPhotoGrid('Before', beforePhotos, y);
+      y = await drawPhotoGrid('After',  afterPhotos,  y);
+      y += 16; // เว้นช่องว่างก่อนรายการถัดไป
+    }
+    pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
+  } finally {
+    btnPdf.disabled = false;
+    btnPdf.textContent = originalPdfLabel;
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 7: Supabase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
+   ============================================================ */
+let sb = null; // Supabase client
+const BUCKET = 'scrap-photos';
+const TABLE_RECORDS = 'scrap_records';
+const TABLE_PHOTOS  = 'scrap_photos';
+
+function showLoginScreen(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appMain').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+}
+function showAppScreen(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appMain').style.display = 'block';
+  document.getElementById('headerActions').style.display = 'flex';
+  if (CLOUD_MODE) document.getElementById('btnLogout').style.display = 'inline-flex';
+}
+
+async function initSupabase(){
+  document.getElementById('headerActions').style.display = 'flex'; // เลือกภาษาใช้ได้ทั้ง 2 โหมด
+
+  if (!CLOUD_MODE) { showAppScreen(); return; } // โหมดเก็บในเครื่อง ไม่มีระบบ login
+
+  if (typeof window.supabase === 'undefined'){
+    toast(t('libSupabaseFail'), true);
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+  document.getElementById('modeBadge').textContent = t('modeCloud');
+  document.getElementById('storageNote').textContent = t('storageNoteCloud');
+  document.getElementById('searchRow').style.display = 'flex';
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { showAppScreen(); await refreshCloudRecords(); }
+  else { showLoginScreen(); }
+
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
+    if (event === 'SIGNED_OUT') { showLoginScreen(); }
+  });
+}
+
+// ฟอร์ม login ในหน้าเว็บ (แทนที่ prompt() เดิม) — ไม่มีปุ่ม cancel/ปิด
+// ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย ต่างจาก prompt() เดิมที่กด Cancel แล้วยังเห็นแอปอยู่ดี
+const btnLogin      = document.getElementById('btnLogin');
+const loginEmailEl  = document.getElementById('loginEmail');
+const loginPassEl   = document.getElementById('loginPassword');
+const loginErrorEl  = document.getElementById('loginError');
+
+async function doLogin(){
+  const email = loginEmailEl.value.trim();
+  const password = loginPassEl.value;
+  loginErrorEl.style.display = 'none';
+  if (!email || !password){
+    loginErrorEl.textContent = 'Please enter both email and password.';
+    loginErrorEl.style.display = 'block';
+    return;
+  }
+  btnLogin.disabled = true;
+  const original = btnLogin.textContent;
+  btnLogin.textContent = 'Signing in...';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  btnLogin.disabled = false;
+  btnLogin.textContent = original;
+  if (error){
+    loginErrorEl.textContent = 'Login failed: ' + error.message;
+    loginErrorEl.style.display = 'block';
+  } else {
+    loginPassEl.value = '';
+  }
+}
+btnLogin.onclick = doLogin;
+loginPassEl.onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
+loginEmailEl.onkeydown = (e) => { if (e.key === 'Enter') loginPassEl.focus(); };
+
+document.getElementById('btnLogout').onclick = async () => {
+  if (sb) await sb.auth.signOut();
+};
+
+function dataUrlToBlob(dataUrl){
+  const [head, b64] = dataUrl.split(',');
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// อัพโหลดรูปเดียวขึ้น Storage คืนค่า public URL
+async function uploadOne(itemCode, dataUrl, phase, idx){
+  const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
+  const blob = dataUrlToBlob(dataUrl);
+  const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
+async function uploadPhaseAll(itemCode, photos, phase){
+  return Promise.all(photos.map((dataUrl, idx) => uploadOne(itemCode, dataUrl, phase, idx)));
+}
+
+// บันทึก 1 รายการ (record) + รูปทั้งหมด (photos) ตามโครงสร้าง 1-to-many
+// scrap_records (1 แถวต่อ 1 ครั้งที่บันทึก) → scrap_photos (หลายแถวต่อ 1 record)
+//
+// หมายเหตุลำดับการทำงาน: insert แถว record ก่อน แล้วค่อยอัปโหลดรูป —
+// เดิมอัปโหลดรูปก่อน ถ้า insert record ล้มเหลว (เช่น permission ผิดตอน setup)
+// รูปจะขึ้น Storage ค้างเป็น orphan ไฟล์โดยไม่มี record อ้างอิงเลย
+// สลับลำดับแบบนี้ ถ้าพลาดตรงไหนจะเห็น record ตั้งแต่ขั้นแรกเสมอ ตรวจสอบ/แก้ไขทีหลังง่ายกว่า
+async function uploadToCloud(record){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) throw new Error('Please sign in first');
+
+  const status = (record.before.length > 0 && record.after.length > 0) ? 'complete' : 'partial';
+  const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
+    item_code: record.code,
+    status,
+    created_by: user.id,
+    created_by_email: user.email
+  }).select().single();
+  if (recErr) throw recErr;
+
+  const [beforeUrls, afterUrls] = await Promise.all([
+    uploadPhaseAll(record.code, record.before, 'before'),
+    uploadPhaseAll(record.code, record.after,  'after')
+  ]);
+
+  const photoRows = [
+    ...beforeUrls.map(url => ({ record_id: inserted.id, phase: 'before', photo_url: url })),
+    ...afterUrls.map(url  => ({ record_id: inserted.id, phase: 'after',  photo_url: url }))
+  ];
+  if (photoRows.length > 0){
+    const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
+    if (photoErr) throw photoErr;
+  }
+}
+
+initSupabase().catch(e => {
+  toast(t('supabaseConnectFail', { err: e.message }), true);
+});
+</script>
+</body>
+</html>
