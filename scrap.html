@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.0</title>
-<!-- VERSION: v3.0 | Updated: 2026-09-02
+<title>Scrap Photo Capture - v3.1</title>
+<!-- VERSION: v3.1 | Updated: 2026-09-02
+     Changes (v3.1):
+       - ความปลอดภัย: bucket scrap-photos เปลี่ยนจาก Public เป็น Private
+         รูปทั้งหมด (ตาราง modal ดูรูป + export PDF) แสดงผ่าน Signed URL ชั่วคราว (หมดอายุใน 1 ชม.)
+         ที่ขอได้เฉพาะตอน login อยู่เท่านั้น — คนที่ไม่ login เข้าระบบจะดู/ดาวน์โหลดรูปไม่ได้เลย
+         แม้จะมีลิงก์รูปหลุดออกไปก็ตาม (ต่างจากเดิมที่ใช้ public URL ถาวร)
+       - รองรับรูปเก่าที่ยังเก็บเป็น public URL แบบเดิมในฐานข้อมูล (ถอด path ออกมาขอ signed URL ให้อัตโนมัติ)
      Changes (v3.0):
        - เปลี่ยนหน้า login จาก prompt() ของเบราว์เซอร์ เป็นหน้าฟอร์ม login จริงในตัวเว็บ (ภาษาอังกฤษเสมอ)
        - บังคับ login ก่อนถึงจะเห็น/ใช้แอปได้เลย (โหมด Cloud) — ไม่กด login (หรือปิดฟอร์มไม่ได้เลยเพราะไม่มีปุ่ม cancel)
@@ -127,7 +133,7 @@
 <header>
   <div class="header-row">
     <div>
-      <h1>📦 Scrap Photo Capture <span class="tag">v3.0</span></h1>
+      <h1>📦 Scrap Photo Capture <span class="tag">v3.1</span></h1>
       <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
       <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
     </div>
@@ -828,26 +834,34 @@ searchCodeInput.oninput = () => {
 };
 
 // เปิด modal แสดงรูปก่อน/หลังของ record ที่เลือก
-function showPhotoModal(record){
+// v3.1: bucket เป็น private แล้ว ต้องขอ signed URL ก่อนแสดงรูปทุกครั้ง (เป็น async)
+async function showPhotoModal(record){
   if (!record) return;
   const photos = record.scrap_photos || [];
   const before = photos.filter(p => p.phase === 'before');
   const after  = photos.filter(p => p.phase === 'after');
 
   document.getElementById('modalTitle').textContent = record.item_code;
+  document.getElementById('modalBody').innerHTML = `<div class="loading-note">${t('loadingData')}</div>`;
+  document.getElementById('photoModal').style.display = 'flex';
+
+  // ขอ signed URL ของทุกรูปพร้อมกัน รูปไหนขอไม่สำเร็จ (เช่น ไฟล์ถูกลบไปแล้ว) ให้ข้ามไปเงียบๆ
+  const withSignedUrl = (list) => Promise.all(list.map(async p => ({
+    ...p, _signedUrl: await getSignedPhotoUrl(p.photo_url).catch(() => null)
+  })));
+  const [beforeResolved, afterResolved] = await Promise.all([withSignedUrl(before), withSignedUrl(after)]);
 
   const galleryHtml = (list) => {
-    if (list.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
-    return '<div class="gallery">' + list.map(p =>
-      `<div class="thumb"><img src="${p.photo_url}" alt="" onclick="window.open('${p.photo_url}','_blank')"></div>`
+    const usable = list.filter(p => p._signedUrl);
+    if (usable.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
+    return '<div class="gallery">' + usable.map(p =>
+      `<div class="thumb"><img src="${p._signedUrl}" alt="" onclick="window.open('${p._signedUrl}','_blank')"></div>`
     ).join('') + '</div>';
   };
 
   document.getElementById('modalBody').innerHTML =
-    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(before)}` +
-    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(after)}`;
-
-  document.getElementById('photoModal').style.display = 'flex';
+    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(beforeResolved)}` +
+    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(afterResolved)}`;
 }
 document.getElementById('modalClose').onclick = () => {
   document.getElementById('photoModal').style.display = 'none';
@@ -1020,9 +1034,15 @@ document.getElementById('btnExportPdf').onclick = async () => {
         const photos = r.scrap_photos || [];
         itemCode = r.item_code;
         savedAt  = new Date(r.created_at).toLocaleString('th-TH');
-        // รูปจาก cloud เป็น URL ต้อง fetch มาแปลงเป็น dataURL ก่อนถึงจะฝังใน PDF ได้
-        beforePhotos = await Promise.all(photos.filter(p=>p.phase==='before').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
-        afterPhotos  = await Promise.all(photos.filter(p=>p.phase==='after').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
+        // รูปจาก cloud เก็บเป็น path (bucket private ตั้งแต่ v3.1) ต้องขอ signed URL ก่อน
+        // แล้วค่อย fetch มาแปลงเป็น dataURL ถึงจะฝังใน PDF ได้ — รูปไหนขอ/โหลดไม่สำเร็จ ข้ามไปเงียบๆ
+        const toPdfImage = async (p) => {
+          const signed = await getSignedPhotoUrl(p.photo_url).catch(() => null);
+          if (!signed) return null;
+          return urlToDataURL(signed).catch(() => null);
+        };
+        beforePhotos = await Promise.all(photos.filter(p=>p.phase==='before').map(toPdfImage));
+        afterPhotos  = await Promise.all(photos.filter(p=>p.phase==='after').map(toPdfImage));
         beforePhotos = beforePhotos.filter(Boolean);
         afterPhotos  = afterPhotos.filter(Boolean);
       } else {
@@ -1051,6 +1071,33 @@ let sb = null; // Supabase client
 const BUCKET = 'scrap-photos';
 const TABLE_RECORDS = 'scrap_records';
 const TABLE_PHOTOS  = 'scrap_photos';
+
+/* ============================================================
+   ส่วนที่ 6.5: Signed URL สำหรับดูรูป (bucket เป็น Private)
+   ตั้งแต่ v3.1 — bucket scrap-photos ไม่เปิด public read แล้ว
+   ต้องขอ URL ชั่วคราว (signed URL) ทุกครั้งที่จะแสดงรูป และขอได้เฉพาะตอน login อยู่เท่านั้น
+   คอลัมน์ photo_url เก็บเป็น "path" ในตั้งแต่ v3.1 (ไม่ใช่ URL เต็มแบบเดิม)
+   แต่ยังรองรับข้อมูลเก่าที่เก็บเป็น public URL เต็มไว้ด้วย (ถอด path ออกมาเอง)
+   ============================================================ */
+const SIGNED_URL_TTL = 3600; // วินาที (1 ชม.) — พอสำหรับเปิดดู/export ต่อเนื่อง ไม่นานเกินจนเสี่ยงถ้าหลุด
+const signedUrlCache = new Map(); // path -> { url, expiresAt }
+
+// รองรับทั้งค่าเก่า (public URL เต็ม) และค่าใหม่ (path ตรงๆ) ที่เก็บในคอลัมน์ photo_url
+function extractStoragePath(value){
+  const marker = `/${BUCKET}/`;
+  const idx = value.indexOf(marker);
+  return idx === -1 ? value : value.slice(idx + marker.length);
+}
+
+async function getSignedPhotoUrl(pathOrUrl){
+  const path = extractStoragePath(pathOrUrl);
+  const cached = signedUrlCache.get(path);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+  const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  if (error) throw error;
+  signedUrlCache.set(path, { url: data.signedUrl, expiresAt: Date.now() + (SIGNED_URL_TTL - 60) * 1000 });
+  return data.signedUrl;
+}
 
 function showLoginScreen(){
   document.getElementById('loginScreen').style.display = 'flex';
@@ -1135,7 +1182,8 @@ function dataUrlToBlob(dataUrl){
   return new Blob([arr], { type: mime });
 }
 
-// อัพโหลดรูปเดียวขึ้น Storage คืนค่า public URL
+// อัพโหลดรูปเดียวขึ้น Storage คืนค่า "path" (ไม่ใช่ public URL แล้ว ตั้งแต่ v3.1 ที่ bucket เป็น private)
+// ตอนแสดงผลต้องขอ signed URL จาก path นี้ทุกครั้งผ่าน getSignedPhotoUrl()
 async function uploadOne(itemCode, dataUrl, phase, idx){
   const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
   const blob = dataUrlToBlob(dataUrl);
@@ -1143,8 +1191,7 @@ async function uploadOne(itemCode, dataUrl, phase, idx){
     contentType: 'image/jpeg', upsert: false
   });
   if (error) throw error;
-  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
 // อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
