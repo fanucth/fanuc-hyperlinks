@@ -1,822 +1,1196 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FTH One Links</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        /* --- ตั้งค่าพื้นฐาน --- */
-        :root {
-
-
-            --main-bg: #f8fafc;
-            --accent-color: #3b82f6;
-            --text-color: #334155;
-            --success-color: #10b981;
-        }
-
-        body {
-            font-family: 'Sarabun', sans-serif;
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            background-color: var(--main-bg);
-            overflow: hidden;
-        }
-
-
-
-        /* --- Main Content --- */
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            margin-left: 0;
-            width: 100%;
-        }
-
-        .top-bar {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 12px 24px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0,0,0,0.05);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 1000;
-            position: sticky;
-            top: 0;
-            gap: 16px;
-            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        .search-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-            width: 100%;
-            max-width: 950px;
-            margin: 0 auto;
-        }
-
-        .search-wrapper {
-            position: relative;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 13px 105px 13px 48px;
-            border-radius: 16px;
-            border: 2.5px solid #ffcc00;
-            background: linear-gradient(135deg, #fffbeb, #fef9c3);
-            font-size: 15px;
-            font-weight: 600;
-            color: #0f172a;
-            outline: none;
-            box-sizing: border-box;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 6px 15px rgba(255, 204, 0, 0.15);
-        }
-
-        .search-input:focus {
-            transform: translateY(-1px);
-            border-color: #3b82f6;
-            background: #ffffff;
-            box-shadow: 0 12px 25px rgba(59, 130, 246, 0.2);
-        }
-
-        .search-input::placeholder {
-            color: #94a3b8;
-            font-weight: 400;
-        }
-
-        .search-shortcut-badge {
-            position: absolute;
-            right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(59, 130, 246, 0.08);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            pointer-events: none;
-            letter-spacing: 0.05em;
-            transition: all 0.2s;
-        }
-
-        .search-wrapper:focus-within .search-shortcut-badge {
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.25);
-        }
-
-        .search-badge {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 8px 14px;
-            border-radius: 14px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
-            white-space: nowrap;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .live-dot {
-            width: 7px;
-            height: 7px;
-            background-color: #10b981;
-            border-radius: 50%;
-            display: inline-block;
-            animation: live-blink 1.5s infinite;
-        }
-
-        @keyframes live-blink {
-            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-            70% { transform: scale(1.3); opacity: 0.4; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-
-        .btn-home {
-            padding: 10px 16px;
-            border-radius: 14px;
-            border: 1px solid #cbd5e1;
-            background: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-family: 'Sarabun';
-            font-weight: 600;
-            color: var(--text-color);
-            white-space: nowrap;
-            flex-shrink: 0;
-            transition: all 0.2s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-        }
-
-        .btn-home:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #3b82f6;
-            font-size: 1.15rem;
-            pointer-events: none;
-            transition: all 0.2s;
-        }
-
-        .search-wrapper:focus-within .search-icon {
-            color: #1d4ed8;
-            transform: translateY(-50%) scale(1.08);
-        }
-
-        .content-area {
-            flex: 1;
-            padding: 20px 30px;
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        }
-
-        .section-wrapper { margin-bottom: 30px; }
-
-        .section-title {
-            font-size: 1.1rem;
-            color: var(--text-color);
-            margin-bottom: 15px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 5px;
-        }
-
-        .grid-links {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
-            gap: 12px;
-        }
-
-        .link-box {
-            background: white;
-            padding: 15px 5px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-            border: 1px solid #e2e8f0;
-            transition: all 0.15s;
-            cursor: pointer;
-            position: relative;
-            min-height: 90px;
-        }
-
-        .link-box:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-            z-index: 50;
-        }
-
-        .emoji-icon {
-            font-size: 2rem;
-            margin-bottom: 8px;
-        }
-
-        .link-name {
-            font-weight: 500;
-            font-size: 0.85rem;
-            text-align: center;
-            line-height: 1.2;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            width: 100%;
-            padding: 0 5px;
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 95%; 
-            left: 0;
-            width: 200px; 
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            overflow: visible; 
-            z-index: 101;
-        }
-
-        .link-box:hover .dropdown-menu,
-        .link-box.active .dropdown-menu {
-            display: block;
-        }
-
-        .link-box.active {
-            border-color: var(--accent-color);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
-
-        .sub-link {
-            display: block;
-            padding: 8px 12px;
-            text-align: left;
-            text-decoration: none;
-            color: #334155;
-            font-size: 0.85rem;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .sub-link:hover { background-color: #eff6ff; color: var(--accent-color); }
-        .sub-link:last-child { border-bottom: none; }
-
-        /* --- VPN Copy Styling --- */
-        .vpn-copy-container {
-            padding: 10px 12px;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .vpn-label {
-            font-size: 0.7rem;
-            color: #64748b;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-        .copy-btn {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: white;
-            border: 1px solid #cbd5e1;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            color: var(--accent-color);
-            transition: all 0.2s;
-            width: 100%;
-            box-sizing: border-box;
-            word-break: break-all;
-            text-align: left;
-            font-family: 'Sarabun', sans-serif;
-            outline: none;
-        }
-        .copy-btn:hover {
-            background: #f1f5f9;
-            border-color: var(--accent-color);
-        }
-
-        /* --- Hover Info Box --- */
-        .hover-wrapper { position: relative; }
-        .copy-box {
-            display: none;
-            position: absolute;
-            left: 100%;
-            top: -50px;
-            width: 250px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 5px 5px 20px rgba(0,0,0,0.2);
-            z-index: 9999;
-            font-size: 0.9rem;
-            color: #334155;
-            text-align: left;
-        }
-        .copy-box::before {
-            content: "";
-            position: absolute;
-            top: 60px;
-            right: 100%; 
-            border-width: 8px;
-            border-style: solid;
-            border-color: transparent #ffffff transparent transparent;
-        }
-        .hover-wrapper:hover .copy-box { display: block; }
-
-        footer {
-            text-align: center;
-            color: #cbd5e1;
-            font-size: 0.75rem;
-            margin-top: 30px;
-            padding-bottom: 20px;
-        }
-        mark { background: yellow; color: black; border-radius: 2px; }
-
-        /* --- Responsive Styles for Mobile Layout --- */
-        @media (max-width: 768px) {
-            .top-bar {
-                padding: 10px 14px;
-                gap: 8px;
-            }
-
-            .search-container {
-                gap: 8px;
-            }
-
-            /* Hide the Intelligent Search badge on mobile to free up space */
-            .search-badge {
-                display: none;
-            }
-
-            /* Hide shortcut badge on mobile since there are no physical keyboard shortcuts */
-            .search-shortcut-badge {
-                display: none;
-            }
-
-            /* Optimize input sizing and typing padding on mobile */
-            .search-input {
-                padding: 10px 14px 10px 42px;
-                font-size: 14px;
-                border-radius: 12px;
-                border-width: 2px;
-            }
-
-            .search-icon {
-                left: 14px;
-                font-size: 1rem;
-            }
-
-            .btn-home {
-                padding: 8px 12px;
-                border-radius: 12px;
-                font-size: 0.85rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Scrap Photo Capture - v3.0</title>
+<!-- VERSION: v3.0 | Updated: 2026-09-02
+     Changes (v3.0):
+       - เปลี่ยนหน้า login จาก prompt() ของเบราว์เซอร์ เป็นหน้าฟอร์ม login จริงในตัวเว็บ (ภาษาอังกฤษเสมอ)
+       - บังคับ login ก่อนถึงจะเห็น/ใช้แอปได้เลย (โหมด Cloud) — ไม่กด login (หรือปิดฟอร์มไม่ได้เลยเพราะไม่มีปุ่ม cancel)
+         จะเข้าแอปไม่ได้ ต่างจากของเดิมที่กด Cancel บน prompt() แล้วยังเห็นหน้าแอปอยู่ดี
+       - เพิ่มปุ่ม Logout ในหัวเว็บ (โชว์เฉพาะตอน login แล้ว)
+       - เพิ่มตัวเลือกภาษา TH / EN / JP ในหัวเว็บ (โชว์หลัง login) ค่าเริ่มต้นเป็นไทยเสมอ
+         จำค่าไว้ต่อเครื่อง (localStorage) ไม่กระทบ user อื่น
+     Changes (v2.9):
+       - เพิ่มหน้า "รายการที่บันทึกแล้ว" ให้ดึงข้อมูลจริงจาก Supabase (โหมด Cloud)
+         แทนที่จะโชว์แค่ของ session/เครื่องนี้ — มีช่องค้นหาตามรหัสชิ้นงาน + ปุ่มรีเฟรช
+       - เพิ่มปุ่ม "📷 ดูรูป" เปิด modal แสดงรูปก่อน/หลังทำลายของแต่ละรายการ (คลิกรูปเพื่อดูเต็มจอ)
+       - Export Excel/PDF (โหมด Cloud) ดึงข้อมูลทุกแถวจริงจาก Supabase ตอนกด export
+         (ไม่ใช่แค่ 200 แถวที่โชว์ในตาราง) รองรับ scale ถึงหลักพันรายการ
+       - Export PDF: แก้รูปที่เคยถูกยืดเป็นสี่เหลี่ยมจัตุรัส ให้รักษาสัดส่วนภาพจริงแทน (contain)
+       - Export Excel/PDF: ใส่วันที่-เวลาในชื่อไฟล์ กันไฟล์ทับกันตอน export ซ้ำ
+       - แก้บั๊ก: เปลี่ยนจาก sessionStorage เป็น localStorage (โหมดเก็บในเครื่อง) กันข้อมูลหายตอนปิดแท็บ
+       - แก้บั๊ก: ล็อกปุ่ม "บันทึกรายการนี้" ระหว่างกำลังอัปโหลด กันกดซ้ำเกิด record/รูปซ้ำ
+       - แก้บั๊ก: สลับลำดับ uploadToCloud ให้ insert record ก่อนอัปโหลดรูป
+         กันรูปค้างเป็น orphan ใน Storage เวลา insert ล้มเหลว
+       - เพิ่ม <meta name="robots" content="noindex, nofollow"> กัน Google index หน้าเว็บภายใน
+     Changes (v2.8):
+       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode
+       - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
+       - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
+       - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
+       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL)
+       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
+       - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
+       - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
+       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" สแกนเร็วขึ้น+แม่นยำขึ้น
+       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป
+         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records + scrap_photos
+-->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
+    --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 80%,transparent);z-index:5;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:520px;margin:0 auto;}
+  header h1{font-size:18px;margin:0 0 2px;}
+  header p{margin:0;color:var(--sub);font-size:12.5px;}
+  .header-actions{display:none;align-items:center;gap:8px;flex:0 0 auto;}
+  .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
+  .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .btn-logout:active{background:var(--accent2);color:#fff;}
+  main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
+  .btn-primary{background:var(--accent);color:#1a1500;}
+  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:var(--accent2);color:#fff;}
+  .btn-ok{background:var(--ok);color:#062f18;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  #reader{width:100%;height:180px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
+  #reader video{width:100%!important;height:180px!important;object-fit:cover;display:block;}
+  #reader__scan_region{height:180px!important;}
+  #reader__scan_region img{display:none!important;}
+  #reader__dashboard{display:none!important;}
+  #reader img[alt="Info icon"]{display:none;}
+  .scan-note{font-size:11px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.4;}
+  .gallery-group{margin-top:10px;}
+  .gallery-label{font-size:12px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .gallery-label b{color:var(--text);font-weight:600;}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;}
+  .thumb{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#0a0e17;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb .del:active{background:var(--accent2);}
+  .thumb-add{aspect-ratio:1/1;border-radius:8px;border:2px dashed var(--line);background:var(--card2);color:var(--sub);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .thumb-add:active{background:var(--accent);color:#1a1500;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
+  .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
+  th{color:var(--sub);font-weight:600;font-size:11px;}
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+  .toast.err{background:var(--accent2);color:#fff;}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
+  .row2{display:flex;gap:8px;}
+  .row2 .btn{flex:1;}
+  .code-row{display:flex;gap:8px;align-items:stretch;}
+  .code-row input{flex:1;margin-bottom:10px;}
+  .btn-clear{flex:0 0 auto;width:44px;height:44px;margin-top:0;margin-bottom:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--sub);font-size:16px;font-weight:700;cursor:pointer;}
+  .btn-clear:active{background:var(--accent2);color:#fff;}
+  .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
+  .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
+  .btn-view{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;font-size:12px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line);}
+  .modal-close{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;}
+  .modal-body{padding:14px;overflow-y:auto;}
+  .modal-body h3{font-size:12px;color:var(--sub);margin:12px 0 8px;}
+  .modal-body .gallery{margin-bottom:4px;}
+  .modal-body .thumb{cursor:pointer;}
+  .loading-note{font-size:12px;color:var(--sub);text-align:center;padding:10px;}
+  .login-overlay{position:fixed;inset:0;background:var(--bg);z-index:70;display:none;align-items:center;justify-content:center;padding:20px;}
+  .login-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 22px;max-width:360px;width:100%;}
+  .login-box h2{margin:0 0 4px;font-size:19px;}
+  .login-sub{margin:0 0 20px;color:var(--sub);font-size:13px;}
+  .login-box label{margin-top:2px;}
+  .login-error{color:#ffb4a8;background:rgba(255,90,60,.12);border:1px solid rgba(255,90,60,.35);border-radius:8px;padding:9px 11px;font-size:12.5px;margin-top:2px;margin-bottom:10px;}
+</style>
 </head>
 <body>
+<header>
+  <div class="header-row">
+    <div>
+      <h1>📦 Scrap Photo Capture <span class="tag">v3.0</span></h1>
+      <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
+      <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <select class="lang-select" id="langSelect" title="Language">
+        <option value="th">TH</option>
+        <option value="en">EN</option>
+        <option value="ja">JP</option>
+      </select>
+      <button class="btn-logout" id="btnLogout" data-i18n="logoutButton" style="display:none;">Logout</button>
+    </div>
+  </div>
+</header>
 
+<!-- หน้า Login (โหมด Cloud เท่านั้น) — ภาษาอังกฤษเสมอ ไม่ผูกกับตัวเลือกภาษาของแอป
+     ไม่มีปุ่ม cancel/ปิด — ไม่ login สำเร็จ จะเข้าแอปไม่ได้เลย -->
+<div class="login-overlay" id="loginScreen">
+  <div class="login-box">
+    <h2>📦 Scrap Photo Capture</h2>
+    <p class="login-sub">Sign in to continue</p>
+    <p class="login-error" id="loginError" style="display:none;"></p>
+    <label for="loginEmail">Email</label>
+    <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
+  </div>
+</div>
 
+<main id="appMain">
+  <div class="card">
+    <h2 data-i18n="sectionScanTitle">1) สแกน Barcode (Code 39)</h2>
+    <button class="btn btn-primary" id="btnStartScan" data-i18n="btnScanLabel">📷 เปิดกล้องสแกนรหัส</button>
+    <div class="row2" id="scanControls" style="display:none;">
+      <button class="btn btn-secondary" id="btnTorch" data-i18n="btnTorchLabel">🔦 ไฟฉาย</button>
+      <button class="btn btn-secondary" id="btnStopScan" data-i18n="btnStopLabel">⏹ หยุดสแกน</button>
+    </div>
+    <div id="reader" style="display:none;"></div>
+    <button class="btn btn-secondary" id="btnOcr" data-i18n="btnOcrLabel" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
+    <p class="scan-note" id="scanNote" data-i18n="scanNoteText" style="display:none;">
+      ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.
+    </p>
+    <label style="margin-top:6px;" data-i18n="orEnterManually">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
+    <div class="code-row">
+      <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
+      <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
+    </div>
+  </div>
 
-<main>
-    <div class="top-bar">
-        <div class="search-container">
-            <div class="search-badge">
-                <span class="live-dot"></span>
-                <span>Intelligent Search</span>
-            </div>
-            <button onclick="clearSearch()" class="btn-home" style="color: var(--accent-color); border-color: var(--accent-color);">
-                🔄 <span>Reset</span>
-            </button>
-            <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="พิมพ์ชื่อเมนู หรือระบบที่ต้องการเพื่อค้นหาแบบเรียลไทม์ได้ทันที... (Search everything)" />
-                <div class="search-shortcut-badge">
-                    <span>LIVE SEARCH</span>
-                </div>
-            </div>
-        </div>
+  <div class="card">
+    <h2 data-i18n="sectionPhotoTitle">2) ถ่ายภาพหลักฐาน</h2>
+    <p class="note" data-i18n="sectionPhotoNote">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+
+    <div class="gallery-group">
+      <div class="gallery-label"><span data-i18n="beforeLabel">📷 ก่อนทำลาย</span> <b id="countBefore">(0)</b></div>
+      <div class="gallery" id="galleryBefore">
+        <button class="thumb-add" id="btnBefore">+</button>
+      </div>
     </div>
 
-    <div class="content-area">
-        <div id="FHQ" class="section-wrapper">
-            <div class="section-title">
-                <img src="data:image/png;base64,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" alt="FHQ" style="height: 40px; margin-right: 10px; object-fit: contain;">
-                FHQ Links
-            </div>
-            <div class="grid-links">
-                <div class="link-box">
-                    <span class="emoji-icon">🟡</span> <span class="link-name">Newsletter ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol4.pdf" target="_blank" class="sub-link">Vol.4 Storage Media</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol3.pdf" target="_blank" class="sub-link">Vol.3 Password</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol2.pdf" target="_blank" class="sub-link">Vol.2 AI</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol1.pdf" target="_blank" class="sub-link">Vol.1 Social Eng</a>
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">🟡</span> <span class="link-name">Service Sys.▼</span>
-                    <div class="dropdown-menu">
-                        <a href="https://ftdb.one.fanuc.com/sites/techdocs/common" target="_blank" class="sub-link">TechDocs</a>
-                        <a href="http://srsearch.one.fanuc.com/" target="_blank" class="sub-link">SR Search</a>
-                        <div class="hover-wrapper">
-                            <a href="http://do.all.fanuc.co.jp/fanuc/html5/login.html?" target="_blank" class="sub-link">Do!Book ℹ️</a>
-                            <div class="copy-box">
-                                <div style="font-weight: bold; color: #3b82f6;">Device Authorization:</div>
-                                ID: <b>APAC</b> | Pass: <b>MvMAKq85</b>
-                            </div>
-                        </div>
-                        <a href="https://alarmsearch.one.fanuc.com/Search.aspx" target="_blank" class="sub-link">Alarm & Parameter</a>
-                        <a href="http://dparts.one.fanuc.com/" target="_blank" class="sub-link">Digital Parts Manual</a>
-                        <a href="http://fhq00007e35.all.fanuc.co.jp/redmine/login" target="_blank" class="sub-link">IoT RedMine</a>
-                        <a href="https://www3.business.fanuc.co.jp/CNC/option/Overseas/socm01p01/" target="_blank" class="sub-link">Option</a>
-                        <a href="http://143.201.202.5/IFSS/ifcm01p01" target="_blank" class="sub-link">GSIS (Office)</a>
-                        <a href="http://gsis.one.fanuc.com/IFSS/ifcm01p01/" target="_blank" class="sub-link">GSIS (Outside)</a>
-                        <a href="https://bomgenerator.one.fanuc.com/bomgenerator/" target="_blank" class="sub-link">BOM GENERATOR</a>
-						<a href="https://ftp.one.fanuc.com/" target="_blank" class="sub-link">FTP of FANUC</a>		
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">🟡</span> <span class="link-name">Sharepoint ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="https://fanuc.sharepoint.com/" target="_blank" class="sub-link">Main</a>
-                        <a href="https://fanuc-my.sharepoint.com/" target="_blank" class="sub-link">Own One-Drive</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-GlobalService/FSC/SitePages/Home.aspx" target="_blank" class="sub-link">FSC</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-GlobalService/SitePages/Home.aspx" target="_blank" class="sub-link">Global Service Site</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2020L0003/IA/IA_FTH2025/Shared%20Documents" target="_blank" class="sub-link">Internal Audit</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025B0002" target="_blank" class="sub-link">Information Security</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025F0001" target="_blank" class="sub-link">South East Asia</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025C0002/SitePages/Regulations-in-each.aspx" target="_blank" class="sub-link">Regulations in FTH</a>
-						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025D0002" target="_blank" class="sub-link">FIELD system Basic Package Global Sales HUB</a>
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">🟡</span> <span class="link-name">IT Sharepoint ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018G0001/SitePages/Home.aspx" target="_blank" class="sub-link">GBDW</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018K0001/SitePages/Global-IT.aspx" target="_blank" class="sub-link">Global IT</a>
-                        <a href="https://fanuc-my.sharepoint.com/:p:/r/personal/tatebe_ryuto_fanuc_co_jp/_layouts/15/Doc.aspx?sourcedoc=%7BB1828016-93B1-494B-BB3D-D354DC9EB0E0%7D&amp;file=Fanuc_SiteSurvey_Vision_of_IT_V20260209.pptx&amp;action=edit&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: IT Strategy</a>
-                        <a href="https://fanuc.sharepoint.com/:x:/r/sites/FHQ-L-809/internal/_layouts/15/Doc.aspx?sourcedoc=%7BA98F9D03-4995-4B1B-BFBE-4C4E406436BF%7D&amp;file=Fanuc_SiteSurveySheet_V20260312_before.xlsx&amp;action=default&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: Fanuc SiteSurvey</a>
-                        <a href="https://fanuc.sharepoint.com/:x:/r/sites/FHQ-G-2018K0001/_layouts/15/Doc.aspx?sourcedoc=%7B833DD127-EF7B-4F2E-8F88-20E87222EB90%7D&amp;file=191015_GITC_FANUCGroup_ITServices.xlsx&amp;action=default&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: ITServices</a>
-                        <a href="https://fanuc.sharepoint.com/:p:/r/teams/GCC2025_IT_Agenda_Proj_GLB/" target="_blank" class="sub-link">GCC IT Agenda</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018K0001/Meetings/Forms/AllItems.aspx" target="_blank" class="sub-link">GITC Quarterly Meeting</a>
-                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2021J0001/Shared%20Documents/Forms/AllItems.aspx?viewpath=%2Fsites%2FFHQ%2DG%2D2021J0001%2FShared%20Documents%2FForms%2FAllItems%2Easpx" target="_blank" class="sub-link">PC Software Delivery</a>
-                    </div>
-                </div>
-
-                <a href="https://fanuc-jp-console.lrn.com/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">LRN Compliance</span></a>
-                <a href="https://fanuc.ws03-securityeducation.com/login" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">📖 eLearning</span></a>
-                <a href="http://10.36.1.12/prism/commond/default.aspx" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">PRISM</span></a>
-                <a href="http://10.36.1.12/PRBSSolution/prcm01p01/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Barcode System</span></a>
-                <a href="https://fanuc-inventory.syncroncloud.com/views/security/login/login.xhtml" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Syncron</span></a>
-				<a href="https://portal.office.com/account" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">MS365 Portal</span></a>
-                <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">GBDW Portal</span></a>
-            </div>
-        </div>
-
-        <div id="FTH" class="section-wrapper">
-            <div class="section-title">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSD6eYyHKa_gtX-ukwoBmyOWkuASes2P_dCsw&s" alt="FTH" style="height: 60px; margin-right: 10px; object-fit: contain;">
-                FTH Links
-            </div>
-            <div class="grid-links">
-                <a href="https://fanucth.github.io/fanuc-hyperlinks/" target="_blank" class="link-box"><span class="emoji-icon">🌐</span><span class="link-name">Outside Link</span></a>
-				<a href="http://10.33.16.238/IT" target="_blank" class="link-box"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
-				<div class="link-box">
-					<img src="https://images.seeklogo.com/logo-png/37/1/tisco-logo-png_seeklogo-373898.png" alt="TISCO Logo" style="height: 40px; max-width: 45px; object-fit: contain; margin-bottom: 8px;">
-					<span class="link-name">TISCO ▼</span>
-					<div class="dropdown-menu">
-						<a href="https://www.ess-center.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); padding-bottom: 2px; display: flex; align-items: center; justify-content: space-between;">
-							<span>ESS (e-Pay Slip) 🌐</span>
-						</a>
-						<div style="padding: 2px 12px 8px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 6px; justify-content: flex-start;">
-							<span style="font-size: 0.72rem; color: #64748b; white-space: nowrap;">Company Code: <strong style="color: #1e293b; font-size: 0.75rem;">274</strong></span>
-							<button class="copy-btn" onclick="copyESSCode(this, '274')" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; width: auto; background: #f8fafc; border: 1px solid #cbd5e1; white-space: nowrap; color: #3b82f6;">
-								<span>📋 Copy</span>
-							</button>
-						</div>
-						<a href="https://pvd.tiscoasset.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); display: flex; align-items: center; justify-content: space-between;">
-							<span>Provident Fund 🌐</span>
-						</a>
-					</div>
-				</div>
-
-
-                <a href="https://one.fanucth.co.th/scrap_scan_prototype.html" target="_blank" class="link-box"><span class="emoji-icon">♻️</span><span class="link-name">Scrapping</span></a>
-                <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
-                <a href="http://10.33.16.238/fanucthai" target="_blank" class="link-box"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
-<!--                 <a href="http://10.33.16.238/it/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a> -->
-                <a href="http://10.33.16.238/fth/PC_Software_Delivery.html" target="_blank" class="link-box"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
-                <a href="http://accountserver:8080/fanuc/authentication/" target="_blank" class="link-box"><span class="emoji-icon">📊</span><span class="link-name">Billing System</span></a>
-                <a href="https://10.33.16.238/fth/robot_dem.html" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">Robot System</span></a>
-				<a href="https://10.33.16.213/" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">ZDT</span></a>
-                <a href="https://aps1-vms.tplinkcloud.com/#/vms/video" target="_blank" class="link-box"><span class="emoji-icon">📹</span><span class="link-name">Robot CCTV</span></a>
-
-                <div class="link-box">
-                    <img src="https://ssl.jobcan.jp/favicon.ico" alt="Jobcan Icon" style="width: 32px; height: 32px; margin-bottom: 8px;">
-                    <span class="link-name">Jobcan ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="https://ssl.jobcan.jp/login/pc-employee-global?lang_code=en" target="_blank" class="sub-link">For Staff</a>
-                        <a href="https://ssl.jobcan.jp/login/client?lang_code=en" target="_blank" class="sub-link">For Manager</a>
-                        <a href="http://ra05.jobcan.in.th/login/index.php" target="_blank" class="sub-link">For Admin</a>
-						<a href="Manual/JOBCAN Manual [TH].pdf" target="_blank" class="sub-link">JOBCAN Manual [TH]</a>
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">👩🏼‍🦰</span> <span class="link-name">Admin ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="http://10.33.16.120/" target="_blank" class="sub-link">CCTV 1</a>
-                        <a href="http://10.33.16.121/" target="_blank" class="sub-link">CCTV 2</a>
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">👨‍💻</span> <span class="link-name">IT ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="http://10.33.16.238/fth/downloads/anyconnect-win-4.10.03104.msi" target="_blank" class="sub-link">📥 Download Cisco VPN</a>
-                        
-                        <div class="vpn-copy-container">
-                            <div class="vpn-label">VPN Server Address:</div>
-                            <button class="copy-btn" onclick="copyVPNAddress(this, 'vpn4.fanuc.co.jp/common/')">
-                                <span>vpn4.fanuc.co.jp/common/</span>
-                                <span>📋</span>
-                            </button>
-                        </div>
-
-                        <a href="https://corp4.ais-idc.com/cacti/index.php" target="_blank" class="sub-link">Bandwidth Monitor</a>
-						<a href="https://10.33.16.245/era/" target="_blank" class="sub-link">Eset Web Console</a>
-                        <a href="http://10.33.16.200" target="_blank" class="sub-link">AP Controller</a>
-                        <a href="https://mailawn.thaicloudsolutions.com/login/" target="_blank" class="sub-link">Email Admin</a>
-<!-- 					<a href="http://10.33.16.111/tool" target="_blank" class="sub-link">Tool (Old)</a>
-                        <a href="http://10.33.16.111/sitesearch" target="_blank" class="sub-link">Sitesearch (Old)</a> -->
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">📧</span> <span class="link-name">Email ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="https://outlook.office365.com/mail/?realm=fth.fanuc.com" target="_blank" class="sub-link">Webmail (.com)</a>
-                        <a href="https://mailawn.thaicloudsolutions.com/webmail/" target="_blank" class="sub-link">Webmail (.co.th)</a>
-                        <a href="https://antispamawn.thaicloudsolutions.com/login.php" target="_blank" class="sub-link">SPAM Quarantine</a>
-                        <a href="Manual/How to setup email of Outlook.pdf" target="_blank" class="sub-link">Manual: Setup from MS Outlook</a>
-                        <a href="Manual/How to setup email on iOS.pdf" target="_blank" class="sub-link">Manual: Setup from iOS</a>
-                        <a href="Manual/How to setup email on Android.pdf" target="_blank" class="sub-link">Manual: Setup from Android</a>
-                    </div>
-                </div>
-
-                <div class="link-box">
-                    <span class="emoji-icon">📆</span> <span class="link-name">Calendar ▼</span>
-                    <div class="dropdown-menu">
-                        <a href="FTH Working Calendar 2026.pdf" target="_blank" class="sub-link">FTH Calendar 2026</a>
-                        <a href="FHQ Working Calendar 2026.pdf" target="_blank" class="sub-link">FHQ Calendar 2026</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="SAPBYD" class="section-wrapper">
-            <div class="section-title">
-                <img src="data:image/jpeg;base64,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" alt="SAPBYD" style="height: 24px; margin-right: 10px; object-fit: contain;">
-                SAPBYD
-            </div>
-            <div class="grid-links">
-                <a href="https://my423061-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Product Tenant</span></a>
-                <a href="https://my425419-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Test (ROLL OUT)</span></a>
-                <a href="https://my431413-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Test (AGILE)</span></a>
-                <a href="https://oneayle.sharepoint.com/sites/Ext_OneAyle_FANUC" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">OA-FANUC</span></a>
-                <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2022L0001/sap_common/SitePages/Community%20Home.aspx" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Common 8 Cos.</span></a>
-                <a href="http://10.33.16.111/fth/material/Multi-Factor_Authen_M365.pdf" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Manual Setup MS365</span></a>
-                <a href="https://cct.sde.cloud.sap/analytics" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Cloud Check Tool</span></a>
-                <a href="https://mysignins.microsoft.com/security-info" target="_blank" class="link-box"><span class="emoji-icon">🔵🔑</span><span class="link-name">MFA Auth</span></a>
-            </div>
-        </div>
-        
-        <footer>One Links v1.3 | All Links Restored</footer>
+    <div class="gallery-group">
+      <div class="gallery-label"><span data-i18n="afterLabel">📷 หลังทำลาย</span> <b id="countAfter">(0)</b></div>
+      <div class="gallery" id="galleryAfter">
+        <button class="thumb-add" id="btnAfter">+</button>
+      </div>
     </div>
+
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="btn btn-ok" id="btnSave" data-i18n="btnSaveLabel" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="sectionListTitle">3) รายการที่บันทึกแล้ว</span> (<span id="countTotal">0</span>)</h2>
+    <div class="code-row" id="searchRow" style="display:none;">
+      <input type="text" id="searchCode" data-i18n-placeholder="searchPlaceholder" placeholder="ค้นหาจากรหัสชิ้นงาน...">
+      <button class="btn-clear" id="btnRefreshList" data-i18n-title="refreshTitle" title="รีเฟรชรายการ">⟳</button>
+    </div>
+    <div id="tableWrap"><div class="empty" data-i18n="emptyList">ยังไม่มีรายการ</div></div>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
+      <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
+    </div>
+    <p class="note" id="storageNote" data-i18n="storageNoteLocal">
+      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config
+      ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
+    </p>
+  </div>
 </main>
 
+<div class="toast" id="toast"></div>
+
+<!-- Modal ดูรูปของแต่ละรายการ (ใช้เฉพาะโหมด Cloud) -->
+<div id="photoModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <b id="modalTitle">รายละเอียด</b>
+      <button id="modalClose" class="modal-close">✕</button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ส่วนที่ 1: ตั้งค่า Supabase
+     วิธีใช้: ไปที่ Supabase Dashboard > Project Settings > API
+     นำ "Project URL" และ "Publishable key" มาใส่แทนค่าว่างด้านล่าง
+     ระบบจะสลับไปโหมด Cloud อัตโนมัติ ถ้าปล่อยว่างไว้จะเก็บในเครื่องเหมือนเดิม
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-    // --- ฟังก์ชันคัดลอก VPN Address (ปรับปรุงใหม่) ---
-    function copyVPNAddress(btn, text) {
-        // วิธีหลัก: ใช้ Clipboard API
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(() => {
-                showCopySuccess(btn);
-            }).catch(err => {
-                fallbackCopy(btn, text);
-            });
-        } else {
-            // วิธีสำรอง: กรณี Browser ไม่รองรับ หรือไม่ใช่ HTTPS
-            fallbackCopy(btn, text);
-        }
-    }
+const SUPABASE_CONFIG = {
+  url: "https://xyqtuomhaxwsadrflafa.supabase.co",
+  anonKey: "sb_publishable_IaJXmtk_atVnsgoCw1c4aw_p4MD7IPj"
+};
+const CLOUD_MODE = !!SUPABASE_CONFIG.url;
+</script>
 
-    function copyESSCode(btn, text) {
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(() => {
-                showCopySuccess(btn);
-            }).catch(err => {
-                fallbackCopy(btn, text);
-            });
-        } else {
-            fallbackCopy(btn, text);
-        }
-    }
+<script>
+/* ============================================================
+   ส่วนที่ 0: ระบบภาษา (TH / EN / JP) — ค่าเริ่มต้นเป็นไทยเสมอ
+   จำค่าไว้ต่อเครื่องผ่าน localStorage ไม่กระทบ user คนอื่น
+   หมายเหตุ: หน้า Login (ก่อนเข้าระบบ) ตั้งใจให้เป็นภาษาอังกฤษตายตัวเสมอ
+   ไม่ผูกกับระบบนี้ — ระบบนี้มีผลกับตัวแอปหลัง login แล้วเท่านั้น
+   ============================================================ */
+const TRANSLATIONS = {
+  appSubtitle:       { th:'สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน', en:'Scan Code 39 → Photograph before/after → Export report', ja:'Code 39をスキャン → 廃棄前後を撮影 → レポート出力' },
+  modeLocal:         { th:'โหมด: เก็บข้อมูลในเครื่อง', en:'Mode: Local storage', ja:'モード: ローカル保存' },
+  modeCloud:         { th:'โหมด: อัปโหลดขึ้น Cloud', en:'Mode: Cloud upload', ja:'モード: クラウドアップロード' },
+  logoutButton:      { th:'ออกจากระบบ', en:'Logout', ja:'ログアウト' },
+  sectionScanTitle:  { th:'1) สแกน Barcode (Code 39)', en:'1) Scan Barcode (Code 39)', ja:'1) バーコードをスキャン (Code 39)' },
+  btnScanLabel:      { th:'📷 เปิดกล้องสแกนรหัส', en:'📷 Open camera to scan', ja:'📷 カメラでスキャン' },
+  btnTorchLabel:     { th:'🔦 ไฟฉาย', en:'🔦 Flashlight', ja:'🔦 ライト' },
+  btnStopLabel:      { th:'⏹ หยุดสแกน', en:'⏹ Stop scanning', ja:'⏹ スキャン停止' },
+  btnOcrLabel:       { th:'🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)', en:'🔤 Read text from label (barcode damaged)', ja:'🔤 ラベルの文字を読む（バーコード破損時）' },
+  scanNoteText:      { th:'ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.', en:'Hold parallel to the barcode, keep it inside the horizontal frame • 15–25 cm away', ja:'バーコードに平行に持ち、横長の枠内に収めてください • 15〜25cm離す' },
+  orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
+  itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
+  btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
+  sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
+  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除' },
+  beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
+  afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
+  btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
+  searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
+  refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
+  emptyList:         { th:'ยังไม่มีรายการ', en:'No records yet', ja:'記録がありません' },
+  storageNoteLocal:  { th:'ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก', en:'Data is currently stored only in this browser. Once Supabase config is set, the system will automatically upload to Cloud Storage on every save.', ja:'現在データはこのブラウザにのみ保存されています。Supabaseの設定を行うと、保存の度に自動でクラウドへアップロードされます。' },
+  storageNoteCloud:  { th:'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก', en:'Photos are automatically uploaded to Supabase Storage every time you save.', ja:'保存の度に写真は自動的にSupabase Storageへアップロードされます。' },
+  colCode:   { th:'รหัส', en:'Code', ja:'品番' },
+  colBefore: { th:'ก่อน', en:'Before', ja:'廃棄前' },
+  colAfter:  { th:'หลัง', en:'After', ja:'廃棄後' },
+  colStatus: { th:'สถานะ', en:'Status', ja:'状態' },
+  colBy:     { th:'โดย', en:'By', ja:'記録者' },
+  colTime:   { th:'เวลา', en:'Time', ja:'日時' },
+  statusComplete: { th:'ครบก่อน/หลัง', en:'Complete', ja:'完了' },
+  statusPartial:  { th:'บันทึกบางส่วน', en:'Partial', ja:'一部のみ' },
+  viewPhotosBtn:  { th:'📷 ดูรูป', en:'📷 View photos', ja:'📷 写真を見る' },
+  noPhotos:       { th:'ไม่มีรูป', en:'No photos', ja:'写真なし' },
+  photoCountLabel:{ th:'({n} รูป)', en:'({n} photos)', ja:'（{n}枚）' },
+  photoCountParen:{ th:'({n} รูป)', en:'({n} photos)', ja:'（{n}枚）' },
+  loadingData:    { th:'⏳ กำลังโหลดข้อมูล...', en:'⏳ Loading data...', ja:'⏳ データ読み込み中...' },
+  generatingPdf:  { th:'⏳ กำลังสร้าง PDF...', en:'⏳ Generating PDF...', ja:'⏳ PDF作成中...' },
+  savingLabel:    { th:'⏳ กำลังบันทึก...', en:'⏳ Saving...', ja:'⏳ 保存中...' },
+  ocrReadingLabel:{ th:'⏳ กำลังอ่านตัวอักษร...', en:'⏳ Reading text...', ja:'⏳ 文字を読み取り中...' },
+  // ข้อความ toast แบบไดนามิก
+  codeCleared:       { th:'ล้างรหัสชิ้นงานแล้ว', en:'Item code cleared', ja:'品番をクリアしました' },
+  scanSuccess:       { th:'สแกนสำเร็จ: {code}', en:'Scan successful: {code}', ja:'スキャン成功: {code}' },
+  cameraOpenFail:    { th:'เปิดกล้องไม่ได้: {err}', en:'Could not open camera: {err}', ja:'カメラを開けません: {err}' },
+  torchUnsupported:  { th:'เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', en:'This device does not support flashlight control from the browser', ja:'この端末はブラウザからのライト制御に対応していません' },
+  torchOnMsg:        { th:'เปิดไฟฉาย', en:'Flashlight on', ja:'ライト点灯' },
+  torchOffMsg:       { th:'ปิดไฟฉาย', en:'Flashlight off', ja:'ライト消灯' },
+  libScanFail:       { th:'โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the scanner library. Check your internet connection and refresh.', ja:'スキャナーライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libOcrFail:        { th:'โหลดไลบรารี OCR ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the OCR library. Check your internet connection and refresh.', ja:'OCRライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  libSupabaseFail:   { th:'โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the Supabase library. Check your internet connection and refresh.', ja:'Supabaseライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
+  ocrNeedCamera:     { th:'ยังไม่พร้อม กรุณาเปิดกล้องก่อน', en:'Not ready yet, please open the camera first', ja:'準備ができていません。先にカメラを開いてください' },
+  ocrReadSuccess:    { th:'อ่านได้: {part} (กรุณาตรวจสอบความถูกต้อง)', en:'Read: {part} (please verify it is correct)', ja:'読み取り結果: {part}（正しいか確認してください）' },
+  ocrNoPattern:      { th:'ไม่พบรูปแบบรหัสที่ถูกต้อง อ่านได้: {preview}', en:'No valid code pattern found. Read: {preview}', ja:'正しい形式のコードが見つかりません。読み取り内容: {preview}' },
+  ocrUnreadable:     { th:'อ่านตัวอักษรไม่ได้ ลองขยับให้ป้ายชัดขึ้น', en:'Could not read any text. Try repositioning for a clearer view.', ja:'文字を読み取れませんでした。ラベルがはっきり見えるよう位置を調整してください' },
+  ocrError:          { th:'OCR ผิดพลาด: {err}', en:'OCR error: {err}', ja:'OCRエラー: {err}' },
+  readImageFail:     { th:'อ่านไฟล์ภาพไม่สำเร็จ', en:'Failed to read the image file', ja:'画像ファイルの読み込みに失敗しました' },
+  readFileFail:      { th:'อ่านไฟล์ไม่สำเร็จ', en:'Failed to read the file', ja:'ファイルの読み込みに失敗しました' },
+  photoAdded:        { th:'เพิ่มภาพ{phase}ทำลายแล้ว (~{kb} KB) รวม {count} รูป', en:'Added {phase} photo (~{kb} KB), {count} total', ja:'{phase}の写真を追加しました（約{kb}KB）、合計{count}枚' },
+  phaseBeforeWord:   { th:'ก่อน', en:'before-destruction', ja:'廃棄前' },
+  phaseAfterWord:    { th:'หลัง', en:'after-destruction', ja:'廃棄後' },
+  photoLimitWarning: { th:'ถ่ายไปแล้ว {limit} รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', en:'You have taken {limit} photos — check you did not tap by mistake', ja:'{limit}枚撮影しました。誤って連続タップしていないか確認してください' },
+  needCodeFirst:     { th:'กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', en:'Please scan or enter the item code first', ja:'先に品番をスキャンまたは入力してください' },
+  photoDeleted:      { th:'ลบรูปแล้ว', en:'Photo deleted', ja:'写真を削除しました' },
+  needItemCode:      { th:'กรุณาระบุรหัสชิ้นงาน', en:'Please enter an item code', ja:'品番を入力してください' },
+  needAtLeastOnePhoto:{ th:'กรุณาถ่ายภาพอย่างน้อย 1 รูป', en:'Please take at least 1 photo', ja:'最低1枚は撮影してください' },
+  saveSuccess:       { th:'บันทึกรายการสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Record saved successfully ✅ ({before} before / {after} after)', ja:'保存に成功しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
+  cloudUploadFail:   { th:'อัปโหลดขึ้น Cloud ไม่สำเร็จ: {err}', en:'Cloud upload failed: {err}', ja:'クラウドへのアップロードに失敗しました: {err}' },
+  cloudLoadFail:     { th:'โหลดรายการจาก Cloud ไม่สำเร็จ: {err}', en:'Failed to load records from the cloud: {err}', ja:'クラウドからの記録読み込みに失敗しました: {err}' },
+  exportNoData:      { th:'ยังไม่มีข้อมูลให้ export', en:'No data available to export', ja:'エクスポートするデータがありません' },
+  exportLoadFail:    { th:'โหลดข้อมูลไม่สำเร็จ: {err}', en:'Failed to load data: {err}', ja:'データの読み込みに失敗しました: {err}' },
+  loginSuccessToast: { th:'เข้าสู่ระบบสำเร็จ', en:'Signed in successfully', ja:'ログインに成功しました' },
+  supabaseConnectFail:{ th:'เชื่อมต่อ Supabase ไม่สำเร็จ: {err}', en:'Failed to connect to Supabase: {err}', ja:'Supabaseへの接続に失敗しました: {err}' }
+};
 
-    function fallbackCopy(btn, text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed"; 
-        textArea.style.left = "-9999px";
-        textArea.style.top = "0";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-            const successful = document.execCommand('copy');
-            if (successful) showCopySuccess(btn);
-        } catch (err) {
-            console.error('Fallback Copy Failed', err);
-        }
-        document.body.removeChild(textArea);
-    }
+let currentLang = localStorage.getItem('uiLang') || 'th';
 
-    function showCopySuccess(btn) {
-        const originalHTML = btn.innerHTML;
-        btn.style.color = "#10b981";
-        btn.style.borderColor = "#10b981";
-        btn.innerHTML = "<span>Copied!</span><span>✅</span>";
-        
-        setTimeout(() => {
-            btn.style.color = "";
-            btn.style.borderColor = "";
-            btn.innerHTML = originalHTML;
-        }, 2000);
-    }
+function t(key, vars){
+  const entry = TRANSLATIONS[key];
+  let str = (entry && entry[currentLang]) || (entry && entry.th) || key;
+  if (vars) Object.keys(vars).forEach(k => { str = str.split('{' + k + '}').join(vars[k]); });
+  return str;
+}
 
-    // --- ฟังก์ชันเคลียร์ค่า ---
-    function clearSearch() {
-        const input = document.getElementById('searchInput');
-        input.value = "";
-        const event = new Event('keyup');
-        input.dispatchEvent(event);
-        document.querySelector('.content-area').scrollTop = 0;
-    }
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.documentElement.lang = currentLang;
+}
 
-// --- ระบบค้นหาครอบคลุมทุกส่วน (แก้ไขเพื่อรองรับ 3 ฟิลด์ใหม่) ---
-const searchInput = document.getElementById('searchInput');
-searchInput.addEventListener('keyup', function() {
-    const filter = searchInput.value.toLowerCase().trim();
-    const sections = document.querySelectorAll('.section-wrapper');
+// เรียกตอนสลับภาษา: อัปเดตทั้งข้อความ static และเนื้อหาที่ render แบบไดนามิก (ตาราง/แกลเลอรี่)
+function setLanguage(lang){
+  currentLang = lang;
+  localStorage.setItem('uiLang', lang);
+  applyStaticI18n();
+  document.getElementById('modeBadge').textContent = CLOUD_MODE ? t('modeCloud') : t('modeLocal');
+  renderGallery('before');
+  renderGallery('after');
+  if (CLOUD_MODE) { renderCloudTable(); } else { renderTable(); }
+}
 
-    sections.forEach(section => {
-        const sectionTitle = section.querySelector('.section-title');
-        const sectionTitleText = sectionTitle ? sectionTitle.textContent.toLowerCase() : "";
-        const isSectionMatch = filter !== "" && sectionTitleText.includes(filter);
-        
-        let hasVisibleLinks = false;
-        const links = section.querySelectorAll('.link-box');
+document.getElementById('langSelect').value = currentLang;
+document.getElementById('langSelect').onchange = (e) => setLanguage(e.target.value);
+applyStaticI18n(); // เซ็ตข้อความเริ่มต้นก่อน DOM อื่นๆ ทำงาน
+</script>
 
-        links.forEach(link => {
-            const mainNameElement = link.querySelector('.link-name');
-            const subLinks = link.querySelectorAll('.sub-link');
-            
-            // เก็บค่า Original Text รวมถึงฟิลด์ใหม่ (Brand, Model, S/N) ถ้ามี
-            if (!link.dataset.originalText) link.dataset.originalText = mainNameElement.textContent;
-            
-            // ดึงข้อมูลฟิลด์ใหม่จาก Dataset (ถ้าคุณมีการใส่ไว้ใน HTML link-box)
-            const brandText = (link.dataset.pcBrand || "").toLowerCase();
-            const modelText = (link.dataset.pcModel || "").toLowerCase();
-            const snText = (link.dataset.pcSn || "").toLowerCase();
-            
-            let isLinkMatch = false;
-            const mainText = link.dataset.originalText.toLowerCase();
+<script>
+/* ============================================================
+   ส่วนที่ 2: ตัวแปรหลักและฟังก์ชันช่วย
+   ============================================================ */
+let html5QrCode = null;
+let scanning = false;
+let torchOn = false;
+let currentBefore = [], currentAfter = [], capturingMode = null;   // เก็บเป็น array รองรับหลายรูป/เฟส
+const PHOTO_SOFT_LIMIT = 10; // เตือนกันมือลั่นถ้าถ่ายเกินจำนวนนี้ ไม่ได้บล็อก
+let records = JSON.parse(localStorage.getItem('scrapRecords') || '[]'); // ใช้เฉพาะโหมดเก็บในเครื่อง (ไม่มี Supabase config)
+let cloudRecords = []; // แคชรายการล่าสุดที่ดึงจาก Supabase มาแสดง (โหมด Cloud)
 
-            // ตรวจสอบการค้นหาใน Sub Links
-            subLinks.forEach(sub => {
-                if (!sub.dataset.originalText) sub.dataset.originalText = sub.textContent;
-                const subText = sub.dataset.originalText.toLowerCase();
-                
-                if (filter !== "" && subText.includes(filter)) {
-                    isLinkMatch = true;
-                    const regex = new RegExp(`(${filter})`, 'gi');
-                    sub.innerHTML = sub.dataset.originalText.replace(regex, '<mark>$1</mark>');
-                } else {
-                    sub.innerHTML = sub.dataset.originalText;
-                }
-            });
+const itemCodeInput = document.getElementById('itemCode');
+const scanControls  = document.getElementById('scanControls');
+const scanNote      = document.getElementById('scanNote');
+const btnStartScan  = document.getElementById('btnStartScan');
 
-            // ตรวจสอบการค้นหาในฟิลด์หลัก และ 3 ฟิลด์ใหม่ (Brand, Model, S/N)
-            if (filter !== "" && (mainText.includes(filter) || brandText.includes(filter) || modelText.includes(filter) || snText.includes(filter))) {
-                isLinkMatch = true;
-                const regex = new RegExp(`(${filter})`, 'gi');
-                mainNameElement.innerHTML = link.dataset.originalText.replace(regex, '<mark>$1</mark>');
-            } else {
-                mainNameElement.innerHTML = link.dataset.originalText;
-            }
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isError);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
 
-            // การแสดงผล Link Box
-            if (filter === "") {
-                link.style.display = "flex";
-                link.classList.remove('active'); 
-                hasVisibleLinks = true;
-            } else if (isLinkMatch || isSectionMatch) {
-                link.style.display = "flex";
-                // ถ้า Match ที่ Sub-link ให้เปิด Dropdown อัตโนมัติ
-                if (isLinkMatch && subLinks.length > 0) link.classList.add('active');
-                else link.classList.remove('active');
-                hasVisibleLinks = true;
-            } else {
-                link.style.display = "none";
-                link.classList.remove('active');
-            }
-        });
+// ล้างรหัสชิ้นงาน กรณีสแกนมาแล้วไม่ตรง อยากลบแล้วสแกน/พิมพ์ใหม่
+document.getElementById('btnClearCode').onclick = () => {
+  itemCodeInput.value = '';
+  itemCodeInput.focus();
+  toast(t('codeCleared'));
+};
 
-        if (filter === "") section.style.display = "block";
-        else section.style.display = hasVisibleLinks ? "block" : "none";
+/* ============================================================
+   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 อย่างเดียว)
+   จำกัดแค่รูปแบบเดียว ช่วยให้ไลบรารีถอดรหัสเร็วขึ้นและแม่นยำขึ้น
+   (ไม่ต้องเสียเวลาไล่เช็คหลายรูปแบบต่อเฟรม + ลดโอกาสอ่านผิดรูปแบบ)
+   ============================================================ */
+function supportedFormats(){
+  const F = Html5QrcodeSupportedFormats;
+  return [ F.CODE_39 ];   // รูปแบบเดียวที่ป้ายอะไหล่ FANUC ใช้
+}
+
+// Code 39 อาจคืนค่ามาพร้อมเครื่องหมาย * ครอบหัวท้าย ต้องตัดออก
+function cleanCode(raw){
+  return String(raw).trim().replace(/^\*+/, '').replace(/\*+$/, '');
+}
+
+btnStartScan.onclick = async () => {
+  if (typeof Html5Qrcode === 'undefined') {
+    toast(t('libScanFail'), true);
+    return;
+  }
+  try {
+    // ต้องโชว์กล้องก่อน start เสมอ ไม่งั้นไลบรารีจะคำนวณขนาดกรอบสแกนเป็น 0
+    // (เจอปัญหานี้มาแล้ว: ซ่อนกล้องไว้ตอน start ทำให้สแกนไม่ติดเลยทั้ง Code 39 และ QR)
+    document.getElementById('reader').style.display = 'block';
+
+    html5QrCode = new Html5Qrcode("reader", {
+      formatsToSupport: supportedFormats(),
+      verbose: false
     });
-});
 
-// --- แก้ไขปัญหาเมนูย่อยกดไม่ได้บนมือถือ ---
-document.querySelectorAll('.link-box').forEach(box => {
-    // เพิ่ม Event Listener เฉพาะปุ่มที่มีเมนูย่อย
-    if(box.querySelector('.dropdown-menu')) {
-        box.addEventListener('click', function(e) {
-            // ปล่อยให้ลิงก์ด้านในทำงานตามปกติ
-            if (e.target.closest('.dropdown-menu')) return;
-            
-            // ป้องกันเหตุการณ์เริ่มต้นถ้าหากไม่ใช่ลิงก์ปกติ
-            e.preventDefault();
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 20,
+        // กลับไปใช้กรอบแถบแนวนอน เหมาะกับ Code 39 โดยเฉพาะ (ไม่ต้องรองรับ QR แล้ว)
+        // กรอบกว้าง+เตี้ย ช่วยให้เล็งง่าย ถือโทรศัพท์ขนานกับบาร์โค้ดแล้วสแกนติดทันที
+        qrbox: (vw, vh) => {
+          const w = Math.floor(Math.min(vw, vh * 2.5) * 0.9);
+          const h = Math.floor(w * 0.38);
+          return { width: w, height: h };
+        },
+        aspectRatio: 1.777,
+        disableFlip: true, // Code 39 ไม่ใช่ QR ไม่ต้องลองพลิกภาพ ช่วยลดงานประมวลผลต่อเฟรม
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      },
+      (decodedText) => {
+        const code = cleanCode(decodedText);
+        if (!code) return;
+        itemCodeInput.value = code;
+        toast(t('scanSuccess', { code }));
+        if (navigator.vibrate) navigator.vibrate(120);
+        stopScan();
+      },
+      () => { /* ไม่พบรหัสในเฟรมนี้ เป็นเรื่องปกติ ไม่ต้องแจ้งผู้ใช้ */ }
+    );
 
-            // ปิดเมนูอื่นๆ
-            document.querySelectorAll('.link-box.active').forEach(other => {
-                if (other !== this) other.classList.remove('active');
-            });
+    scanning = true;
+    btnStartScan.style.display = 'none';
+    scanControls.style.display = 'flex';
+    document.getElementById('btnOcr').style.display = 'block';
+    scanNote.style.display = 'block';
+  } catch (e) {
+    document.getElementById('reader').style.display = 'none';
+    toast(t('cameraOpenFail', { err: e.message || e }), true);
+  }
+};
 
-            // เปิด/ปิดเมนูปัจจุบัน
-            this.classList.toggle('active');
-        });
+document.getElementById('btnStopScan').onclick = stopScan;
+
+async function stopScan(){
+  if (!html5QrCode || !scanning) return;
+  scanning = false;
+  torchOn = false;
+  try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){}
+  html5QrCode = null;
+  btnStartScan.style.display = 'block';
+  scanControls.style.display = 'none';
+  document.getElementById('reader').style.display = 'none';
+  document.getElementById('btnOcr').style.display = 'none';
+  scanNote.style.display = 'none';
+}
+
+// ไฟฉาย ช่วยมากเวลาสแกนในโกดังที่แสงน้อย (บางเครื่อง/เบราว์เซอร์ไม่รองรับ)
+document.getElementById('btnTorch').onclick = async () => {
+  if (!html5QrCode || !scanning) return;
+  try {
+    torchOn = !torchOn;
+    await html5QrCode.applyVideoConstraints({
+      advanced: [{ torch: torchOn }]
+    });
+    toast(torchOn ? t('torchOnMsg') : t('torchOffMsg'));
+  } catch (e) {
+    torchOn = false;
+    toast(t('torchUnsupported'), true);
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 3.5: OCR อ่าน Part No. จากตัวอักษรบนป้าย
+   ใช้เมื่อบาร์โค้ดชำรุด ซีด หรือมีรอยขีดเขียนทับจนสแกนไม่ติด
+   ============================================================ */
+
+// รูปแบบรหัสอะไหล่ FANUC เช่น A06B-1407-B153, A290-7321-X911, A860-2020-T301
+const PART_NO_PATTERN = /\b([A-Z]\d{2}[A-Z0-9])[-\s]?(\d{4})[-\s]?([A-Z]\d{3})\b/;
+
+// OCR มักสับสนระหว่างตัวอักษรกับตัวเลขที่หน้าตาคล้ายกัน
+// แก้ให้ตรงตำแหน่งตามรูปแบบรหัส FANUC
+function fixOcrConfusion(text){
+  return text
+    .toUpperCase()
+    .replace(/[·•・．]/g, '-')     // จุดที่ OCR อ่านผิดเป็นขีด
+    .replace(/[–—―]/g, '-')       // ขีดยาวรูปแบบต่าง ๆ
+    .replace(/\s+/g, ' ');
+}
+
+// ลองสลับตัวที่สับสนบ่อย แล้วหาว่ารูปแบบไหนตรง pattern
+function extractPartNo(rawText){
+  const base = fixOcrConfusion(rawText);
+
+  // ลองจากข้อความดิบก่อน
+  let m = base.match(PART_NO_PATTERN);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  // ถ้ายังไม่เจอ ลองแก้ตัวที่ OCR สับสนบ่อย แล้วหาใหม่
+  const swapped = base
+    .replace(/O/g, '0')
+    .replace(/I/g, '1')
+    .replace(/L/g, '1')
+    .replace(/S/g, '5')
+    .replace(/Z/g, '2');
+  m = swapped.match(PART_NO_PATTERN);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  // สุดท้าย หาอะไรก็ได้ที่มีรูปแบบ กลุ่ม-กลุ่ม-กลุ่ม
+  m = base.match(/\b([A-Z0-9]{4})[-\s]([A-Z0-9]{4})[-\s]([A-Z0-9]{4})\b/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  return null;
+}
+
+// ตัดเฉพาะแถบกลางภาพมาทำ OCR จะเร็วและแม่นกว่าส่งทั้งเฟรม
+function grabFrameForOcr(){
+  const video = document.querySelector('#reader video');
+  if (!video || !video.videoWidth) return null;
+
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const cropW = Math.floor(vw * 0.9);
+  const cropH = Math.floor(vh * 0.5);
+  const sx = Math.floor((vw - cropW) / 2);
+  const sy = Math.floor((vh - cropH) / 2);
+
+  const cv = document.createElement('canvas');
+  // ขยาย 2 เท่า ช่วยให้ OCR อ่านตัวอักษรเล็กได้ดีขึ้น
+  cv.width = cropW * 2;
+  cv.height = cropH * 2;
+  const c = cv.getContext('2d');
+  c.drawImage(video, sx, sy, cropW, cropH, 0, 0, cv.width, cv.height);
+
+  // แปลงเป็นขาวดำ contrast สูง ช่วย OCR มากกับป้ายสติกเกอร์
+  const img = c.getImageData(0, 0, cv.width, cv.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4){
+    const gray = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    const v = gray > 140 ? 255 : 0;
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+
+let ocrRunning = false;
+
+document.getElementById('btnOcr').onclick = async () => {
+  if (ocrRunning) return;
+  if (typeof Tesseract === 'undefined'){
+    toast(t('libOcrFail'), true);
+    return;
+  }
+  const canvas = grabFrameForOcr();
+  if (!canvas){ toast(t('ocrNeedCamera'), true); return; }
+
+  const btn = document.getElementById('btnOcr');
+  const original = btn.textContent;
+  ocrRunning = true;
+  btn.disabled = true;
+  btn.textContent = t('ocrReadingLabel');
+
+  try {
+    const { data } = await Tesseract.recognize(canvas, 'eng', {
+      // จำกัดตัวอักษรที่เป็นไปได้ ช่วยลดการอ่านผิดอย่างมาก
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
+      tessedit_pageseg_mode: '6'   // มองภาพเป็นบล็อกข้อความเดียว
+    });
+
+    const part = extractPartNo(data.text || '');
+    if (part){
+      itemCodeInput.value = part;
+      toast(t('ocrReadSuccess', { part }));
+      if (navigator.vibrate) navigator.vibrate(120);
+      stopScan();
+    } else {
+      const preview = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      toast(preview ? t('ocrNoPattern', { preview }) : t('ocrUnreadable'), true);
     }
-});
+  } catch (e) {
+    toast(t('ocrError', { err: e.message || e }), true);
+  } finally {
+    ocrRunning = false;
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+};
 
-// กดพื้นที่ว่างเพื่อปิดเมนู
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.link-box')) {
-        document.querySelectorAll('.link-box.active').forEach(box => {
-            box.classList.remove('active');
-        });
+/* ============================================================
+   ส่วนที่ 4: ถ่ายภาพและย่อขนาดก่อนบันทึก
+   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase/Supabase
+   ย่อเหลือกว้าง 1280 px คุณภาพ 0.75 จะเหลือประมาณ 150–250 KB ต่อใบ
+   ============================================================ */
+const MAX_WIDTH = 1280;
+const JPEG_QUALITY = 0.75;
+
+function compressImage(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', JPEG_QUALITY));
+      };
+      img.onerror = () => reject(new Error(t('readImageFail')));
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => reject(new Error(t('readFileFail')));
+    reader.readAsDataURL(file);
+  });
+}
+
+const fileInput = document.getElementById('fileInput');
+// หมายเหตุ: ปุ่ม "+" ในแกลเลอรี่ถูก re-render บ่อย (ทุกครั้งที่เพิ่ม/ลบรูป)
+// จึงผูก event ให้ปุ่ม "+" ไว้ในฟังก์ชัน renderGallery() แทนการผูกครั้งเดียวตรงนี้
+
+fileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  fileInput.value = '';
+  if(!file) return;
+  try {
+    const dataUrl = await compressImage(file);
+    const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
+    arr.push(dataUrl);
+    renderGallery(capturingMode);
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+    toast(t('photoAdded', {
+      phase: capturingMode === 'before' ? t('phaseBeforeWord') : t('phaseAfterWord'),
+      kb, count: arr.length
+    }));
+    if (arr.length === PHOTO_SOFT_LIMIT) {
+      toast(t('photoLimitWarning', { limit: PHOTO_SOFT_LIMIT }), true);
     }
-});
+  } catch (err) {
+    toast(err.message, true);
+  }
+};
 
+// วาดแกลเลอรี่รูปภาพของเฟสนั้นๆ ใหม่ (ใช้ทั้งตอนเพิ่มและตอนลบรูป)
+function renderGallery(phase){
+  const arr = (phase === 'before') ? currentBefore : currentAfter;
+  const gallery = document.getElementById(phase === 'before' ? 'galleryBefore' : 'galleryAfter');
+  const countEl = document.getElementById(phase === 'before' ? 'countBefore' : 'countAfter');
+
+  countEl.textContent = t('photoCountLabel', { n: arr.length });
+
+  let html = '';
+  arr.forEach((dataUrl, idx) => {
+    html += `<div class="thumb">
+      <img src="${dataUrl}" alt="">
+      <button class="del" data-phase="${phase}" data-idx="${idx}" title="ลบรูปนี้">✕</button>
+    </div>`;
+  });
+  html += `<button class="thumb-add" id="btn${phase === 'before' ? 'Before' : 'After'}">+</button>`;
+  gallery.innerHTML = html;
+
+  // ผูก event ปุ่ม + ใหม่ (เพราะ innerHTML เขียนทับ element เดิม)
+  document.getElementById(phase === 'before' ? 'btnBefore' : 'btnAfter').onclick = () => {
+    if(!itemCodeInput.value.trim()){ toast(t('needCodeFirst'), true); return; }
+    capturingMode = phase; fileInput.click();
+  };
+
+  // ผูก event ปุ่มลบทุกปุ่มในแกลเลอรี่นี้
+  gallery.querySelectorAll('.del').forEach(btn => {
+    btn.onclick = () => {
+      const p = btn.dataset.phase;
+      const i = parseInt(btn.dataset.idx, 10);
+      const targetArr = (p === 'before') ? currentBefore : currentAfter;
+      targetArr.splice(i, 1);
+      renderGallery(p);
+      toast(t('photoDeleted'));
+    };
+  });
+}
+
+/* ============================================================
+   ส่วนที่ 5: บันทึกรายการ
+   ============================================================ */
+const btnSave = document.getElementById('btnSave');
+
+btnSave.onclick = async () => {
+  const code = itemCodeInput.value.trim();
+  if(!code){ toast(t('needItemCode'), true); return; }
+  if(currentBefore.length === 0 && currentAfter.length === 0){
+    toast(t('needAtLeastOnePhoto'), true); return;
+  }
+
+  const now = new Date();
+  const record = {
+    code,
+    before: currentBefore.slice(),   // copy array ไว้ก่อนเคลียร์
+    after: currentAfter.slice(),
+    savedAt: now.toLocaleString('th-TH')
+  };
+
+  // ล็อกปุ่มระหว่างบันทึก กันกดซ้ำ (ซ้ำแล้วจะได้ record/รูปซ้ำขึ้น Cloud)
+  btnSave.disabled = true;
+  const originalLabel = btnSave.textContent;
+  btnSave.textContent = t('savingLabel');
+
+  try {
+    if (CLOUD_MODE) {
+      await uploadToCloud(record);
+      await refreshCloudRecords();
+    } else {
+      records.push(record);
+      try {
+        localStorage.setItem('scrapRecords', JSON.stringify(records));
+      } catch (e) {
+        // localStorage เต็ม (ภาพเยอะ) แต่ข้อมูลยังอยู่ในหน่วยความจำ ยัง export ได้
+        toast('Storage is full, please export then refresh the page', true);
+      }
+      renderTable();
+    }
+
+    currentBefore = []; currentAfter = [];
+    renderGallery('before');
+    renderGallery('after');
+    itemCodeInput.value = '';
+    toast(t('saveSuccess', { before: record.before.length, after: record.after.length }));
+  } catch (e) {
+    toast(t('cloudUploadFail', { err: e.message }), true);
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = originalLabel;
+  }
+};
+
+// แสดงรายการที่เก็บในเครื่อง (โหมดไม่มี Supabase config เท่านั้น)
+function renderTable(){
+  document.getElementById('countTotal').textContent = records.length;
+  const wrap = document.getElementById('tableWrap');
+  if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
+  records.forEach(r => {
+    const nBefore = (r.before || []).length;
+    const nAfter = (r.after || []).length;
+    const done = nBefore > 0 && nAfter > 0;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
+  });
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+if (!CLOUD_MODE) renderTable();
+renderGallery('before');
+renderGallery('after');
+
+/* ============================================================
+   ส่วนที่ 5.5: แสดงรายการจาก Supabase (โหมด Cloud) + ดูรูปรายตัว
+   ดึงข้อมูลจริงจาก scrap_records + scrap_photos ทุกครั้งที่บันทึกใหม่/กดรีเฟรช/ค้นหา
+   ============================================================ */
+const searchCodeInput = document.getElementById('searchCode');
+
+async function fetchCloudRecords(searchTerm){
+  let query = sb.from(TABLE_RECORDS)
+    .select('*, scrap_photos(id, phase, photo_url)')
+    .order('created_at', { ascending: false })
+    .limit(200); // แสดงล่าสุด 200 รายการพอสำหรับตรวจสอบ ส่วน Export ดึงครบทุกแถวแยกต่างหาก
+  if (searchTerm) query = query.ilike('item_code', `%${searchTerm}%`);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+async function refreshCloudRecords(){
+  try {
+    cloudRecords = await fetchCloudRecords(searchCodeInput.value.trim());
+    renderCloudTable();
+  } catch (e) {
+    toast(t('cloudLoadFail', { err: e.message }), true);
+  }
+}
+
+function renderCloudTable(){
+  document.getElementById('countTotal').textContent = cloudRecords.length;
+  const wrap = document.getElementById('tableWrap');
+  if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th></th></tr>`;
+  cloudRecords.forEach(r => {
+    const photos  = r.scrap_photos || [];
+    const nBefore = photos.filter(p => p.phase === 'before').length;
+    const nAfter  = photos.filter(p => p.phase === 'after').length;
+    const done    = r.status === 'complete';
+    const dt      = new Date(r.created_at).toLocaleString('th-TH');
+    html += `<tr>
+      <td>${r.item_code}</td><td>${nBefore}</td><td>${nAfter}</td>
+      <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
+      <td>${r.created_by_email || '-'}</td><td>${dt}</td>
+      <td><button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button></td>
+    </tr>`;
+  });
+  html += '</table>';
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.btn-view').forEach(btn => {
+    btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+}
+
+document.getElementById('btnRefreshList').onclick = refreshCloudRecords;
+let searchDebounce;
+searchCodeInput.oninput = () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(refreshCloudRecords, 400); // รอพิมพ์นิ่งก่อนค่อยค้นหา กันยิง query รัวๆ
+};
+
+// เปิด modal แสดงรูปก่อน/หลังของ record ที่เลือก
+function showPhotoModal(record){
+  if (!record) return;
+  const photos = record.scrap_photos || [];
+  const before = photos.filter(p => p.phase === 'before');
+  const after  = photos.filter(p => p.phase === 'after');
+
+  document.getElementById('modalTitle').textContent = record.item_code;
+
+  const galleryHtml = (list) => {
+    if (list.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
+    return '<div class="gallery">' + list.map(p =>
+      `<div class="thumb"><img src="${p.photo_url}" alt="" onclick="window.open('${p.photo_url}','_blank')"></div>`
+    ).join('') + '</div>';
+  };
+
+  document.getElementById('modalBody').innerHTML =
+    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(before)}` +
+    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(after)}`;
+
+  document.getElementById('photoModal').style.display = 'flex';
+}
+document.getElementById('modalClose').onclick = () => {
+  document.getElementById('photoModal').style.display = 'none';
+};
+document.getElementById('photoModal').onclick = (e) => {
+  if (e.target.id === 'photoModal') e.target.style.display = 'none';
+};
+
+/* ============================================================
+   ส่วนที่ 6: Export
+   โหมด Cloud: ดึงข้อมูล "ทั้งหมด" จาก Supabase ตอนกด export (ไม่ใช่แค่ 200 แถวที่โชว์อยู่)
+   โหมดเก็บในเครื่อง: ใช้ array records ตรงๆ เหมือนเดิม
+   ============================================================ */
+
+// วน .range() ทีละหน้าจนกว่าจะได้ครบทุกแถว ป้องกันข้อมูลตกหล่นตอน scale ใหญ่ (~3000 รายการ)
+async function fetchAllCloudRecords(){
+  const pageSize = 500;
+  let from = 0, all = [];
+  while (true){
+    const { data, error } = await sb.from(TABLE_RECORDS)
+      .select('*, scrap_photos(id, phase, photo_url)')
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    all = all.concat(data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+function timestampForFilename(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+document.getElementById('btnExportExcel').onclick = async () => {
+  const btn = document.getElementById('btnExportExcel');
+  let sourceRows;
+
+  if (CLOUD_MODE) {
+    btn.disabled = true; const original = btn.textContent; btn.textContent = t('loadingData');
+    try { sourceRows = await fetchAllCloudRecords(); }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btn.disabled = false; btn.textContent = original; return; }
+    btn.disabled = false; btn.textContent = original;
+  } else {
+    sourceRows = records;
+  }
+
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
+
+  const rows = sourceRows.map((r, i) => {
+    if (CLOUD_MODE) {
+      const photos  = r.scrap_photos || [];
+      const nBefore = photos.filter(p => p.phase === 'before').length;
+      const nAfter  = photos.filter(p => p.phase === 'after').length;
+      return {
+        'ลำดับ': i+1,
+        'รหัสชิ้นงาน': r.item_code,
+        'จำนวนภาพก่อนทำลาย': nBefore,
+        'จำนวนภาพหลังทำลาย': nAfter,
+        'สถานะ': r.status === 'complete' ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+        'บันทึกโดย': r.created_by_email || '-',
+        'เวลาบันทึก': new Date(r.created_at).toLocaleString('th-TH')
+      };
+    }
+    const nBefore = (r.before || []).length;
+    const nAfter  = (r.after  || []).length;
+    return {
+      'ลำดับ': i+1,
+      'รหัสชิ้นงาน': r.code,
+      'จำนวนภาพก่อนทำลาย': nBefore,
+      'จำนวนภาพหลังทำลาย': nAfter,
+      'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+      'เวลาบันทึก': r.savedAt
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ScrapRecords');
+  XLSX.writeFile(wb, `scrap_records_${timestampForFilename()}.xlsx`);
+};
+
+// แปลง URL รูป (คนละ origin กับหน้าเว็บ) เป็น dataURL เพื่อฝังลง PDF ได้ (jsPDF ใส่ remote URL ตรงๆ ไม่ได้)
+function blobToDataURL(blob){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error(t('readImageFail')));
+    r.readAsDataURL(blob);
+  });
+}
+async function urlToDataURL(url){
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(t('readImageFail'));
+  return blobToDataURL(await res.blob());
+}
+
+// โหลดขนาดจริงของรูป จะได้วางลง PDF แบบรักษาสัดส่วน ไม่ยืด/บีบภาพให้ผิดรูป
+function getImageSize(dataUrl){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+    img.onerror = () => resolve({ w: 1, h: 1 });
+    img.src = dataUrl;
+  });
+}
+
+document.getElementById('btnExportPdf').onclick = async () => {
+  const btnPdf = document.getElementById('btnExportPdf');
+  let sourceRows;
+
+  if (CLOUD_MODE) {
+    btnPdf.disabled = true; const original = btnPdf.textContent; btnPdf.textContent = t('loadingData');
+    try { sourceRows = await fetchAllCloudRecords(); }
+    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btnPdf.disabled = false; btnPdf.textContent = original; return; }
+    btnPdf.disabled = false; btnPdf.textContent = original;
+  } else {
+    sourceRows = records;
+  }
+
+  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
+
+  btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'pt', format:'a4'});
+    const PAGE_BOTTOM = 780;
+    const THUMB = 110, GAP = 10, COLS = 4;
+    let y = 40;
+
+    pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
+    pdf.setFontSize(10);
+
+    // วางรูปเป็นกริด รักษาสัดส่วนภาพจริง (contain ภายในกรอบ THUMB x THUMB แทนการยืดเป็นสี่เหลี่ยมจัตุรัส)
+    // รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
+    async function drawPhotoGrid(label, photoDataUrls, startY){
+      let yy = startY;
+      pdf.setFontSize(10); pdf.setTextColor(90);
+      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 6;
+      pdf.setTextColor(0);
+      if (photoDataUrls.length === 0){ yy += 14; return yy; }
+
+      let col = 0;
+      for (const dataUrl of photoDataUrls){
+        if (col === 0) yy += 10;
+        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; }
+        const x = 40 + col * (THUMB + GAP);
+        try {
+          const { w, h } = await getImageSize(dataUrl);
+          const scale = Math.min(THUMB / w, THUMB / h);
+          const dw = w * scale, dh = h * scale;
+          const dx = x + (THUMB - dw) / 2, dy = yy + (THUMB - dh) / 2; // จัดกึ่งกลางกรอบ
+          pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
+        } catch(e){}
+        col++;
+        if (col >= COLS){ col = 0; yy += THUMB + GAP; }
+      }
+      if (col !== 0) yy += THUMB + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลง
+      return yy;
+    }
+
+    for (const r of sourceRows){
+      if (y > PAGE_BOTTOM - 60){ pdf.addPage(); y = 40; }
+
+      let itemCode, savedAt, beforePhotos, afterPhotos;
+      if (CLOUD_MODE) {
+        const photos = r.scrap_photos || [];
+        itemCode = r.item_code;
+        savedAt  = new Date(r.created_at).toLocaleString('th-TH');
+        // รูปจาก cloud เป็น URL ต้อง fetch มาแปลงเป็น dataURL ก่อนถึงจะฝังใน PDF ได้
+        beforePhotos = await Promise.all(photos.filter(p=>p.phase==='before').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
+        afterPhotos  = await Promise.all(photos.filter(p=>p.phase==='after').map(p => urlToDataURL(p.photo_url).catch(()=>null)));
+        beforePhotos = beforePhotos.filter(Boolean);
+        afterPhotos  = afterPhotos.filter(Boolean);
+      } else {
+        itemCode = r.code; savedAt = r.savedAt;
+        beforePhotos = r.before || []; afterPhotos = r.after || [];
+      }
+
+      pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
+      pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
+
+      y = await drawPhotoGrid('Before', beforePhotos, y);
+      y = await drawPhotoGrid('After',  afterPhotos,  y);
+      y += 16; // เว้นช่องว่างก่อนรายการถัดไป
+    }
+    pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
+  } finally {
+    btnPdf.disabled = false;
+    btnPdf.textContent = originalPdfLabel;
+  }
+};
+
+/* ============================================================
+   ส่วนที่ 7: Supabase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
+   ============================================================ */
+let sb = null; // Supabase client
+const BUCKET = 'scrap-photos';
+const TABLE_RECORDS = 'scrap_records';
+const TABLE_PHOTOS  = 'scrap_photos';
+
+function showLoginScreen(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appMain').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+}
+function showAppScreen(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appMain').style.display = 'block';
+  document.getElementById('headerActions').style.display = 'flex';
+  if (CLOUD_MODE) document.getElementById('btnLogout').style.display = 'inline-flex';
+}
+
+async function initSupabase(){
+  document.getElementById('headerActions').style.display = 'flex'; // เลือกภาษาใช้ได้ทั้ง 2 โหมด
+
+  if (!CLOUD_MODE) { showAppScreen(); return; } // โหมดเก็บในเครื่อง ไม่มีระบบ login
+
+  if (typeof window.supabase === 'undefined'){
+    toast(t('libSupabaseFail'), true);
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+  document.getElementById('modeBadge').textContent = t('modeCloud');
+  document.getElementById('storageNote').textContent = t('storageNoteCloud');
+  document.getElementById('searchRow').style.display = 'flex';
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { showAppScreen(); await refreshCloudRecords(); }
+  else { showLoginScreen(); }
+
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
+    if (event === 'SIGNED_OUT') { showLoginScreen(); }
+  });
+}
+
+// ฟอร์ม login ในหน้าเว็บ (แทนที่ prompt() เดิม) — ไม่มีปุ่ม cancel/ปิด
+// ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย ต่างจาก prompt() เดิมที่กด Cancel แล้วยังเห็นแอปอยู่ดี
+const btnLogin      = document.getElementById('btnLogin');
+const loginEmailEl  = document.getElementById('loginEmail');
+const loginPassEl   = document.getElementById('loginPassword');
+const loginErrorEl  = document.getElementById('loginError');
+
+async function doLogin(){
+  const email = loginEmailEl.value.trim();
+  const password = loginPassEl.value;
+  loginErrorEl.style.display = 'none';
+  if (!email || !password){
+    loginErrorEl.textContent = 'Please enter both email and password.';
+    loginErrorEl.style.display = 'block';
+    return;
+  }
+  btnLogin.disabled = true;
+  const original = btnLogin.textContent;
+  btnLogin.textContent = 'Signing in...';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  btnLogin.disabled = false;
+  btnLogin.textContent = original;
+  if (error){
+    loginErrorEl.textContent = 'Login failed: ' + error.message;
+    loginErrorEl.style.display = 'block';
+  } else {
+    loginPassEl.value = '';
+  }
+}
+btnLogin.onclick = doLogin;
+loginPassEl.onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
+loginEmailEl.onkeydown = (e) => { if (e.key === 'Enter') loginPassEl.focus(); };
+
+document.getElementById('btnLogout').onclick = async () => {
+  if (sb) await sb.auth.signOut();
+};
+
+function dataUrlToBlob(dataUrl){
+  const [head, b64] = dataUrl.split(',');
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// อัพโหลดรูปเดียวขึ้น Storage คืนค่า public URL
+async function uploadOne(itemCode, dataUrl, phase, idx){
+  const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
+  const blob = dataUrlToBlob(dataUrl);
+  const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
+async function uploadPhaseAll(itemCode, photos, phase){
+  return Promise.all(photos.map((dataUrl, idx) => uploadOne(itemCode, dataUrl, phase, idx)));
+}
+
+// บันทึก 1 รายการ (record) + รูปทั้งหมด (photos) ตามโครงสร้าง 1-to-many
+// scrap_records (1 แถวต่อ 1 ครั้งที่บันทึก) → scrap_photos (หลายแถวต่อ 1 record)
+//
+// หมายเหตุลำดับการทำงาน: insert แถว record ก่อน แล้วค่อยอัปโหลดรูป —
+// เดิมอัปโหลดรูปก่อน ถ้า insert record ล้มเหลว (เช่น permission ผิดตอน setup)
+// รูปจะขึ้น Storage ค้างเป็น orphan ไฟล์โดยไม่มี record อ้างอิงเลย
+// สลับลำดับแบบนี้ ถ้าพลาดตรงไหนจะเห็น record ตั้งแต่ขั้นแรกเสมอ ตรวจสอบ/แก้ไขทีหลังง่ายกว่า
+async function uploadToCloud(record){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) throw new Error('Please sign in first');
+
+  const status = (record.before.length > 0 && record.after.length > 0) ? 'complete' : 'partial';
+  const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
+    item_code: record.code,
+    status,
+    created_by: user.id,
+    created_by_email: user.email
+  }).select().single();
+  if (recErr) throw recErr;
+
+  const [beforeUrls, afterUrls] = await Promise.all([
+    uploadPhaseAll(record.code, record.before, 'before'),
+    uploadPhaseAll(record.code, record.after,  'after')
+  ]);
+
+  const photoRows = [
+    ...beforeUrls.map(url => ({ record_id: inserted.id, phase: 'before', photo_url: url })),
+    ...afterUrls.map(url  => ({ record_id: inserted.id, phase: 'after',  photo_url: url }))
+  ];
+  if (photoRows.length > 0){
+    const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
+    if (photoErr) throw photoErr;
+  }
+}
+
+initSupabase().catch(e => {
+  toast(t('supabaseConnectFail', { err: e.message }), true);
+});
 </script>
 </body>
 </html>
