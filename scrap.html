@@ -1000,7 +1000,8 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
     // วางรูปเป็นกริด รักษาสัดส่วนภาพจริง (contain ภายในกรอบ THUMB x THUMB แทนการยืดเป็นสี่เหลี่ยมจัตุรัส)
     // รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
-    // หมายเหตุ: จัดรูปให้ชิดขอบบนของกรอบ (ไม่ centered แนวตั้ง) รูปแนวนอน/wide จะได้ไม่ลอยห่างจาก label ก่อน/หลัง
+    // หมายเหตุ: จัดรูปให้ชิดขอบบนของกรอบ (ไม่ centered แนวตั้ง) + ขยับ y ลงตาม "ความสูงจริง" ของรูปที่สูงสุดในแถวนั้น
+    // (ไม่ใช่เผื่อเต็ม THUMB เสมอ) กันรูปแนวนอน/wide เหลือพื้นที่ว่างเยอะก่อนขึ้นหัวข้อถัดไป
     async function drawPhotoGrid(label, photoDataUrls, startY){
       let yy = startY;
       pdf.setFontSize(10); pdf.setTextColor(90);
@@ -1009,9 +1010,10 @@ document.getElementById('btnExportPdf').onclick = async () => {
       if (photoDataUrls.length === 0){ yy += 14; return yy; }
 
       let col = 0;
+      let rowMaxH = 0; // ความสูงจริงของรูปที่สูงสุดในแถวปัจจุบัน
       for (const dataUrl of photoDataUrls){
-        if (col === 0) yy += 4;
-        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; }
+        if (col === 0) { yy += 4; rowMaxH = 0; }
+        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; rowMaxH = 0; }
         const x = 40 + col * (THUMB + GAP);
         try {
           const { w, h } = await getImageSize(dataUrl);
@@ -1019,11 +1021,12 @@ document.getElementById('btnExportPdf').onclick = async () => {
           const dw = w * scale, dh = h * scale;
           const dx = x + (THUMB - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง (กันรูป wide ลอยห่างจาก label)
           pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
+          rowMaxH = Math.max(rowMaxH, dh);
         } catch(e){}
         col++;
-        if (col >= COLS){ col = 0; yy += THUMB + GAP; }
+        if (col >= COLS){ col = 0; yy += rowMaxH + GAP; }
       }
-      if (col !== 0) yy += THUMB + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลง
+      if (col !== 0) yy += rowMaxH + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลงตามความสูงจริง ไม่ใช่เผื่อเต็ม THUMB
       return yy;
     }
 
