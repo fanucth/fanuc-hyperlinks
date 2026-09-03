@@ -4,8 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.1</title>
-<!-- VERSION: v3.1 | Updated: 2026-09-02
+<title>Scrap Photo Capture - v3.2</title>
+<!-- VERSION: v3.2 | Updated: 2026-09-03
+     Changes (v3.2):
+       - เพิ่ม 2FA สำหรับ login: password + รหัสยืนยันทางอีเมล (email OTP)
+         ขั้นตอน: กรอก email+password → ตรวจผ่าน Edge Function "verify-password" (ไม่คืน session ให้ client)
+         → ถ้าถูก ส่งรหัส 6 หลักไปทางอีเมล (signInWithOtp) → กรอกรหัสยืนยัน (verifyOtp) ถึงจะได้ session จริง
+         ต้อง deploy Edge Function "verify-password" ที่ Supabase ก่อนใช้งานได้ (ดู DEPLOYMENT.md)
      Changes (v3.1):
        - ความปลอดภัย: bucket scrap-photos เปลี่ยนจาก Public เป็น Private
          รูปทั้งหมด (ตาราง modal ดูรูป + export PDF) แสดงผ่าน Signed URL ชั่วคราว (หมดอายุใน 1 ชม.)
@@ -133,7 +138,7 @@
 <header>
   <div class="header-row">
     <div>
-      <h1>📦 Scrap Photo Capture <span class="tag">v3.1</span></h1>
+      <h1>📦 Scrap Photo Capture <span class="tag">v3.2</span></h1>
       <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
       <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
     </div>
@@ -153,13 +158,29 @@
 <div class="login-overlay" id="loginScreen">
   <div class="login-box">
     <h2>📦 Scrap Photo Capture</h2>
-    <p class="login-sub">Sign in to continue</p>
-    <p class="login-error" id="loginError" style="display:none;"></p>
-    <label for="loginEmail">Email</label>
-    <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
-    <label for="loginPassword">Password</label>
-    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
-    <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
+
+    <!-- ขั้นที่ 1: email + password -->
+    <div id="loginStepPassword">
+      <p class="login-sub">Sign in to continue</p>
+      <p class="login-error" id="loginError" style="display:none;"></p>
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+      <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
+    </div>
+
+    <!-- ขั้นที่ 2: กรอกรหัสจากอีเมล (2FA) — โผล่หลังจาก password ถูกต้องเท่านั้น
+         หมายเหตุ: session จริงจะถูกออกให้ก็ต่อเมื่อ verifyOtp() สำเร็จเท่านั้น (ดูคอมเมนต์ที่ doLogin/doVerifyOtp) -->
+    <div id="loginStepOtp" style="display:none;">
+      <p class="login-sub">Enter the 6-digit code sent to <b id="otpEmailLabel"></b></p>
+      <p class="login-error" id="otpError" style="display:none;"></p>
+      <label for="loginOtp">Verification code</label>
+      <input type="text" id="loginOtp" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+      <button class="btn btn-primary" id="btnVerifyOtp" style="margin-top:6px;">Verify</button>
+      <button class="btn btn-secondary" id="btnResendOtp" style="margin-top:8px;">Resend code</button>
+      <button class="btn-logout" id="btnBackToPassword" style="width:100%;margin-top:8px;">‹ Back</button>
+    </div>
   </div>
 </div>
 
@@ -1136,17 +1157,50 @@ async function initSupabase(){
 
   sb.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
-    if (event === 'SIGNED_OUT') { showLoginScreen(); }
+    if (event === 'SIGNED_OUT') { resetLoginToStep1(); showLoginScreen(); }
   });
 }
 
-// ฟอร์ม login ในหน้าเว็บ (แทนที่ prompt() เดิม) — ไม่มีปุ่ม cancel/ปิด
-// ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย ต่างจาก prompt() เดิมที่กด Cancel แล้วยังเห็นแอปอยู่ดี
+/* ============================================================
+   ฟอร์ม login แบบ 2 ขั้นตอน (2FA: password + email code) — ไม่มีปุ่ม cancel/ปิด
+   ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย
+
+   ขั้นตอนความปลอดภัย (สำคัญ: ทำไมต้องผ่าน Edge Function แทนเช็ค password ตรงๆ ที่ client)
+   1) ส่ง email+password ไปให้ Edge Function "verify-password" ตรวจสอบฝั่งเซิร์ฟเวอร์
+      Edge Function จะไม่คืน session ใดๆ กลับมาเลย แค่ตอบ ok:true/false เท่านั้น
+      (ถ้าเช็คตรงๆ ที่ client ด้วย signInWithPassword จะได้ session ใช้งานได้ทันที
+       กลายเป็นว่ามี password ถูกก็เข้าได้เลยผ่าน API ตรงๆ ข้ามขั้นตอนอีเมลไป ไม่ใช่ 2FA จริง)
+   2) ถ้า password ถูก → เรียก signInWithOtp() ส่งรหัส 6 หลักไปทางอีเมล (shouldCreateUser:false
+      กันไม่ให้สร้าง user ใหม่อัตโนมัติถ้า email ไม่ตรงกับใครในระบบ)
+   3) user กรอกรหัสจากอีเมล → verifyOtp() เท่านั้นที่จะออก session จริงให้ (ระบบเดิม onAuthStateChange
+      ที่ดักฟัง SIGNED_IN อยู่แล้วจะทำงานต่อเองตรงนี้ ไม่ต้องเรียกอะไรเพิ่ม)
+   ============================================================ */
+const VERIFY_PASSWORD_URL = `${SUPABASE_CONFIG.url}/functions/v1/verify-password`;
+
+const loginStepPassword = document.getElementById('loginStepPassword');
+const loginStepOtp      = document.getElementById('loginStepOtp');
 const btnLogin      = document.getElementById('btnLogin');
 const loginEmailEl  = document.getElementById('loginEmail');
 const loginPassEl   = document.getElementById('loginPassword');
 const loginErrorEl  = document.getElementById('loginError');
+const otpEmailLabel = document.getElementById('otpEmailLabel');
+const loginOtpEl    = document.getElementById('loginOtp');
+const otpErrorEl    = document.getElementById('otpError');
+const btnVerifyOtp  = document.getElementById('btnVerifyOtp');
+const btnResendOtp  = document.getElementById('btnResendOtp');
+const btnBackToPassword = document.getElementById('btnBackToPassword');
 
+let pendingLoginEmail = ''; // เก็บ email ระหว่างรอกรอกรหัส OTP (ขั้นที่ 2)
+
+function resetLoginToStep1(){
+  loginStepOtp.style.display = 'none';
+  loginStepPassword.style.display = 'block';
+  loginOtpEl.value = '';
+  otpErrorEl.style.display = 'none';
+  pendingLoginEmail = '';
+}
+
+// ขั้นที่ 1: ตรวจ email+password ผ่าน Edge Function (ไม่ได้ session ตรงนี้)
 async function doLogin(){
   const email = loginEmailEl.value.trim();
   const password = loginPassEl.value;
@@ -1159,19 +1213,106 @@ async function doLogin(){
   btnLogin.disabled = true;
   const original = btnLogin.textContent;
   btnLogin.textContent = 'Signing in...';
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  btnLogin.disabled = false;
-  btnLogin.textContent = original;
-  if (error){
-    loginErrorEl.textContent = 'Login failed: ' + error.message;
-    loginErrorEl.style.display = 'block';
-  } else {
+
+  try {
+    const res = await fetch(VERIFY_PASSWORD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const result = await res.json();
+
+    if (!result.ok){
+      loginErrorEl.textContent = 'Login failed: ' + (result.error || 'Invalid email or password');
+      loginErrorEl.style.display = 'block';
+      return;
+    }
+
+    // password ถูกต้อง → ส่งรหัสยืนยันไปที่อีเมล (ยังไม่ได้ session ใดๆ จนกว่าจะ verifyOtp สำเร็จ)
+    const { error: otpErr } = await sb.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }
+    });
+    if (otpErr){
+      loginErrorEl.textContent = 'Could not send verification code: ' + otpErr.message;
+      loginErrorEl.style.display = 'block';
+      return;
+    }
+
+    pendingLoginEmail = email;
+    otpEmailLabel.textContent = email;
     loginPassEl.value = '';
+    loginStepPassword.style.display = 'none';
+    loginStepOtp.style.display = 'block';
+    loginOtpEl.focus();
+  } catch (e) {
+    loginErrorEl.textContent = 'Login failed: ' + e.message;
+    loginErrorEl.style.display = 'block';
+  } finally {
+    btnLogin.disabled = false;
+    btnLogin.textContent = original;
   }
 }
+
+// ขั้นที่ 2: ยืนยันรหัสจากอีเมล — ผ่านตรงนี้เท่านั้นถึงจะได้ session จริง
+async function doVerifyOtp(){
+  const code = loginOtpEl.value.trim();
+  otpErrorEl.style.display = 'none';
+  if (!code){
+    otpErrorEl.textContent = 'Please enter the code from your email.';
+    otpErrorEl.style.display = 'block';
+    return;
+  }
+  btnVerifyOtp.disabled = true;
+  const original = btnVerifyOtp.textContent;
+  btnVerifyOtp.textContent = 'Verifying...';
+
+  const { error } = await sb.auth.verifyOtp({ email: pendingLoginEmail, token: code, type: 'email' });
+
+  btnVerifyOtp.disabled = false;
+  btnVerifyOtp.textContent = original;
+
+  if (error){
+    otpErrorEl.textContent = 'Verification failed: ' + error.message;
+    otpErrorEl.style.display = 'block';
+  }
+  // สำเร็จ: ไม่ต้องทำอะไรต่อ — onAuthStateChange('SIGNED_IN') ที่ดักฟังอยู่แล้วจะพาเข้าแอปเอง
+}
+
+let resendCooldown = false;
+async function doResendOtp(){
+  if (resendCooldown || !pendingLoginEmail) return;
+  resendCooldown = true;
+  const original = btnResendOtp.textContent;
+  let secondsLeft = 60; // ตรงกับ cooldown ฝั่ง Supabase (ขอ OTP ซ้ำได้ทุก 60 วิ)
+  btnResendOtp.disabled = true;
+  const { error } = await sb.auth.signInWithOtp({
+    email: pendingLoginEmail,
+    options: { shouldCreateUser: false }
+  });
+  if (error){
+    otpErrorEl.textContent = 'Could not resend code: ' + error.message;
+    otpErrorEl.style.display = 'block';
+  }
+  const timer = setInterval(() => {
+    secondsLeft--;
+    btnResendOtp.textContent = `Resend code (${secondsLeft}s)`;
+    if (secondsLeft <= 0){
+      clearInterval(timer);
+      btnResendOtp.disabled = false;
+      btnResendOtp.textContent = original;
+      resendCooldown = false;
+    }
+  }, 1000);
+}
+
 btnLogin.onclick = doLogin;
 loginPassEl.onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
 loginEmailEl.onkeydown = (e) => { if (e.key === 'Enter') loginPassEl.focus(); };
+btnVerifyOtp.onclick = doVerifyOtp;
+loginOtpEl.onkeydown = (e) => { if (e.key === 'Enter') doVerifyOtp(); };
+btnResendOtp.onclick = doResendOtp;
+btnBackToPassword.onclick = resetLoginToStep1; // แค่กลับไปกรอก email/password ใหม่ ไม่ใช่ทางลัดเข้าแอป
 
 document.getElementById('btnLogout').onclick = async () => {
   if (sb) await sb.auth.signOut();
