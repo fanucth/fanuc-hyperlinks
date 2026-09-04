@@ -11,9 +11,12 @@
      DB / RLS / RPC setup: V:\IT\Survey\SUPABASE_SETUP.sql
 
      ไฟล์เดียว 3 โหมด:
-       - Customer  : survey.html?t=<token>   (จาก QR, ไม่ต้อง login)
+       - Customer  : survey.html?t=<token>   (จาก QR, ไม่ต้อง login) — โชว์รูป+ชื่อช่าง แล้วให้ตอบ 5 ข้อ + เซ็น
        - Engineer  : survey.html             (login -> กรอกเลข report -> โชว์ QR)
        - Dashboard : survey.html             (login ด้วย email ที่อยู่ใน EXEC_ALLOWLIST)
+
+     รูปช่าง: เก็บใน Supabase Storage bucket "engineer-photos" (public), ชื่อไฟล์อยู่ใน engineers.photo_path
+              อัปโหลดผ่าน bulk_add_engineers.mjs (คอลัมน์ photo ใน CSV) หรือ Storage UI
 
      สถานะ 2026-09-03: เทสต์ end-to-end ผ่านแล้ว (ช่างสร้าง QR -> ลูกค้าตอบ+เซ็น -> dashboard เห็นผล)
      Supabase project "survey" (ref soupmzzqsrwfnqmxevlg) ตั้งค่าครบ
@@ -66,9 +69,11 @@
   #sigPadWrap{border:2px dashed var(--line);border-radius:12px;background:#fff;position:relative;}
   #sigPad{width:100%;height:180px;display:block;touch-action:none;}
   .sig-clear{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 8px;cursor:pointer;}
-  .eng-info{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:16px;}
+  .eng-info{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px;}
   .eng-info .name{font-size:16px;font-weight:700;}
   .eng-info .meta{font-size:12.5px;color:var(--sub);margin-top:3px;}
+  #ciPhoto{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:2px solid var(--line);background:var(--card);}
+  #ciPhoto[hidden]{display:none;}
   #qrBox{background:#fff;padding:16px;border-radius:14px;display:inline-block;margin:6px auto 12px;}
   #qrBox img,#qrBox canvas{display:block;}
   .qr-wrap{text-align:center;}
@@ -162,8 +167,11 @@
 
     <div id="custForm" class="hidden">
       <div class="eng-info">
-        <div class="name" id="ciName">—</div>
-        <div class="meta" id="ciMeta">—</div>
+        <img id="ciPhoto" alt="" hidden>
+        <div>
+          <div class="name" id="ciName">—</div>
+          <div class="meta" id="ciMeta">—</div>
+        </div>
       </div>
 
       <div class="card">
@@ -547,6 +555,15 @@ function renderEngInfo(){
   if (CUST_INFO.department) bits.push(CUST_INFO.department);
   if (CUST_INFO.years_experience != null) bits.push(t('yrsExp', { n: CUST_INFO.years_experience }));
   $('ciMeta').textContent = bits.join(' · ');
+  const img = $('ciPhoto');
+  if (CUST_INFO.photo_path) {
+    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${CUST_INFO.photo_path}`;
+    img.alt = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
+    img.hidden = false;
+    img.onerror = () => { img.hidden = true; };   // ไม่มีรูป/โหลดไม่ได้ ก็ซ่อนไป
+  } else {
+    img.hidden = true;
+  }
 }
 
 async function startCustomer(){
