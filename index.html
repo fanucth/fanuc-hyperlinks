@@ -8,7 +8,7 @@
     <style>
         /* --- ตั้งค่าพื้นฐาน --- */
         :root {
-
+a
 
             --main-bg: #f8fafc;
             --accent-color: #3b82f6;
@@ -417,11 +417,96 @@
                 font-size: 0.85rem;
             }
         }
+
+        /* --- External Access Announcement Banner --- */
+        body.has-ext-banner { padding-top: 56px; box-sizing: border-box; }
+        @media (max-width: 576px) { body.has-ext-banner { padding-top: 88px; } }
+
+        @keyframes extBannerGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes extBannerPop {
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes extBannerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.18); }
+        }
+        .ext-banner {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            background: linear-gradient(270deg, #FFD702, #ffe45c, #FFD702, #C32C30);
+            background-size: 400% 400%;
+            animation: extBannerGradient 8s ease infinite, extBannerPop 0.5s ease;
+            color: #000; box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+            padding: 9px 44px 9px 16px;
+        }
+        .ext-banner .eb-inner {
+            max-width: 780px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; flex-wrap: wrap; text-align: center;
+        }
+        .ext-banner .eb-icon {
+            font-size: 1.25rem; display: inline-block;
+            animation: extBannerPulse 1.6s ease-in-out infinite;
+        }
+        .ext-banner .eb-text { font-size: 0.83rem; line-height: 1.35; font-weight: 600; }
+        .ext-banner .eb-text .eb-jp { display: block; font-weight: 500; opacity: 0.85; font-size: 0.76rem; margin-top: 1px; }
+        .ext-banner .eb-text .eb-url { color: #C32C30; font-weight: 800; }
+        .ext-banner a.eb-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #000; color: #fff !important;
+            padding: 6px 15px; border-radius: 20px; font-size: 0.78rem;
+            font-weight: 700; text-decoration: none; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.15s ease;
+        }
+        .ext-banner a.eb-btn:hover { transform: scale(1.06); color: #fff; }
+        .ext-banner .eb-close {
+            position: absolute; top: 50%; right: 12px; transform: translateY(-50%);
+            cursor: pointer; background: rgba(0,0,0,0.12); border: none;
+            width: 22px; height: 22px; border-radius: 50%;
+            font-size: 0.78rem; color: #000; line-height: 1;
+        }
+        .ext-banner .eb-close:hover { background: rgba(0,0,0,0.25); }
+        @media (max-width: 576px) {
+            .ext-banner .eb-inner { flex-direction: column; gap: 5px; }
+        }
     </style>
 </head>
 <body>
 
-
+<div class="ext-banner" id="extAccessBanner">
+    <button class="eb-close" onclick="dismissExtBanner()" title="ปิด / 閉じる">✕</button>
+    <div class="eb-inner">
+        <span class="eb-icon">🌐</span>
+        <div class="eb-text">
+            <span class="eb-th">ตอนนี้เข้าใช้งานจากภายนอกบริษัทได้แล้ว ผ่าน <span class="eb-url">one.fanucth.co.th</span></span>
+            <span class="eb-jp">社外からもアクセス可能になりました：<span class="eb-url">one.fanucth.co.th</span></span>
+        </div>
+        <a href="https://one.fanucth.co.th/" target="_blank" class="eb-btn">เปิดลิงก์ / 開く <span>↗</span></a>
+    </div>
+</div>
+<script>
+    (function() {
+        try {
+            if (localStorage.getItem('ext_access_banner_dismissed') === 'true') {
+                document.getElementById('extAccessBanner').style.display = 'none';
+            } else {
+                document.body.classList.add('has-ext-banner');
+            }
+        } catch (e) {
+            document.body.classList.add('has-ext-banner');
+        }
+    })();
+    function dismissExtBanner() {
+        try { localStorage.setItem('ext_access_banner_dismissed', 'true'); } catch (e) {}
+        document.getElementById('extAccessBanner').style.display = 'none';
+        document.body.classList.remove('has-ext-banner');
+    }
+</script>
 
 <main>
     <div class="top-bar">
@@ -550,7 +635,8 @@
 				</div>
 
 
-                <a href="https://one.fanucth.co.th/scrap.html" target="_blank" class="link-box"><span class="emoji-icon">♻️</span><span class="link-name">Scrapping</span></a>
+                <a href="https://one.fanucth.co.th/survey.html" target="_blank" class="link-box"><span class="emoji-icon">📝</span><span class="link-name">Customer Survey</span></a>
+                <a href="https://one.fanucth.co.th/scrap_scan_prototype.html" target="_blank" class="link-box"><span class="emoji-icon">♻️</span><span class="link-name">Scrapping</span></a>
                 <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
                 <a href="http://10.33.16.238/fanucthai" target="_blank" class="link-box"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
 <!--                 <a href="http://10.33.16.238/it/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a> -->
