@@ -1,789 +1,908 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
-<title>FTH Service Survey - v0.1</title>
-<!-- VERSION: v0.1 (scaffold) | Created: 2026-09-03
-     FTH Service Quality & CS Evaluation Survey
-     Design spec: V:\IT\Survey\SURVEY_SYSTEM_DESIGN.md
-     DB / RLS / RPC setup: V:\IT\Survey\SUPABASE_SETUP.sql
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FTH One Links</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* --- ตั้งค่าพื้นฐาน --- */
+        :root {
+a
 
-     ไฟล์เดียว 3 โหมด:
-       - Customer  : survey.html?t=<token>   (จาก QR, ไม่ต้อง login) — โชว์รูป+ชื่อช่าง แล้วให้ตอบ 5 ข้อ + เซ็น
-       - Engineer  : survey.html             (login -> กรอกเลข report -> โชว์ QR)
-       - Dashboard : survey.html             (login ด้วย email ที่อยู่ใน EXEC_ALLOWLIST)
+            --main-bg: #f8fafc;
+            --accent-color: #3b82f6;
+            --text-color: #334155;
+            --success-color: #10b981;
+        }
 
-     รูปช่าง: เก็บใน Supabase Storage bucket "engineer-photos" (public), ชื่อไฟล์อยู่ใน engineers.photo_path
-              อัปโหลดผ่าน bulk_add_engineers.mjs (คอลัมน์ photo ใน CSV) หรือ Storage UI
+        body {
+            font-family: 'Sarabun', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--main-bg);
+            overflow: hidden;
+        }
 
-     สถานะ 2026-09-03: เทสต์ end-to-end ผ่านแล้ว (ช่างสร้าง QR -> ลูกค้าตอบ+เซ็น -> dashboard เห็นผล)
-     Supabase project "survey" (ref soupmzzqsrwfnqmxevlg) ตั้งค่าครบ
 
-     เหลือทำ:
-       - import รายชื่อ engineer จริงทั้งชุด (ใช้ bulk_add_engineers.mjs) — ตอนนี้มีแต่ wisawa (เทสต์)
-       - K.Yamamoto เช็ค/แก้ข้อความคำถาม 5 ข้อในตัวแปร QUESTIONS (ตอนนี้ draft จากชื่อคอลัมน์ spec)
-         แก้ได้ทีหลังไม่กระทบ schema
--->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  :root{
-    --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
-    --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:'Segoe UI',Tahoma,'Noto Sans Thai','Noto Sans JP',Arial,sans-serif;background:var(--bg);color:var(--text);}
-  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 82%,transparent);z-index:5;}
-  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:560px;margin:0 auto;}
-  header h1{font-size:17px;margin:0 0 2px;}
-  header p{margin:0;color:var(--sub);font-size:12px;}
-  .header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
-  .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
-  .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
-  main{max-width:560px;margin:0 auto;padding:8px 14px 90px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
-  .card h2{font-size:14px;margin:0 0 12px;color:var(--accent);letter-spacing:.3px;}
-  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{
-    width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:12px;}
-  textarea{resize:vertical;min-height:64px;font-family:inherit;line-height:1.5;margin-bottom:0;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
-  .btn-primary{background:var(--accent);color:#1a1500;}
-  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
-  .hidden{display:none!important;}
-  .banner{background:rgba(255,90,60,.12);border:1px solid var(--accent2);color:#ffd9d1;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.5;}
-  .q-block{margin-bottom:18px;}
-  .q-title{font-size:14px;margin-bottom:8px;line-height:1.4;}
-  .q-num{color:var(--accent);font-weight:700;margin-right:6px;}
-  .emoji-row{display:flex;gap:6px;}
-  .emoji-btn{flex:1;background:var(--card2);border:2px solid var(--line);border-radius:12px;padding:10px 4px 8px;cursor:pointer;text-align:center;transition:.12s;}
-  .emoji-btn .e{font-size:26px;display:block;line-height:1;}
-  .emoji-btn .l{font-size:9.5px;color:var(--sub);display:block;margin-top:5px;line-height:1.2;}
-  .emoji-btn.sel{border-color:var(--accent);background:rgba(255,180,0,.14);}
-  .emoji-btn.sel .l{color:var(--text);}
-  #sigPadWrap{border:2px dashed var(--line);border-radius:12px;background:#fff;position:relative;}
-  #sigPad{width:100%;height:180px;display:block;touch-action:none;}
-  .sig-clear{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 8px;cursor:pointer;}
-  .eng-info{background:var(--card2);border-radius:14px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;}
-  .eng-info .name{font-size:19px;font-weight:700;}
-  .eng-info .meta{font-size:13px;color:var(--sub);margin-top:4px;}
-  #ciPhoto{width:150px;height:150px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:3px solid var(--line);background:var(--card);}
-  #ciPhoto[hidden]{display:none;}
-  @media(max-width:400px){ #ciPhoto{width:120px;height:120px;} .eng-info{gap:14px;padding:14px;} }
-  #qrBox{background:#fff;padding:16px;border-radius:14px;display:inline-block;margin:6px auto 12px;}
-  #qrBox img,#qrBox canvas{display:block;}
-  .qr-wrap{text-align:center;}
-  .linktext{word-break:break-all;font-size:11.5px;color:var(--sub);background:var(--card2);border-radius:8px;padding:8px 10px;margin-bottom:8px;}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
-  th{color:var(--sub);font-weight:600;font-size:10.5px;text-transform:uppercase;}
-  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;}
-  .pill-used{background:rgba(61,220,132,.15);color:var(--ok);}
-  .pill-wait{background:rgba(255,180,0,.15);color:var(--accent);}
-  .pill-exp{background:rgba(255,90,60,.15);color:var(--accent2);}
-  .row2{display:flex;gap:8px;}
-  .row2>*{flex:1;}
-  .muted{color:var(--sub);font-size:12px;text-align:center;padding:16px 0;}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:92%;text-align:center;}
-  .toast.show{opacity:1;}
-  .toast.err{background:var(--accent2);color:#fff;}
-  .thanks{text-align:center;padding:40px 10px;}
-  .thanks .big{font-size:52px;}
-  .thanks h2{color:var(--ok);border:none;font-size:20px;margin:10px 0 6px;}
-</style>
+        /* --- Main Content --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .top-bar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 24px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1000;
+            position: sticky;
+            top: 0;
+            gap: 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            width: 100%;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 13px 105px 13px 48px;
+            border-radius: 16px;
+            border: 2.5px solid #ffcc00;
+            background: linear-gradient(135deg, #fffbeb, #fef9c3);
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 15px rgba(255, 204, 0, 0.15);
+        }
+
+        .search-input:focus {
+            transform: translateY(-1px);
+            border-color: #3b82f6;
+            background: #ffffff;
+            box-shadow: 0 12px 25px rgba(59, 130, 246, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .search-shortcut-badge {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: none;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+
+        .search-wrapper:focus-within .search-shortcut-badge {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.25);
+        }
+
+        .search-badge {
+            background: #0f172a;
+            color: #ffffff;
+            padding: 8px 14px;
+            border-radius: 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            animation: live-blink 1.5s infinite;
+        }
+
+        @keyframes live-blink {
+            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+            70% { transform: scale(1.3); opacity: 0.4; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .btn-home {
+            padding: 10px 16px;
+            border-radius: 14px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Sarabun';
+            font-weight: 600;
+            color: var(--text-color);
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .btn-home:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #3b82f6;
+            font-size: 1.15rem;
+            pointer-events: none;
+            transition: all 0.2s;
+        }
+
+        .search-wrapper:focus-within .search-icon {
+            color: #1d4ed8;
+            transform: translateY(-50%) scale(1.08);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .section-wrapper { margin-bottom: 30px; }
+
+        .section-title {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+
+        .grid-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
+            gap: 12px;
+        }
+
+        .link-box {
+            background: white;
+            padding: 15px 5px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s;
+            cursor: pointer;
+            position: relative;
+            min-height: 90px;
+        }
+
+        .link-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            z-index: 50;
+        }
+
+        .emoji-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .link-name {
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-align: center;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            width: 100%;
+            padding: 0 5px;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 95%; 
+            left: 0;
+            width: 200px; 
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            overflow: visible; 
+            z-index: 101;
+        }
+
+        .link-box:hover .dropdown-menu,
+        .link-box.active .dropdown-menu {
+            display: block;
+        }
+
+        .link-box.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .sub-link {
+            display: block;
+            padding: 8px 12px;
+            text-align: left;
+            text-decoration: none;
+            color: #334155;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .sub-link:hover { background-color: #eff6ff; color: var(--accent-color); }
+        .sub-link:last-child { border-bottom: none; }
+
+        /* --- VPN Copy Styling --- */
+        .vpn-copy-container {
+            padding: 10px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .vpn-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .copy-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            transition: all 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+            word-break: break-all;
+            text-align: left;
+            font-family: 'Sarabun', sans-serif;
+            outline: none;
+        }
+        .copy-btn:hover {
+            background: #f1f5f9;
+            border-color: var(--accent-color);
+        }
+
+        /* --- Hover Info Box --- */
+        .hover-wrapper { position: relative; }
+        .copy-box {
+            display: none;
+            position: absolute;
+            left: 100%;
+            top: -50px;
+            width: 250px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 5px 5px 20px rgba(0,0,0,0.2);
+            z-index: 9999;
+            font-size: 0.9rem;
+            color: #334155;
+            text-align: left;
+        }
+        .copy-box::before {
+            content: "";
+            position: absolute;
+            top: 60px;
+            right: 100%; 
+            border-width: 8px;
+            border-style: solid;
+            border-color: transparent #ffffff transparent transparent;
+        }
+        .hover-wrapper:hover .copy-box { display: block; }
+
+        footer {
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 0.75rem;
+            margin-top: 30px;
+            padding-bottom: 20px;
+        }
+        mark { background: yellow; color: black; border-radius: 2px; }
+
+        /* --- Responsive Styles for Mobile Layout --- */
+        @media (max-width: 768px) {
+            .top-bar {
+                padding: 10px 14px;
+                gap: 8px;
+            }
+
+            .search-container {
+                gap: 8px;
+            }
+
+            /* Hide the Intelligent Search badge on mobile to free up space */
+            .search-badge {
+                display: none;
+            }
+
+            /* Hide shortcut badge on mobile since there are no physical keyboard shortcuts */
+            .search-shortcut-badge {
+                display: none;
+            }
+
+            /* Optimize input sizing and typing padding on mobile */
+            .search-input {
+                padding: 10px 14px 10px 42px;
+                font-size: 14px;
+                border-radius: 12px;
+                border-width: 2px;
+            }
+
+            .search-icon {
+                left: 14px;
+                font-size: 1rem;
+            }
+
+            .btn-home {
+                padding: 8px 12px;
+                border-radius: 12px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* --- External Access Announcement Banner --- */
+        body.has-ext-banner { padding-top: 56px; box-sizing: border-box; }
+        @media (max-width: 576px) { body.has-ext-banner { padding-top: 88px; } }
+
+        @keyframes extBannerGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes extBannerPop {
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes extBannerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.18); }
+        }
+        .ext-banner {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            background: linear-gradient(270deg, #FFD702, #ffe45c, #FFD702, #C32C30);
+            background-size: 400% 400%;
+            animation: extBannerGradient 8s ease infinite, extBannerPop 0.5s ease;
+            color: #000; box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+            padding: 9px 44px 9px 16px;
+        }
+        .ext-banner .eb-inner {
+            max-width: 780px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; flex-wrap: wrap; text-align: center;
+        }
+        .ext-banner .eb-icon {
+            font-size: 1.25rem; display: inline-block;
+            animation: extBannerPulse 1.6s ease-in-out infinite;
+        }
+        .ext-banner .eb-text { font-size: 0.83rem; line-height: 1.35; font-weight: 600; }
+        .ext-banner .eb-text .eb-jp { display: block; font-weight: 500; opacity: 0.85; font-size: 0.76rem; margin-top: 1px; }
+        .ext-banner .eb-text .eb-url { color: #C32C30; font-weight: 800; }
+        .ext-banner a.eb-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #000; color: #fff !important;
+            padding: 6px 15px; border-radius: 20px; font-size: 0.78rem;
+            font-weight: 700; text-decoration: none; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.15s ease;
+        }
+        .ext-banner a.eb-btn:hover { transform: scale(1.06); color: #fff; }
+        .ext-banner .eb-close {
+            position: absolute; top: 50%; right: 12px; transform: translateY(-50%);
+            cursor: pointer; background: rgba(0,0,0,0.12); border: none;
+            width: 22px; height: 22px; border-radius: 50%;
+            font-size: 0.78rem; color: #000; line-height: 1;
+        }
+        .ext-banner .eb-close:hover { background: rgba(0,0,0,0.25); }
+        @media (max-width: 576px) {
+            .ext-banner .eb-inner { flex-direction: column; gap: 5px; }
+        }
+    </style>
 </head>
 <body>
 
-<header>
-  <div class="header-row">
-    <div>
-      <h1 data-i18n="appTitle">FANUC Thai Service Survey</h1>
-      <p id="subLine" data-i18n="appSub">แบบสอบถามความพึงพอใจในการให้บริการ</p>
+<div class="ext-banner" id="extAccessBanner">
+    <button class="eb-close" onclick="dismissExtBanner()" title="ปิด / 閉じる">✕</button>
+    <div class="eb-inner">
+        <span class="eb-icon">🌐</span>
+        <div class="eb-text">
+            <span class="eb-th">ตอนนี้เข้าใช้งานจากภายนอกบริษัทได้แล้ว ผ่าน <span class="eb-url">one.fanucth.co.th</span></span>
+            <span class="eb-jp">社外からもアクセス可能になりました：<span class="eb-url">one.fanucth.co.th</span></span>
+        </div>
+        <a href="https://one.fanucth.co.th/" target="_blank" class="eb-btn">เปิดลิงก์ / 開く <span>↗</span></a>
     </div>
-    <div class="header-actions">
-      <select id="langSelect" class="lang-select" title="Language">
-        <option value="th">ไทย</option>
-        <option value="en">EN</option>
-        <option value="ja">日本語</option>
-      </select>
-      <button id="btnLogout" class="btn-logout hidden" data-i18n="logout">ออกจากระบบ</button>
-    </div>
-  </div>
-</header>
+</div>
+<script>
+    (function() {
+        try {
+            if (localStorage.getItem('ext_access_banner_dismissed') === 'true') {
+                document.getElementById('extAccessBanner').style.display = 'none';
+            } else {
+                document.body.classList.add('has-ext-banner');
+            }
+        } catch (e) {
+            document.body.classList.add('has-ext-banner');
+        }
+    })();
+    function dismissExtBanner() {
+        try { localStorage.setItem('ext_access_banner_dismissed', 'true'); } catch (e) {}
+        document.getElementById('extAccessBanner').style.display = 'none';
+        document.body.classList.remove('has-ext-banner');
+    }
+</script>
 
 <main>
-  <div id="cfgBanner" class="banner hidden"></div>
-
-  <!-- ============ LOGIN (engineer / exec) ============ -->
-  <section id="viewLogin" class="hidden">
-    <div class="card">
-      <h2 data-i18n="loginHead">เข้าสู่ระบบ (สำหรับพนักงาน)</h2>
-      <label data-i18n="email">อีเมล</label>
-      <input type="email" id="loginEmail" autocomplete="username" placeholder="name@fanucth.co.th">
-      <label data-i18n="password">รหัสผ่าน</label>
-      <input type="password" id="loginPass" autocomplete="current-password">
-      <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
-      <p class="muted" data-i18n="loginNote">ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย</p>
-    </div>
-  </section>
-
-  <!-- ============ ENGINEER: create QR ============ -->
-  <section id="viewEngineer" class="hidden">
-    <div class="card">
-      <h2 data-i18n="engHead">สร้าง QR สำหรับงานนี้</h2>
-      <p class="muted" id="engWho" style="text-align:left;padding:0 0 12px"></p>
-      <label data-i18n="srNo">Service Report No. (จากกระดาษ)</label>
-      <input type="text" id="srNo" autocapitalize="characters">
-      <label data-i18n="soNo">Service Order No. (จาก SAP BYD)</label>
-      <input type="text" id="soNo" autocapitalize="characters">
-      <button class="btn btn-primary" id="btnMakeQr" data-i18n="makeQr">สร้าง QR Code</button>
-    </div>
-
-    <div class="card qr-wrap hidden" id="qrCard">
-      <h2 data-i18n="qrHead">ให้ลูกค้าสแกน</h2>
-      <div id="qrBox"></div>
-      <div class="linktext" id="qrLink"></div>
-      <button class="btn btn-secondary" id="btnCopyLink" data-i18n="copyLink">คัดลอกลิงก์</button>
-      <div class="row2">
-        <button class="btn btn-secondary" id="btnCancelQr" data-i18n="cancelQr">ยกเลิก</button>
-        <button class="btn btn-secondary" id="btnNewJob" data-i18n="newJob">งานถัดไป</button>
-      </div>
-      <p class="muted" data-i18n="qrNote">QR นี้ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.</p>
-    </div>
-
-    <div class="card">
-      <h2 data-i18n="myJobs">งานของฉันวันนี้</h2>
-      <div id="engJobs"><p class="muted" data-i18n="loading">กำลังโหลด...</p></div>
-    </div>
-  </section>
-
-  <!-- ============ CUSTOMER: survey form ============ -->
-  <section id="viewCustomer" class="hidden">
-    <div id="custLoading" class="muted" data-i18n="checkingLink">กำลังตรวจสอบลิงก์...</div>
-
-    <div id="custForm" class="hidden">
-      <div class="eng-info">
-        <img id="ciPhoto" alt="" hidden>
-        <div>
-          <div class="name" id="ciName">—</div>
-          <div class="meta" id="ciMeta">—</div>
+    <div class="top-bar">
+        <div class="search-container">
+            <div class="search-badge">
+                <span class="live-dot"></span>
+                <span>Intelligent Search</span>
+            </div>
+            <button onclick="clearSearch()" class="btn-home" style="color: var(--accent-color); border-color: var(--accent-color);">
+                🔄 <span>Reset</span>
+            </button>
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="พิมพ์ชื่อเมนู หรือระบบที่ต้องการเพื่อค้นหาแบบเรียลไทม์ได้ทันที... (Search everything)" />
+                <div class="search-shortcut-badge">
+                    <span>LIVE SEARCH</span>
+                </div>
+            </div>
         </div>
-      </div>
+    </div>
 
-      <div class="card">
-        <h2 data-i18n="rateHead">โปรดให้คะแนนการบริการครั้งนี้</h2>
-        <div id="questions"></div>
-      </div>
+    <div class="content-area">
+        <div id="FHQ" class="section-wrapper">
+            <div class="section-title">
+                <img src="data:image/png;base64,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" alt="FHQ" style="height: 40px; margin-right: 10px; object-fit: contain;">
+                FHQ Links
+            </div>
+            <div class="grid-links">
+                <div class="link-box">
+                    <span class="emoji-icon">🟡</span> <span class="link-name">Newsletter ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="http://10.33.16.238/fth/Newsletter/Vol4.pdf" target="_blank" class="sub-link">Vol.4 Storage Media</a>
+                        <a href="http://10.33.16.238/fth/Newsletter/Vol3.pdf" target="_blank" class="sub-link">Vol.3 Password</a>
+                        <a href="http://10.33.16.238/fth/Newsletter/Vol2.pdf" target="_blank" class="sub-link">Vol.2 AI</a>
+                        <a href="http://10.33.16.238/fth/Newsletter/Vol1.pdf" target="_blank" class="sub-link">Vol.1 Social Eng</a>
+                    </div>
+                </div>
 
-      <div class="card">
-        <h2 data-i18n="commentHead">ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)</h2>
-        <textarea id="custComment" rows="3" maxlength="1000" data-i18n-ph="commentPh"></textarea>
-      </div>
+                <div class="link-box">
+                    <span class="emoji-icon">🟡</span> <span class="link-name">Service Sys.▼</span>
+                    <div class="dropdown-menu">
+                        <a href="https://ftdb.one.fanuc.com/sites/techdocs/common" target="_blank" class="sub-link">TechDocs</a>
+                        <a href="http://srsearch.one.fanuc.com/" target="_blank" class="sub-link">SR Search</a>
+                        <div class="hover-wrapper">
+                            <a href="http://do.all.fanuc.co.jp/fanuc/html5/login.html?" target="_blank" class="sub-link">Do!Book ℹ️</a>
+                            <div class="copy-box">
+                                <div style="font-weight: bold; color: #3b82f6;">Device Authorization:</div>
+                                ID: <b>APAC</b> | Pass: <b>MvMAKq85</b>
+                            </div>
+                        </div>
+                        <a href="https://alarmsearch.one.fanuc.com/Search.aspx" target="_blank" class="sub-link">Alarm & Parameter</a>
+                        <a href="http://dparts.one.fanuc.com/" target="_blank" class="sub-link">Digital Parts Manual</a>
+                        <a href="http://fhq00007e35.all.fanuc.co.jp/redmine/login" target="_blank" class="sub-link">IoT RedMine</a>
+                        <a href="https://www3.business.fanuc.co.jp/CNC/option/Overseas/socm01p01/" target="_blank" class="sub-link">Option</a>
+                        <a href="http://143.201.202.5/IFSS/ifcm01p01" target="_blank" class="sub-link">GSIS (Office)</a>
+                        <a href="http://gsis.one.fanuc.com/IFSS/ifcm01p01/" target="_blank" class="sub-link">GSIS (Outside)</a>
+                        <a href="https://bomgenerator.one.fanuc.com/bomgenerator/" target="_blank" class="sub-link">BOM GENERATOR</a>
+						<a href="https://ftp.one.fanuc.com/" target="_blank" class="sub-link">FTP of FANUC</a>		
+                    </div>
+                </div>
 
-      <div class="card">
-        <h2 data-i18n="sigHead">ลงลายมือชื่อลูกค้า</h2>
-        <div id="sigPadWrap">
-          <canvas id="sigPad"></canvas>
-          <button type="button" class="sig-clear" id="btnSigClear" data-i18n="clear">ล้าง</button>
+                <div class="link-box">
+                    <span class="emoji-icon">🟡</span> <span class="link-name">Sharepoint ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="https://fanuc.sharepoint.com/" target="_blank" class="sub-link">Main</a>
+                        <a href="https://fanuc-my.sharepoint.com/" target="_blank" class="sub-link">Own One-Drive</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-GlobalService/FSC/SitePages/Home.aspx" target="_blank" class="sub-link">FSC</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-GlobalService/SitePages/Home.aspx" target="_blank" class="sub-link">Global Service Site</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2020L0003/IA/IA_FTH2025/Shared%20Documents" target="_blank" class="sub-link">Internal Audit</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025B0002" target="_blank" class="sub-link">Information Security</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025F0001" target="_blank" class="sub-link">South East Asia</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025C0002/SitePages/Regulations-in-each.aspx" target="_blank" class="sub-link">Regulations in FTH</a>
+						<a href="https://fanuc.sharepoint.com/sites/FHQ-G-2025D0002" target="_blank" class="sub-link">FIELD system Basic Package Global Sales HUB</a>
+                    </div>
+                </div>
+
+                <div class="link-box">
+                    <span class="emoji-icon">🟡</span> <span class="link-name">IT Sharepoint ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018G0001/SitePages/Home.aspx" target="_blank" class="sub-link">GBDW</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018K0001/SitePages/Global-IT.aspx" target="_blank" class="sub-link">Global IT</a>
+                        <a href="https://fanuc-my.sharepoint.com/:p:/r/personal/tatebe_ryuto_fanuc_co_jp/_layouts/15/Doc.aspx?sourcedoc=%7BB1828016-93B1-494B-BB3D-D354DC9EB0E0%7D&amp;file=Fanuc_SiteSurvey_Vision_of_IT_V20260209.pptx&amp;action=edit&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: IT Strategy</a>
+                        <a href="https://fanuc.sharepoint.com/:x:/r/sites/FHQ-L-809/internal/_layouts/15/Doc.aspx?sourcedoc=%7BA98F9D03-4995-4B1B-BFBE-4C4E406436BF%7D&amp;file=Fanuc_SiteSurveySheet_V20260312_before.xlsx&amp;action=default&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: Fanuc SiteSurvey</a>
+                        <a href="https://fanuc.sharepoint.com/:x:/r/sites/FHQ-G-2018K0001/_layouts/15/Doc.aspx?sourcedoc=%7B833DD127-EF7B-4F2E-8F88-20E87222EB90%7D&amp;file=191015_GITC_FANUCGroup_ITServices.xlsx&amp;action=default&amp;mobileredirect=true" target="_blank" class="sub-link">IT Audit: ITServices</a>
+                        <a href="https://fanuc.sharepoint.com/:p:/r/teams/GCC2025_IT_Agenda_Proj_GLB/" target="_blank" class="sub-link">GCC IT Agenda</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2018K0001/Meetings/Forms/AllItems.aspx" target="_blank" class="sub-link">GITC Quarterly Meeting</a>
+                        <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2021J0001/Shared%20Documents/Forms/AllItems.aspx?viewpath=%2Fsites%2FFHQ%2DG%2D2021J0001%2FShared%20Documents%2FForms%2FAllItems%2Easpx" target="_blank" class="sub-link">PC Software Delivery</a>
+                    </div>
+                </div>
+
+                <a href="https://fanuc-jp-console.lrn.com/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">LRN Compliance</span></a>
+                <a href="https://fanuc.ws03-securityeducation.com/login" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">📖 eLearning</span></a>
+                <a href="http://10.36.1.12/prism/commond/default.aspx" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">PRISM</span></a>
+                <a href="http://10.36.1.12/PRBSSolution/prcm01p01/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Barcode System</span></a>
+                <a href="https://fanuc-inventory.syncroncloud.com/views/security/login/login.xhtml" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Syncron</span></a>
+				<a href="https://portal.office.com/account" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">MS365 Portal</span></a>
+                <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">GBDW Portal</span></a>
+            </div>
         </div>
-        <p class="muted" style="text-align:left;padding:8px 0 0" data-i18n="sigNote">เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา</p>
-      </div>
 
-      <button class="btn btn-primary" id="btnSubmitSurvey" data-i18n="submit">ส่งแบบสอบถาม</button>
-    </div>
+        <div id="FTH" class="section-wrapper">
+            <div class="section-title">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSD6eYyHKa_gtX-ukwoBmyOWkuASes2P_dCsw&s" alt="FTH" style="height: 60px; margin-right: 10px; object-fit: contain;">
+                FTH Links
+            </div>
+            <div class="grid-links">
+                <a href="https://fanucth.github.io/fanuc-hyperlinks/" target="_blank" class="link-box"><span class="emoji-icon">🌐</span><span class="link-name">Outside Link</span></a>
+				<a href="http://10.33.16.238/IT" target="_blank" class="link-box"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
+				<div class="link-box">
+					<img src="https://images.seeklogo.com/logo-png/37/1/tisco-logo-png_seeklogo-373898.png" alt="TISCO Logo" style="height: 40px; max-width: 45px; object-fit: contain; margin-bottom: 8px;">
+					<span class="link-name">TISCO ▼</span>
+					<div class="dropdown-menu">
+						<a href="https://www.ess-center.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); padding-bottom: 2px; display: flex; align-items: center; justify-content: space-between;">
+							<span>ESS (e-Pay Slip) 🌐</span>
+						</a>
+						<div style="padding: 2px 12px 8px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 6px; justify-content: flex-start;">
+							<span style="font-size: 0.72rem; color: #64748b; white-space: nowrap;">Company Code: <strong style="color: #1e293b; font-size: 0.75rem;">274</strong></span>
+							<button class="copy-btn" onclick="copyESSCode(this, '274')" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; width: auto; background: #f8fafc; border: 1px solid #cbd5e1; white-space: nowrap; color: #3b82f6;">
+								<span>📋 Copy</span>
+							</button>
+						</div>
+						<a href="https://pvd.tiscoasset.com/" target="_blank" class="sub-link" style="font-weight: bold; color: var(--accent-color); display: flex; align-items: center; justify-content: space-between;">
+							<span>Provident Fund 🌐</span>
+						</a>
+					</div>
+				</div>
 
-    <div id="custError" class="hidden">
-      <div class="card"><p class="muted" id="custErrorMsg"></p></div>
-    </div>
 
-    <div id="custThanks" class="hidden">
-      <div class="thanks">
-        <div class="big">🙏</div>
-        <h2 data-i18n="thanksHead">ขอบคุณสำหรับความคิดเห็น</h2>
-        <p class="muted" data-i18n="thanksBody">FANUC Thai จะนำไปพัฒนาการบริการต่อไป</p>
-      </div>
-    </div>
-  </section>
+                <a href="https://one.fanucth.co.th/survey.html" target="_blank" class="link-box"><span class="emoji-icon">📝</span><span class="link-name">Customer Survey</span></a>
+                <a href="https://one.fanucth.co.th/scrap_scan_prototype.html" target="_blank" class="link-box"><span class="emoji-icon">♻️</span><span class="link-name">Scrapping</span></a>
+                <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
+                <a href="http://10.33.16.238/fanucthai" target="_blank" class="link-box"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
+<!--                 <a href="http://10.33.16.238/it/tool/" target="_blank" class="link-box"><span class="emoji-icon">🧰</span><span class="link-name">Tool</span></a> -->
+                <a href="http://10.33.16.238/fth/PC_Software_Delivery.html" target="_blank" class="link-box"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
+                <a href="http://accountserver:8080/fanuc/authentication/" target="_blank" class="link-box"><span class="emoji-icon">📊</span><span class="link-name">Billing System</span></a>
+                <a href="https://10.33.16.238/fth/robot_dem.html" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">Robot System</span></a>
+				<a href="https://10.33.16.213/" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">ZDT</span></a>
+                <a href="https://aps1-vms.tplinkcloud.com/#/vms/video" target="_blank" class="link-box"><span class="emoji-icon">📹</span><span class="link-name">Robot CCTV</span></a>
 
-  <!-- ============ DASHBOARD (exec) ============ -->
-  <section id="viewDashboard" class="hidden">
-    <div class="card">
-      <h2 data-i18n="dashHead">ผลแบบสอบถาม</h2>
-      <div class="row2">
-        <div><label data-i18n="dateFrom">ตั้งแต่วันที่</label><input type="date" id="fFrom"></div>
-        <div><label data-i18n="dateTo">ถึงวันที่</label><input type="date" id="fTo"></div>
-      </div>
-      <label data-i18n="filterEngineer">วิศวกร</label>
-      <select id="fEngineer"><option value="">— ทั้งหมด —</option></select>
-      <div class="row2">
-        <button class="btn btn-primary" id="btnApplyFilter" data-i18n="apply">แสดงผล</button>
-        <button class="btn btn-secondary" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
-      </div>
+                <div class="link-box">
+                    <img src="https://ssl.jobcan.jp/favicon.ico" alt="Jobcan Icon" style="width: 32px; height: 32px; margin-bottom: 8px;">
+                    <span class="link-name">Jobcan ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="https://ssl.jobcan.jp/login/pc-employee-global?lang_code=en" target="_blank" class="sub-link">For Staff</a>
+                        <a href="https://ssl.jobcan.jp/login/client?lang_code=en" target="_blank" class="sub-link">For Manager</a>
+                        <a href="http://ra05.jobcan.in.th/login/index.php" target="_blank" class="sub-link">For Admin</a>
+						<a href="Manual/JOBCAN Manual [TH].pdf" target="_blank" class="sub-link">JOBCAN Manual [TH]</a>
+                    </div>
+                </div>
+
+                <div class="link-box">
+                    <span class="emoji-icon">👩🏼‍🦰</span> <span class="link-name">Admin ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="http://10.33.16.120/" target="_blank" class="sub-link">CCTV 1</a>
+                        <a href="http://10.33.16.121/" target="_blank" class="sub-link">CCTV 2</a>
+                    </div>
+                </div>
+
+                <div class="link-box">
+                    <span class="emoji-icon">👨‍💻</span> <span class="link-name">IT ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="http://10.33.16.238/fth/downloads/anyconnect-win-4.10.03104.msi" target="_blank" class="sub-link">📥 Download Cisco VPN</a>
+                        
+                        <div class="vpn-copy-container">
+                            <div class="vpn-label">VPN Server Address:</div>
+                            <button class="copy-btn" onclick="copyVPNAddress(this, 'vpn4.fanuc.co.jp/common/')">
+                                <span>vpn4.fanuc.co.jp/common/</span>
+                                <span>📋</span>
+                            </button>
+                        </div>
+
+                        <a href="https://corp4.ais-idc.com/cacti/index.php" target="_blank" class="sub-link">Bandwidth Monitor</a>
+						<a href="https://10.33.16.245/era/" target="_blank" class="sub-link">Eset Web Console</a>
+                        <a href="http://10.33.16.200" target="_blank" class="sub-link">AP Controller</a>
+                        <a href="https://mailawn.thaicloudsolutions.com/login/" target="_blank" class="sub-link">Email Admin</a>
+<!-- 					<a href="http://10.33.16.111/tool" target="_blank" class="sub-link">Tool (Old)</a>
+                        <a href="http://10.33.16.111/sitesearch" target="_blank" class="sub-link">Sitesearch (Old)</a> -->
+                    </div>
+                </div>
+
+                <div class="link-box">
+                    <span class="emoji-icon">📧</span> <span class="link-name">Email ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="https://outlook.office365.com/mail/?realm=fth.fanuc.com" target="_blank" class="sub-link">Webmail (.com)</a>
+                        <a href="https://mailawn.thaicloudsolutions.com/webmail/" target="_blank" class="sub-link">Webmail (.co.th)</a>
+                        <a href="https://antispamawn.thaicloudsolutions.com/login.php" target="_blank" class="sub-link">SPAM Quarantine</a>
+                        <a href="Manual/How to setup email of Outlook.pdf" target="_blank" class="sub-link">Manual: Setup from MS Outlook</a>
+                        <a href="Manual/How to setup email on iOS.pdf" target="_blank" class="sub-link">Manual: Setup from iOS</a>
+                        <a href="Manual/How to setup email on Android.pdf" target="_blank" class="sub-link">Manual: Setup from Android</a>
+                    </div>
+                </div>
+
+                <div class="link-box">
+                    <span class="emoji-icon">📆</span> <span class="link-name">Calendar ▼</span>
+                    <div class="dropdown-menu">
+                        <a href="FTH Working Calendar 2026.pdf" target="_blank" class="sub-link">FTH Calendar 2026</a>
+                        <a href="FHQ Working Calendar 2026.pdf" target="_blank" class="sub-link">FHQ Calendar 2026</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="SAPBYD" class="section-wrapper">
+            <div class="section-title">
+                <img src="data:image/jpeg;base64,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" alt="SAPBYD" style="height: 24px; margin-right: 10px; object-fit: contain;">
+                SAPBYD
+            </div>
+            <div class="grid-links">
+                <a href="https://my423061-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Product Tenant</span></a>
+                <a href="https://my425419-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Test (ROLL OUT)</span></a>
+                <a href="https://my431413-sso.businessbydesign.cloud.sap/" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Test (AGILE)</span></a>
+                <a href="https://oneayle.sharepoint.com/sites/Ext_OneAyle_FANUC" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">OA-FANUC</span></a>
+                <a href="https://fanuc.sharepoint.com/sites/FHQ-G-2022L0001/sap_common/SitePages/Community%20Home.aspx" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Common 8 Cos.</span></a>
+                <a href="http://10.33.16.111/fth/material/Multi-Factor_Authen_M365.pdf" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Manual Setup MS365</span></a>
+                <a href="https://cct.sde.cloud.sap/analytics" target="_blank" class="link-box"><span class="emoji-icon">🔵</span><span class="link-name">Cloud Check Tool</span></a>
+                <a href="https://mysignins.microsoft.com/security-info" target="_blank" class="link-box"><span class="emoji-icon">🔵🔑</span><span class="link-name">MFA Auth</span></a>
+            </div>
+        </div>
+        
+        <footer>One Links v1.3 | All Links Restored</footer>
     </div>
-    <div class="card">
-      <div id="dashSummary" class="muted"></div>
-      <div style="overflow-x:auto"><table id="dashTable"></table></div>
-    </div>
-  </section>
 </main>
 
-<div id="toast" class="toast"></div>
-
 <script>
-/* =========================================================================
-   0. CONFIG
-   ========================================================================= */
-const SUPABASE_CONFIG = {
-  url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
-  // legacy anon key (JWT) — ปลอดภัยที่จะฝังในหน้าเว็บถ้าเปิด RLS ครบ (RLS เป็นตัวกันข้อมูล)
-  // ใช้ตัวนี้แทน publishable key เพราะ storage-api ยังรู้จัก publishable key ไม่ครบ (map role anon ไม่ได้)
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
-};
-
-// อีเมลผู้บริหาร 4 ท่านที่เห็น dashboard ได้ (ต้องตรงกับ allowlist ใน RLS ด้วย)
-const EXEC_ALLOWLIST = [
-  "oshikubo@fanucth.co.th",
-  "masada@fanucth.co.th",
-  "ito@fanucth.co.th",
-  "yamamoto@fanucth.co.th",
-  "weerachai@fanucth.co.th",
-];
-
-const TOKEN_TTL_HOURS = 24;
-
-/* =========================================================================
-   1. i18n
-   ========================================================================= */
-const I18N = {
-  appTitle:{th:"FANUC Thai — แบบสอบถามบริการ",en:"FANUC Thai — Service Survey",ja:"FANUC Thai — サービスアンケート"},
-  appSub:{th:"ประเมินคุณภาพงานบริการภาคสนาม",en:"Field service quality evaluation",ja:"フィールドサービス品質評価"},
-  logout:{th:"ออกจากระบบ",en:"Log out",ja:"ログアウト"},
-  loginHead:{th:"เข้าสู่ระบบ (สำหรับพนักงาน)",en:"Sign in (staff only)",ja:"ログイン（社員専用）"},
-  email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
-  password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
-  signIn:{th:"เข้าสู่ระบบ",en:"Sign in",ja:"ログイン"},
-  loginNote:{th:"ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย",en:"Customers do not sign in — just scan the QR on the engineer's screen.",ja:"お客様はログイン不要です。エンジニアの画面のQRを読み取ってください。"},
-  engHead:{th:"สร้าง QR สำหรับงานนี้",en:"Create a QR for this job",ja:"この作業のQRを作成"},
-  srNo:{th:"Service Report No. (จากกระดาษ)",en:"Service Report No. (from paper report)",ja:"サービスレポート番号（紙の報告書）"},
-  soNo:{th:"Service Order No. (จาก SAP BYD)",en:"Service Order No. (from SAP BYD)",ja:"サービスオーダー番号（SAP BYD）"},
-  makeQr:{th:"สร้าง QR Code",en:"Generate QR code",ja:"QRコードを作成"},
-  qrHead:{th:"ให้ลูกค้าสแกน",en:"Ask the customer to scan",ja:"お客様に読み取ってもらう"},
-  copyLink:{th:"คัดลอกลิงก์",en:"Copy link",ja:"リンクをコピー"},
-  newJob:{th:"งานถัดไป",en:"Next job",ja:"次の作業"},
-  cancelQr:{th:"ยกเลิก QR นี้",en:"Cancel this QR",ja:"このQRを取消"},
-  qrNote:{th:"QR นี้ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.",en:"Single-use QR, expires in 24 h.",ja:"このQRは1回のみ有効、24時間で期限切れ。"},
-  myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
-  loading:{th:"กำลังโหลด...",en:"Loading...",ja:"読み込み中..."},
-  checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
-  rateHead:{th:"โปรดให้คะแนนการบริการครั้งนี้",en:"Please rate this service",ja:"今回のサービスを評価してください"},
-  commentHead:{th:"ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)",en:"Additional comments (optional)",ja:"ご意見・ご提案（任意）"},
-  commentPh:{th:"อยากให้เราปรับปรุงเรื่องอะไร หรือมีอะไรอยากบอกเพิ่มเติม...",en:"Anything we could improve, or anything else you'd like to tell us...",ja:"改善してほしい点や、その他お伝えたいことがあればご記入ください..."},
-  sigHead:{th:"ลงลายมือชื่อลูกค้า",en:"Customer signature",ja:"お客様のサイン"},
-  clear:{th:"ล้าง",en:"Clear",ja:"消去"},
-  sigNote:{th:"เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา",en:"Sign in the box above with your finger or a stylus",ja:"上の枠内に指またはペンでサインしてください"},
-  submit:{th:"ส่งแบบสอบถาม",en:"Submit survey",ja:"アンケートを送信"},
-  thanksHead:{th:"ขอบคุณสำหรับความคิดเห็น",en:"Thank you for your feedback",ja:"ご協力ありがとうございました"},
-  thanksBody:{th:"FANUC Thai จะนำไปพัฒนาการบริการต่อไป",en:"FANUC Thai will use it to improve our service.",ja:"FANUC Thaiはサービス改善に活用します。"},
-  dashHead:{th:"ผลแบบสอบถาม",en:"Survey results",ja:"アンケート結果"},
-  dateFrom:{th:"ตั้งแต่วันที่",en:"From",ja:"開始日"},
-  dateTo:{th:"ถึงวันที่",en:"To",ja:"終了日"},
-  filterEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
-  apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
-  exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
-  allEngineers:{th:"— ทั้งหมด —",en:"— All —",ja:"— すべて —"},
-  yrsExp:{th:"อายุงาน {n} ปี",en:"{n} yrs experience",ja:"経験{n}年"},
-  // สถานะงาน
-  stUsed:{th:"ตอบแล้ว",en:"Answered",ja:"回答済"},
-  stWait:{th:"รอลูกค้า",en:"Waiting",ja:"待機中"},
-  stExpired:{th:"หมดอายุ",en:"Expired",ja:"期限切れ"},
-  // toast / error
-  needBothNo:{th:"กรุณากรอกเลข Report และ Order ให้ครบ",en:"Please fill in both Report No. and Order No.",ja:"レポート番号とオーダー番号を両方入力してください"},
-  qrCreated:{th:"สร้าง QR แล้ว ให้ลูกค้าสแกน",en:"QR created — ask the customer to scan",ja:"QRを作成しました。お客様に読み取ってもらってください"},
-  linkCopied:{th:"คัดลอกลิงก์แล้ว",en:"Link copied",ja:"リンクをコピーしました"},
-  answerAll:{th:"กรุณาตอบให้ครบทุกข้อ",en:"Please answer every question",ja:"すべての質問に回答してください"},
-  needSignature:{th:"กรุณาลงลายมือชื่อก่อนส่ง",en:"Please sign before submitting",ja:"送信前にサインしてください"},
-  submitOk:{th:"ส่งแบบสอบถามเรียบร้อย",en:"Survey submitted",ja:"アンケートを送信しました"},
-  submitFail:{th:"ส่งไม่สำเร็จ: {err}",en:"Submit failed: {err}",ja:"送信に失敗しました: {err}"},
-  loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログインに失敗しました: {err}"},
-  noEngineerRow:{th:"ไม่พบข้อมูลพนักงานสำหรับอีเมลนี้ (ยังไม่ได้เพิ่มในตาราง engineers)",en:"No staff record for this email (not added to the engineers table yet).",ja:"このメールの社員データがありません（engineersテーブル未登録）。"},
-  linkInvalid:{th:"ลิงก์นี้ไม่ถูกต้องหรือหมดอายุแล้ว",en:"This link is invalid or has expired.",ja:"このリンクは無効か期限切れです。"},
-  linkUsed:{th:"แบบสอบถามนี้ถูกตอบไปแล้ว",en:"This survey has already been completed.",ja:"このアンケートは回答済みです。"},
-  cfgMissing:{th:"⚠️ ยังไม่ได้ตั้งค่า Supabase (SUPABASE_CONFIG) — ระบบยังเชื่อมต่อฐานข้อมูลไม่ได้",en:"⚠️ Supabase is not configured (SUPABASE_CONFIG) — no database connection yet.",ja:"⚠️ Supabase未設定（SUPABASE_CONFIG）— データベース未接続。"},
-  connFail:{th:"เชื่อมต่อฐานข้อมูลไม่สำเร็จ: {err}",en:"Database connection failed: {err}",ja:"データベース接続に失敗しました: {err}"},
-  noResults:{th:"ไม่มีข้อมูลในช่วงที่เลือก",en:"No results for the selected range",ja:"選択範囲にデータがありません"},
-  summaryLine:{th:"{n} รายการ · คะแนนเฉลี่ยรวม {avg}/5",en:"{n} responses · overall avg {avg}/5",ja:"{n}件 · 総合平均{avg}/5"},
-  colDateTime:{th:"วันเวลา",en:"Date / time",ja:"日時"},
-};
-
-// คำถาม 5 ข้อ — DRAFT จากชื่อคอลัมน์ใน spec (พี่แมค/K.Yamamoto ตรวจแก้ได้)
-const QUESTIONS = [
-  {key:"q1_response_time",   th:"ความรวดเร็วในการตอบสนองและเข้าให้บริการ", en:"Speed of response and arrival on site", ja:"対応と現場到着の早さ"},
-  {key:"q2_technical_skill", th:"ทักษะและความรู้ทางเทคนิคของวิศวกร",      en:"Engineer's technical skill and knowledge", ja:"エンジニアの技術力と知識"},
-  {key:"q3_communication_cost", th:"การสื่อสารเรื่องค่าใช้จ่าย / ใบเสนอราคา ชัดเจนและโปร่งใส", en:"Clear, transparent communication about cost / quotation", ja:"費用・見積りに関する説明の分かりやすさ"},
-  {key:"q4_professionalism", th:"ความเป็นมืออาชีพ มารยาท และความสุภาพ",   en:"Professionalism, manner and courtesy", ja:"プロ意識・態度・礼儀"},
-  {key:"q5_overall",         th:"ความพึงพอใจโดยรวมต่อบริการครั้งนี้",       en:"Overall satisfaction with this service", ja:"今回のサービスの総合満足度"},
-];
-
-const SCALE = [
-  {v:1, e:"😡", th:"ไม่พอใจมาก", en:"Very poor",  ja:"非常に不満"},
-  {v:2, e:"😕", th:"ไม่พอใจ",     en:"Poor",       ja:"不満"},
-  {v:3, e:"😐", th:"เฉยๆ",        en:"Neutral",    ja:"普通"},
-  {v:4, e:"🙂", th:"พอใจ",        en:"Good",       ja:"満足"},
-  {v:5, e:"😍", th:"พอใจมาก",     en:"Excellent",  ja:"非常に満足"},
-];
-
-let lang = localStorage.getItem('uiLang') || 'th';
-function t(key, vars){
-  const entry = I18N[key];
-  let s = (entry && (entry[lang] || entry.th)) || key;
-  if (vars) for (const k in vars) s = s.split('{'+k+'}').join(vars[k]);
-  return s;
-}
-function applyI18n(){
-  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
-  document.documentElement.lang = lang === 'ja' ? 'ja' : lang;
-}
-
-/* =========================================================================
-   2. helpers
-   ========================================================================= */
-function $(id){ return document.getElementById(id); }
-function show(id){ $(id).classList.remove('hidden'); }
-function hide(id){ $(id).classList.add('hidden'); }
-function toast(msg, isErr){
-  const el = $('toast');
-  el.textContent = msg;
-  el.classList.toggle('err', !!isErr);
-  el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 2600);
-}
-// copy ที่ทำงานได้ทั้ง https และ http (LAN) — navigator.clipboard มีเฉพาะ secure context
-async function copyText(text){
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      document.execCommand('copy');
-      ta.remove();
+    // --- ฟังก์ชันคัดลอก VPN Address (ปรับปรุงใหม่) ---
+    function copyVPNAddress(btn, text) {
+        // วิธีหลัก: ใช้ Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                fallbackCopy(btn, text);
+            });
+        } else {
+            // วิธีสำรอง: กรณี Browser ไม่รองรับ หรือไม่ใช่ HTTPS
+            fallbackCopy(btn, text);
+        }
     }
-    toast(t('linkCopied'));
-  } catch (e) {
-    toast(text, false);   // copy ไม่ได้จริงๆ โชว์ลิงก์ให้กดค้างคัดลอกเอง
-  }
-}
-function esc(s){
-  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function fmtDateTime(iso){
-  if (!iso) return '';
-  const d = new Date(iso);
-  const p = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 
-/* =========================================================================
-   3. Supabase client
-   ========================================================================= */
-let sb = null;
-const CONFIGURED = !!(SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey);
-if (CONFIGURED) {
-  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-} else {
-  const b = $('cfgBanner');
-  b.textContent = t('cfgMissing');
-  b.classList.remove('hidden');
-}
-
-/* =========================================================================
-   4. Router
-   ========================================================================= */
-const params = new URLSearchParams(location.search);
-const jobToken = params.get('t');
-
-async function boot(){
-  applyI18n();
-  $('langSelect').value = lang;
-  $('langSelect').onchange = e => {
-    lang = e.target.value;
-    localStorage.setItem('uiLang', lang);
-    applyI18n();
-    rerenderDynamic();
-  };
-  $('btnLogout').onclick = async () => { if (sb) await sb.auth.signOut(); location.href = location.pathname; };
-
-  if (jobToken) { return startCustomer(); }
-
-  // staff flow
-  if (!CONFIGURED) { show('viewLogin'); return; }
-  const { data:{ session } } = await sb.auth.getSession();
-  if (session) { return routeStaff(session); }
-  show('viewLogin');
-  wireLogin();
-}
-
-function rerenderDynamic(){
-  if (!$('viewCustomer').classList.contains('hidden')) { renderEngInfo(); renderQuestions(); }
-  if (!$('viewEngineer').classList.contains('hidden')) { renderEngWho(); loadMyJobs(); }
-  if (!$('viewDashboard').classList.contains('hidden')) applyFilter();
-}
-
-/* =========================================================================
-   5. LOGIN
-   ========================================================================= */
-function wireLogin(){
-  $('btnLogin').onclick = async () => {
-    const email = $('loginEmail').value.trim().toLowerCase();
-    const password = $('loginPass').value;
-    if (!email || !password) return;
-    $('btnLogin').disabled = true;
-    try {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      hide('viewLogin');
-      await routeStaff(data.session);
-    } catch (e) {
-      toast(t('loginFail', { err: e.message || e }), true);
-    } finally {
-      $('btnLogin').disabled = false;
+    function copyESSCode(btn, text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopySuccess(btn);
+            }).catch(err => {
+                fallbackCopy(btn, text);
+            });
+        } else {
+            fallbackCopy(btn, text);
+        }
     }
-  };
-}
 
-async function routeStaff(session){
-  const email = (session.user.email || '').toLowerCase();
-  $('btnLogout').classList.remove('hidden');
+    function fallbackCopy(btn, text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; 
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) showCopySuccess(btn);
+        } catch (err) {
+            console.error('Fallback Copy Failed', err);
+        }
+        document.body.removeChild(textArea);
+    }
 
-  if (EXEC_ALLOWLIST.map(x=>x.toLowerCase()).includes(email)) {
-    return startDashboard();
-  }
-  // engineer: หา row ในตาราง engineers
-  const { data: eng, error } = await sb.from('engineers').select('*').eq('email', email).maybeSingle();
-  if (error) { toast(t('connFail',{err:error.message}), true); show('viewLogin'); return; }
-  if (!eng) { toast(t('noEngineerRow'), true); show('viewLogin'); return; }
-  startEngineer(eng);
-}
+    function showCopySuccess(btn) {
+        const originalHTML = btn.innerHTML;
+        btn.style.color = "#10b981";
+        btn.style.borderColor = "#10b981";
+        btn.innerHTML = "<span>Copied!</span><span>✅</span>";
+        
+        setTimeout(() => {
+            btn.style.color = "";
+            btn.style.borderColor = "";
+            btn.innerHTML = originalHTML;
+        }, 2000);
+    }
 
-/* =========================================================================
-   6. ENGINEER
-   ========================================================================= */
-let ENG = null;
-function renderEngWho(){
-  if (!ENG) return;
-  const bits = [`${ENG.fname} ${ENG.lname}`];
-  if (ENG.department) bits.push(ENG.department);
-  if (ENG.years_experience != null) bits.push(t('yrsExp', { n: ENG.years_experience }));
-  $('engWho').textContent = bits.join(' · ');
-}
-function startEngineer(eng){
-  ENG = eng;
-  show('viewEngineer');
-  renderEngWho();
-  $('btnMakeQr').onclick = makeQr;
-  $('btnNewJob').onclick = () => {
-    hide('qrCard'); $('srNo').value = ''; $('soNo').value = '';
-    $('qrBox').innerHTML = ''; $('srNo').focus();
-  };
-  // ยกเลิก: กลับไปหน้าฟอร์มก่อนสร้าง QR (เก็บเลขที่กรอกไว้ให้แก้ต่อได้) — token ที่สร้างแล้วปล่อยให้หมดอายุเองใน 24 ชม.
-  $('btnCancelQr').onclick = () => {
-    hide('qrCard'); $('qrBox').innerHTML = ''; $('qrLink').textContent = '';
-    $('srNo').focus(); loadMyJobs();
-  };
-  $('btnCopyLink').onclick = () => copyText($('qrLink').textContent);
-  loadMyJobs();
-}
+    // --- ฟังก์ชันเคลียร์ค่า ---
+    function clearSearch() {
+        const input = document.getElementById('searchInput');
+        input.value = "";
+        const event = new Event('keyup');
+        input.dispatchEvent(event);
+        document.querySelector('.content-area').scrollTop = 0;
+    }
 
-async function makeQr(){
-  const sr = $('srNo').value.trim();
-  const so = $('soNo').value.trim();
-  if (!sr || !so) return toast(t('needBothNo'), true);
-  $('btnMakeQr').disabled = true;
-  try {
-    const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
-    const { data, error } = await sb.from('survey_sessions').insert({
-      engineer_id: ENG.id,
-      service_report_no: sr,
-      service_order_no: so,
-      expires_at
-    }).select('id').single();
-    if (error) throw error;
+// --- ระบบค้นหาครอบคลุมทุกส่วน (แก้ไขเพื่อรองรับ 3 ฟิลด์ใหม่) ---
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('keyup', function() {
+    const filter = searchInput.value.toLowerCase().trim();
+    const sections = document.querySelectorAll('.section-wrapper');
 
-    const url = `${location.origin}${location.pathname}?t=${data.id}`;
-    $('qrBox').innerHTML = '';
-    new QRCode($('qrBox'), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
-    $('qrLink').textContent = url;
-    show('qrCard');
-    $('qrCard').scrollIntoView({ behavior:'smooth' });
-    toast(t('qrCreated'));
-    loadMyJobs();
-  } catch (e) {
-    toast(t('submitFail', { err: e.message || e }), true);
-  } finally {
-    $('btnMakeQr').disabled = false;
-  }
-}
+    sections.forEach(section => {
+        const sectionTitle = section.querySelector('.section-title');
+        const sectionTitleText = sectionTitle ? sectionTitle.textContent.toLowerCase() : "";
+        const isSectionMatch = filter !== "" && sectionTitleText.includes(filter);
+        
+        let hasVisibleLinks = false;
+        const links = section.querySelectorAll('.link-box');
 
-async function loadMyJobs(){
-  if (!ENG) return;
-  const start = new Date(); start.setHours(0,0,0,0);
-  const { data, error } = await sb.from('survey_sessions')
-    .select('*').eq('engineer_id', ENG.id).gte('created_at', start.toISOString())
-    .order('created_at', { ascending:false });
-  const box = $('engJobs');
-  if (error) { box.innerHTML = `<p class="muted">${error.message}</p>`; return; }
-  if (!data || !data.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
-  const now = Date.now();
-  const rows = data.map(s => {
-    let pill;
-    if (s.used) pill = `<span class="pill pill-used">${t('stUsed')}</span>`;
-    else if (new Date(s.expires_at).getTime() < now) pill = `<span class="pill pill-exp">${t('stExpired')}</span>`;
-    else pill = `<span class="pill pill-wait">${t('stWait')}</span>`;
-    return `<tr><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}<br><span style="color:var(--sub)">${s.service_order_no}</span></td><td>${pill}</td></tr>`;
-  }).join('');
-  box.innerHTML = `<table><thead><tr><th>${t('colDateTime')}</th><th>Report / Order</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-}
+        links.forEach(link => {
+            const mainNameElement = link.querySelector('.link-name');
+            const subLinks = link.querySelectorAll('.sub-link');
+            
+            // เก็บค่า Original Text รวมถึงฟิลด์ใหม่ (Brand, Model, S/N) ถ้ามี
+            if (!link.dataset.originalText) link.dataset.originalText = mainNameElement.textContent;
+            
+            // ดึงข้อมูลฟิลด์ใหม่จาก Dataset (ถ้าคุณมีการใส่ไว้ใน HTML link-box)
+            const brandText = (link.dataset.pcBrand || "").toLowerCase();
+            const modelText = (link.dataset.pcModel || "").toLowerCase();
+            const snText = (link.dataset.pcSn || "").toLowerCase();
+            
+            let isLinkMatch = false;
+            const mainText = link.dataset.originalText.toLowerCase();
 
-/* =========================================================================
-   7. CUSTOMER
-   ========================================================================= */
-let sigPad = null;
-let CUST_INFO = null;
-const answers = {};
+            // ตรวจสอบการค้นหาใน Sub Links
+            subLinks.forEach(sub => {
+                if (!sub.dataset.originalText) sub.dataset.originalText = sub.textContent;
+                const subText = sub.dataset.originalText.toLowerCase();
+                
+                if (filter !== "" && subText.includes(filter)) {
+                    isLinkMatch = true;
+                    const regex = new RegExp(`(${filter})`, 'gi');
+                    sub.innerHTML = sub.dataset.originalText.replace(regex, '<mark>$1</mark>');
+                } else {
+                    sub.innerHTML = sub.dataset.originalText;
+                }
+            });
 
-function renderEngInfo(){
-  if (!CUST_INFO) return;
-  $('ciName').textContent = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
-  const bits = [];
-  if (CUST_INFO.department) bits.push(CUST_INFO.department);
-  if (CUST_INFO.years_experience != null) bits.push(t('yrsExp', { n: CUST_INFO.years_experience }));
-  $('ciMeta').textContent = bits.join(' · ');
-  const img = $('ciPhoto');
-  if (CUST_INFO.photo_path) {
-    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${CUST_INFO.photo_path}`;
-    img.alt = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
-    img.hidden = false;
-    img.onerror = () => { img.hidden = true; };   // ไม่มีรูป/โหลดไม่ได้ ก็ซ่อนไป
-  } else {
-    img.hidden = true;
-  }
-}
+            // ตรวจสอบการค้นหาในฟิลด์หลัก และ 3 ฟิลด์ใหม่ (Brand, Model, S/N)
+            if (filter !== "" && (mainText.includes(filter) || brandText.includes(filter) || modelText.includes(filter) || snText.includes(filter))) {
+                isLinkMatch = true;
+                const regex = new RegExp(`(${filter})`, 'gi');
+                mainNameElement.innerHTML = link.dataset.originalText.replace(regex, '<mark>$1</mark>');
+            } else {
+                mainNameElement.innerHTML = link.dataset.originalText;
+            }
 
-async function startCustomer(){
-  show('viewCustomer');
-  if (!CONFIGURED) {
-    hide('custLoading'); show('custError');
-    $('custErrorMsg').textContent = t('cfgMissing');
-    return;
-  }
-  try {
-    // RPC ตรวจ token + คืนข้อมูลวิศวกร (ดู SUPABASE_SETUP.sql: fn get_survey_session)
-    const { data, error } = await sb.rpc('get_survey_session', { p_token: jobToken });
-    if (error) throw error;
-    if (!data || !data.length) return custErr(t('linkInvalid'));
-    const info = data[0];
-    if (info.used) return custErr(t('linkUsed'));
-    if (info.expired) return custErr(t('linkInvalid'));
+            // การแสดงผล Link Box
+            if (filter === "") {
+                link.style.display = "flex";
+                link.classList.remove('active'); 
+                hasVisibleLinks = true;
+            } else if (isLinkMatch || isSectionMatch) {
+                link.style.display = "flex";
+                // ถ้า Match ที่ Sub-link ให้เปิด Dropdown อัตโนมัติ
+                if (isLinkMatch && subLinks.length > 0) link.classList.add('active');
+                else link.classList.remove('active');
+                hasVisibleLinks = true;
+            } else {
+                link.style.display = "none";
+                link.classList.remove('active');
+            }
+        });
 
-    CUST_INFO = info;
-    renderEngInfo();
-    renderQuestions();
-    hide('custLoading'); show('custForm');
-    initSigPad();   // ต้องเรียกหลัง show() ไม่งั้น canvas กว้าง=0 เซ็นไม่ติด
-    $('btnSubmitSurvey').onclick = submitSurvey;
-    $('btnSigClear').onclick = () => sigPad && sigPad.clear();
-  } catch (e) {
-    custErr(t('connFail', { err: e.message || e }));
-  }
-}
-function custErr(msg){
-  hide('custLoading'); hide('custForm'); show('custError');
-  $('custErrorMsg').textContent = msg;
-}
-
-function renderQuestions(){
-  const wrap = $('questions');
-  wrap.innerHTML = QUESTIONS.map((q, i) => `
-    <div class="q-block">
-      <div class="q-title"><span class="q-num">${i+1}.</span>${q[lang] || q.th}</div>
-      <div class="emoji-row" data-q="${q.key}">
-        ${SCALE.map(s => `
-          <div class="emoji-btn ${answers[q.key]===s.v?'sel':''}" data-v="${s.v}">
-            <span class="e">${s.e}</span><span class="l">${s[lang]||s.th}</span>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
-  wrap.querySelectorAll('.emoji-row').forEach(row => {
-    row.querySelectorAll('.emoji-btn').forEach(btn => {
-      btn.onclick = () => {
-        answers[row.dataset.q] = Number(btn.dataset.v);
-        row.querySelectorAll('.emoji-btn').forEach(b => b.classList.toggle('sel', b === btn));
-      };
+        if (filter === "") section.style.display = "block";
+        else section.style.display = hasVisibleLinks ? "block" : "none";
     });
-  });
-}
+});
 
-function fitSigCanvas(){
-  const canvas = $('sigPad');
-  const ratio = Math.max(window.devicePixelRatio || 1, 1);
-  const w = canvas.offsetWidth || canvas.parentElement.offsetWidth || 300;
-  const h = canvas.offsetHeight || 180;
-  // เก็บลายเซ็นเดิมไว้ตอน resize
-  const data = sigPad && !sigPad.isEmpty() ? sigPad.toData() : null;
-  canvas.width = w * ratio;
-  canvas.height = h * ratio;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(ratio, ratio);
-  if (sigPad) { sigPad.clear(); if (data) sigPad.fromData(data); }
-}
-function initSigPad(){
-  sigPad = new SignaturePad($('sigPad'), { backgroundColor: 'rgba(255,255,255,0)', penColor: '#111', minWidth: 0.7, maxWidth: 2.2 });
-  fitSigCanvas();
-  window.addEventListener('resize', fitSigCanvas);
-}
+// --- แก้ไขปัญหาเมนูย่อยกดไม่ได้บนมือถือ ---
+document.querySelectorAll('.link-box').forEach(box => {
+    // เพิ่ม Event Listener เฉพาะปุ่มที่มีเมนูย่อย
+    if(box.querySelector('.dropdown-menu')) {
+        box.addEventListener('click', function(e) {
+            // ปล่อยให้ลิงก์ด้านในทำงานตามปกติ
+            if (e.target.closest('.dropdown-menu')) return;
+            
+            // ป้องกันเหตุการณ์เริ่มต้นถ้าหากไม่ใช่ลิงก์ปกติ
+            e.preventDefault();
 
-async function submitSurvey(){
-  for (const q of QUESTIONS) if (!answers[q.key]) return toast(t('answerAll'), true);
-  if (!sigPad || sigPad.isEmpty()) return toast(t('needSignature'), true);
+            // ปิดเมนูอื่นๆ
+            document.querySelectorAll('.link-box.active').forEach(other => {
+                if (other !== this) other.classList.remove('active');
+            });
 
-  $('btnSubmitSurvey').disabled = true;
-  try {
-    const blob = await (await fetch(sigPad.toDataURL('image/png'))).blob();
-    const path = `${jobToken}.png`;
-    // ห้ามใช้ upsert:true — storage-api จะใช้ INSERT ... ON CONFLICT DO UPDATE
-    // ซึ่ง Postgres บังคับให้ role ต้องมี SELECT policy บน storage.objects ด้วย
-    // แต่ anon มีแค่ INSERT (ตั้งใจ ไม่เปิดให้ anon อ่านลายเซ็นคนอื่น) -> RLS ตีตก
-    // ชื่อไฟล์เป็น token ซึ่งไม่ซ้ำอยู่แล้ว จึงไม่ต้อง upsert
-    const up = await sb.storage.from('survey-signatures').upload(path, blob, { contentType: 'image/png' });
-    // ถ้าเคยอัปสำเร็จแล้วแต่ RPC พังตอนกดครั้งก่อน กดส่งซ้ำจะเจอ "already exists" — ถือว่าผ่าน ใช้ไฟล์เดิม
-    if (up.error && !/exist|duplicate|409/i.test(up.error.message || '')) {
-      up.error.message = '[signature upload] ' + up.error.message; throw up.error;
+            // เปิด/ปิดเมนูปัจจุบัน
+            this.classList.toggle('active');
+        });
     }
+});
 
-    const { error } = await sb.rpc('submit_survey', {
-      p_token: jobToken,
-      p_q1: answers.q1_response_time,
-      p_q2: answers.q2_technical_skill,
-      p_q3: answers.q3_communication_cost,
-      p_q4: answers.q4_professionalism,
-      p_q5: answers.q5_overall,
-      p_signature_path: path,
-      p_comment: ($('custComment').value || '').trim() || null
-    });
-    if (error) { error.message = '[submit_survey RPC] ' + error.message; throw error; }
+// กดพื้นที่ว่างเพื่อปิดเมนู
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.link-box')) {
+        document.querySelectorAll('.link-box.active').forEach(box => {
+            box.classList.remove('active');
+        });
+    }
+});
 
-    hide('custForm'); show('custThanks');
-    toast(t('submitOk'));
-  } catch (e) {
-    toast(t('submitFail', { err: e.message || e }), true);
-    $('btnSubmitSurvey').disabled = false;
-  }
-}
-
-/* =========================================================================
-   8. DASHBOARD
-   ========================================================================= */
-let dashRows = [];
-async function startDashboard(){
-  show('viewDashboard');
-  $('fEngineer').options[0].text = t('allEngineers');
-  const { data: engs } = await sb.from('engineers').select('id,fname,lname').order('fname');
-  (engs || []).forEach(e => {
-    const o = document.createElement('option');
-    o.value = e.id; o.textContent = `${e.fname} ${e.lname}`;
-    $('fEngineer').appendChild(o);
-  });
-  $('btnApplyFilter').onclick = applyFilter;
-  $('btnExport').onclick = exportXlsx;
-  applyFilter();
-}
-
-async function applyFilter(){
-  const from = $('fFrom').value ? new Date($('fFrom').value + 'T00:00:00').toISOString() : null;
-  const to   = $('fTo').value   ? new Date($('fTo').value   + 'T23:59:59').toISOString() : null;
-  const engId = $('fEngineer').value;
-
-  // view v_survey_full: response + session + engineer (ดู SUPABASE_SETUP.sql)
-  let q = sb.from('v_survey_full').select('*').order('submitted_at', { ascending:false });
-  if (from) q = q.gte('submitted_at', from);
-  if (to)   q = q.lte('submitted_at', to);
-  if (engId) q = q.eq('engineer_id', engId);
-
-  const { data, error } = await q;
-  const tbl = $('dashTable');
-  if (error) { $('dashSummary').textContent = error.message; tbl.innerHTML = ''; return; }
-  dashRows = data || [];
-  if (!dashRows.length) {
-    $('dashSummary').textContent = t('noResults'); tbl.innerHTML = ''; return;
-  }
-  const avg = dashRows.reduce((s,r)=>s+(r.q1_response_time+r.q2_technical_skill+r.q3_communication_cost+r.q4_professionalism+r.q5_overall)/5,0)/dashRows.length;
-  $('dashSummary').textContent = t('summaryLine', { n: dashRows.length, avg: avg.toFixed(2) });
-
-  tbl.innerHTML = `
-    <thead><tr>
-      <th>#</th><th>Date</th><th>Engineer</th><th>Report / Order</th>
-      <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Comment</th><th>Sig</th>
-    </tr></thead>
-    <tbody>${dashRows.map((r,i)=>`
-      <tr>
-        <td>${i+1}</td>
-        <td>${fmtDateTime(r.submitted_at)}</td>
-        <td>${r.fname||''} ${r.lname||''}</td>
-        <td>${r.service_report_no||''}<br><span style="color:var(--sub)">${r.service_order_no||''}</span></td>
-        <td>${r.q1_response_time}</td><td>${r.q2_technical_skill}</td><td>${r.q3_communication_cost}</td>
-        <td>${r.q4_professionalism}</td><td>${r.q5_overall}</td>
-        <td style="max-width:220px;white-space:pre-wrap;word-break:break-word" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
-        <td><a href="#" data-sig="${r.signature_path||''}" style="color:var(--accent)">👁</a></td>
-      </tr>`).join('')}</tbody>`;
-
-  tbl.querySelectorAll('a[data-sig]').forEach(a => {
-    a.onclick = async (ev) => {
-      ev.preventDefault();
-      const p = a.dataset.sig;
-      if (!p) return;
-      const { data, error } = await sb.storage.from('survey-signatures').createSignedUrl(p, 3600);
-      if (error) return toast(error.message, true);
-      window.open(data.signedUrl, '_blank');
-    };
-  });
-}
-
-function exportXlsx(){
-  if (!dashRows.length) return toast(t('noResults'), true);
-  const aoa = dashRows.map(r => ({
-    submitted_at: fmtDateTime(r.submitted_at),
-    engineer: `${r.fname||''} ${r.lname||''}`.trim(),
-    department: r.department || '',
-    service_report_no: r.service_report_no || '',
-    service_order_no: r.service_order_no || '',
-    q1_response_time: r.q1_response_time,
-    q2_technical_skill: r.q2_technical_skill,
-    q3_communication_cost: r.q3_communication_cost,
-    q4_professionalism: r.q4_professionalism,
-    q5_overall: r.q5_overall,
-    comment: r.comment || '',
-  }));
-  const ws = XLSX.utils.json_to_sheet(aoa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'survey');
-  const now = new Date();
-  const p = n => String(n).padStart(2,'0');
-  XLSX.writeFile(wb, `survey_${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}_${p(now.getHours())}${p(now.getMinutes())}.xlsx`);
-}
-
-/* ========================================================================= */
-boot();
 </script>
 </body>
 </html>
