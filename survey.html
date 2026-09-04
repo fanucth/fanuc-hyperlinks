@@ -49,8 +49,9 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
   .card h2{font-size:14px;margin:0 0 12px;color:var(--accent);letter-spacing:.3px;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input[type=text],input[type=email],input[type=password],input[type=date],select{
+  input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{
     width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:12px;}
+  textarea{resize:vertical;min-height:64px;font-family:inherit;line-height:1.5;margin-bottom:0;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
   .btn-primary{background:var(--accent);color:#1a1500;}
   .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
@@ -69,11 +70,12 @@
   #sigPadWrap{border:2px dashed var(--line);border-radius:12px;background:#fff;position:relative;}
   #sigPad{width:100%;height:180px;display:block;touch-action:none;}
   .sig-clear{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 8px;cursor:pointer;}
-  .eng-info{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px;}
-  .eng-info .name{font-size:16px;font-weight:700;}
-  .eng-info .meta{font-size:12.5px;color:var(--sub);margin-top:3px;}
-  #ciPhoto{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:2px solid var(--line);background:var(--card);}
+  .eng-info{background:var(--card2);border-radius:14px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;}
+  .eng-info .name{font-size:19px;font-weight:700;}
+  .eng-info .meta{font-size:13px;color:var(--sub);margin-top:4px;}
+  #ciPhoto{width:150px;height:150px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:3px solid var(--line);background:var(--card);}
   #ciPhoto[hidden]{display:none;}
+  @media(max-width:400px){ #ciPhoto{width:120px;height:120px;} .eng-info{gap:14px;padding:14px;} }
   #qrBox{background:#fff;padding:16px;border-radius:14px;display:inline-block;margin:6px auto 12px;}
   #qrBox img,#qrBox canvas{display:block;}
   .qr-wrap{text-align:center;}
@@ -180,6 +182,11 @@
       </div>
 
       <div class="card">
+        <h2 data-i18n="commentHead">ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)</h2>
+        <textarea id="custComment" rows="3" maxlength="1000" data-i18n-ph="commentPh"></textarea>
+      </div>
+
+      <div class="card">
         <h2 data-i18n="sigHead">ลงลายมือชื่อลูกค้า</h2>
         <div id="sigPadWrap">
           <canvas id="sigPad"></canvas>
@@ -275,6 +282,8 @@ const I18N = {
   loading:{th:"กำลังโหลด...",en:"Loading...",ja:"読み込み中..."},
   checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
   rateHead:{th:"โปรดให้คะแนนการบริการครั้งนี้",en:"Please rate this service",ja:"今回のサービスを評価してください"},
+  commentHead:{th:"ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)",en:"Additional comments (optional)",ja:"ご意見・ご提案（任意）"},
+  commentPh:{th:"อยากให้เราปรับปรุงเรื่องอะไร หรือมีอะไรอยากบอกเพิ่มเติม...",en:"Anything we could improve, or anything else you'd like to tell us...",ja:"改善してほしい点や、その他お伝えたいことがあればご記入ください..."},
   sigHead:{th:"ลงลายมือชื่อลูกค้า",en:"Customer signature",ja:"お客様のサイン"},
   clear:{th:"ล้าง",en:"Clear",ja:"消去"},
   sigNote:{th:"เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา",en:"Sign in the box above with your finger or a stylus",ja:"上の枠内に指またはペンでサインしてください"},
@@ -338,6 +347,7 @@ function t(key, vars){
 }
 function applyI18n(){
   document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
   document.documentElement.lang = lang === 'ja' ? 'ja' : lang;
 }
 
@@ -372,6 +382,9 @@ async function copyText(text){
   } catch (e) {
     toast(text, false);   // copy ไม่ได้จริงๆ โชว์ลิงก์ให้กดค้างคัดลอกเอง
   }
+}
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function fmtDateTime(iso){
   if (!iso) return '';
@@ -665,7 +678,8 @@ async function submitSurvey(){
       p_q3: answers.q3_communication_cost,
       p_q4: answers.q4_professionalism,
       p_q5: answers.q5_overall,
-      p_signature_path: path
+      p_signature_path: path,
+      p_comment: ($('custComment').value || '').trim() || null
     });
     if (error) { error.message = '[submit_survey RPC] ' + error.message; throw error; }
 
@@ -719,7 +733,7 @@ async function applyFilter(){
   tbl.innerHTML = `
     <thead><tr>
       <th>#</th><th>Date</th><th>Engineer</th><th>Report / Order</th>
-      <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Sig</th>
+      <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Comment</th><th>Sig</th>
     </tr></thead>
     <tbody>${dashRows.map((r,i)=>`
       <tr>
@@ -729,6 +743,7 @@ async function applyFilter(){
         <td>${r.service_report_no||''}<br><span style="color:var(--sub)">${r.service_order_no||''}</span></td>
         <td>${r.q1_response_time}</td><td>${r.q2_technical_skill}</td><td>${r.q3_communication_cost}</td>
         <td>${r.q4_professionalism}</td><td>${r.q5_overall}</td>
+        <td style="max-width:220px;white-space:pre-wrap;word-break:break-word" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
         <td><a href="#" data-sig="${r.signature_path||''}" style="color:var(--accent)">👁</a></td>
       </tr>`).join('')}</tbody>`;
 
@@ -757,6 +772,7 @@ function exportXlsx(){
     q3_communication_cost: r.q3_communication_cost,
     q4_professionalism: r.q4_professionalism,
     q5_overall: r.q5_overall,
+    comment: r.comment || '',
   }));
   const ws = XLSX.utils.json_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
