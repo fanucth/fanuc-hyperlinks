@@ -71,7 +71,7 @@
   #sigPad{width:100%;height:180px;display:block;touch-action:none;}
   .sig-clear{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 8px;cursor:pointer;}
   .eng-info{background:var(--card2);border-radius:14px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;}
-  .eng-info .name{font-size:22px;font-weight:700;margin-bottom:6px;}
+  .eng-info .name{font-size:20px;font-weight:700;margin-bottom:6px;}
   .eng-info .meta{font-size:16px;color:var(--text);margin-top:4px;line-height:1.4;}
   #ciPhoto{width:150px;height:150px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:3px solid var(--line);background:var(--card);}
   #ciPhoto[hidden]{display:none;}
@@ -175,7 +175,6 @@
           <div class="meta" id="ciDept"></div>
           <div class="meta" id="ciYears"></div>
           <div class="meta" id="ciReport"></div>
-          <div class="meta" id="ciOrder"></div>
         </div>
       </div>
 
@@ -304,8 +303,8 @@ const I18N = {
   lblDepartment:{th:"แผนก",en:"Department",ja:"部署"},
   lblExperience:{th:"ประสบการณ์",en:"Experience",ja:"経験"},
   yrsValue:{th:"{n} ปี",en:"{n} years",ja:"{n}年"},
-  lblReportNo:{th:"เลขที่ Service Report",en:"Service Report No",ja:"サービスレポート番号"},
-  lblOrderNo:{th:"เลขที่ Service Order",en:"Service Order No",ja:"サービスオーダー番号"},
+  lblReportNo:{th:"เลขที่งานบริการ",en:"Service Report No",ja:"サービスレポート番号"},
+  lblOrderNo:{th:"เลขที่ใบสั่งบริการ",en:"Service Order No",ja:"サービスオーダー番号"},
   // สถานะงาน
   stUsed:{th:"ตอบแล้ว",en:"Answered",ja:"回答済"},
   stWait:{th:"รอลูกค้า",en:"Waiting",ja:"待機中"},
@@ -590,8 +589,6 @@ function renderEngInfo(){
     ? `${t('lblExperience')} : ${t('yrsValue', { n: CUST_INFO.years_experience })}` : '';
   $('ciReport').textContent = CUST_INFO.service_report_no
     ? `${t('lblReportNo')} : ${CUST_INFO.service_report_no}` : '';
-  $('ciOrder').textContent = CUST_INFO.service_order_no
-    ? `${t('lblOrderNo')} : ${CUST_INFO.service_order_no}` : '';
   const img = $('ciPhoto');
   if (CUST_INFO.photo_path) {
     img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${CUST_INFO.photo_path}`;
