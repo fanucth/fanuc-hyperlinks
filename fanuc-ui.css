@@ -217,6 +217,12 @@ body.fc{
 .fc-empty{text-align:center;padding:var(--fc-s6) var(--fc-s4);color:var(--fc-text-dim);}
 .fc-empty__title{font-family:var(--fc-font-head);font-weight:600;font-size:20px;color:var(--fc-text);margin-bottom:var(--fc-s2);}
 
+/* ---------- modal ---------- */
+.fc-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:var(--fc-s4);z-index:80;}
+.fc-modal__box{background:var(--fc-surface);border:1px solid var(--fc-border-strong);border-radius:var(--fc-radius);
+  box-shadow:var(--fc-shadow-pop);padding:var(--fc-s5);width:100%;max-width:360px;}
+.fc-modal__box h3{font-family:var(--fc-font-head);font-weight:600;font-size:20px;margin:0 0 var(--fc-s4);}
+
 /* ---------- toast ---------- */
 .fc-toast{position:fixed;left:50%;bottom:var(--fc-s5);transform:translateX(-50%) translateY(8px);
   background:var(--fc-surface-2);color:var(--fc-text);border:1px solid var(--fc-border-strong);
