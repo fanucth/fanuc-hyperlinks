@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09o - หน้าลูกค้า: ช่องอีเมล (ไม่บังคับ) -> ส่งเมลขอบคุณผ่าน Edge Function "thank-you" (SMTP บริษัท)  [ต้องรัน migrate_thankyou.sql + deploy function — ดู THANKYOU_SETUP.md]
        2026.09.09n - หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login (ช่าง) มีปุ่ม "เปลี่ยนรหัสผ่าน" บน header
        2026.09.09m - ชื่อบริษัท = Fanuc Thai Limited.; สร้าง QR ไม่พังแม้ยังไม่ได้รัน migrate_geo_area.sql (retry ตัด geo_area)
        2026.09.09l - logout แจ้ง "ออกจากระบบเรียบร้อย"; เก็บ geo_area (อำเภอ/จังหวัด) ตอนสร้าง QR ด้วย reverse-geocode  [ต้องรัน migrate_geo_area.sql]
@@ -226,6 +227,12 @@
       </div>
 
       <div class="card">
+        <h2 data-i18n="emailHead">อีเมลของท่าน (ไม่บังคับ)</h2>
+        <input type="email" id="custEmail" autocomplete="email" data-i18n-ph="emailPh">
+        <p class="muted" style="text-align:left;padding:8px 0 0" data-i18n="emailNote">ระบุไว้เพื่อรับอีเมลขอบคุณ — เราจะนำความคิดเห็นของท่านไปพัฒนาการบริการ</p>
+      </div>
+
+      <div class="card">
         <h2 data-i18n="sigHead">ลงลายมือชื่อลูกค้า</h2>
         <div id="sigPadWrap">
           <canvas id="sigPad"></canvas>
@@ -296,7 +303,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09n";
+const APP_VERSION = "2026.09.09o";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -370,6 +377,9 @@ const I18N = {
   checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
   rateHead:{th:"โปรดให้คะแนนการบริการครั้งนี้",en:"Please rate this service",ja:"今回のサービスを評価してください"},
   commentHead:{th:"ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)",en:"Additional comments (optional)",ja:"ご意見・ご提案（任意）"},
+  emailHead:{th:"อีเมลของท่าน (ไม่บังคับ)",en:"Your email (optional)",ja:"メールアドレス（任意）"},
+  emailPh:{th:"you@example.com",en:"you@example.com",ja:"you@example.com"},
+  emailNote:{th:"ระบุไว้เพื่อรับอีเมลขอบคุณ — เราจะนำความคิดเห็นของท่านไปพัฒนาการบริการของ Fanuc Thai Limited.",en:"Provide it to receive a thank-you email — your feedback helps us improve Fanuc Thai Limited.'s service.",ja:"お礼メールをお送りします。ご意見はサービス改善に活用します。"},
   commentPh:{th:"อยากให้เราปรับปรุงเรื่องอะไร หรือมีอะไรอยากบอกเพิ่มเติม...",en:"Anything we could improve, or anything else you'd like to tell us...",ja:"改善してほしい点や、その他お伝えたいことがあればご記入ください..."},
   sigHead:{th:"ลงลายมือชื่อลูกค้า",en:"Customer signature",ja:"お客様のサイン"},
   clear:{th:"ล้าง",en:"Clear",ja:"消去"},
@@ -984,7 +994,8 @@ async function submitSurvey(){
       up.error.message = '[signature upload] ' + up.error.message; throw up.error;
     }
 
-    const { error } = await sb.rpc('submit_survey', {
+    const custEmail = ($('custEmail').value || '').trim().toLowerCase() || null;
+    const args = {
       p_token: jobToken,
       p_q1: answers.q1_response_time,
       p_q2: answers.q2_technical_skill,
@@ -992,12 +1003,28 @@ async function submitSurvey(){
       p_q4: answers.q4_professionalism,
       p_q5: answers.q5_overall,
       p_signature_path: path,
-      p_comment: ($('custComment').value || '').trim() || null
-    });
+      p_comment: ($('custComment').value || '').trim() || null,
+      p_customer_email: custEmail
+    };
+    let { error } = await sb.rpc('submit_survey', args);
+    // ยังไม่ได้รัน migrate_thankyou.sql -> RPC ไม่รู้จัก p_customer_email: ลองใหม่แบบไม่มีอีเมล
+    if (error && /p_customer_email|customer_email/.test(error.message || '')) {
+      delete args.p_customer_email;
+      ({ error } = await sb.rpc('submit_survey', args));
+    }
     if (error) { error.message = '[submit_survey RPC] ' + error.message; throw error; }
 
     hide('custForm'); show('custThanks');
     toast(t('submitOk'));
+
+    // ส่งอีเมลขอบคุณ (ไม่บล็อกหน้าจอ) — ผ่าน Supabase Edge Function "thank-you"
+    if (custEmail) {
+      fetch(`${SUPABASE_CONFIG.url}/functions/v1/thank-you`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CONFIG.anonKey, Authorization: 'Bearer ' + SUPABASE_CONFIG.anonKey },
+        body: JSON.stringify({ token: jobToken, lang })
+      }).catch(() => {});
+    }
   } catch (e) {
     toast(t('submitFail', { err: e.message || e }), true);
     $('btnSubmitSurvey').disabled = false;
