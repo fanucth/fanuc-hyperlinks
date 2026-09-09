@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09m - ชื่อบริษัท = Fanuc Thai Limited.; สร้าง QR ไม่พังแม้ยังไม่ได้รัน migrate_geo_area.sql (retry ตัด geo_area)
        2026.09.09l - logout แจ้ง "ออกจากระบบเรียบร้อย"; เก็บ geo_area (อำเภอ/จังหวัด) ตอนสร้าง QR ด้วย reverse-geocode  [ต้องรัน migrate_geo_area.sql]
        2026.09.09k - รองรับ ?loggedout=1 จาก dashboard: เคลียร์ session + อยู่หน้า login (กัน loop เด้งกลับ dashboard); logout ใช้ scope:'local'
        2026.09.09j - ปรับข้อความ: Service Engineer / Management, placeholder อีเมล @fth.fanuc.com
@@ -127,7 +128,7 @@
 <header>
   <div class="header-row">
     <div>
-      <h1 data-i18n="appTitle">FANUC Thai Service Survey</h1>
+      <h1 data-i18n="appTitle">Fanuc Thai Limited. Service Survey</h1>
       <p id="subLine" data-i18n="appSub">แบบสอบถามความพึงพอใจในการให้บริการ</p>
     </div>
     <div class="header-actions">
@@ -239,7 +240,7 @@
       <div class="thanks">
         <div class="big">🙏</div>
         <h2 data-i18n="thanksHead">ขอบคุณสำหรับความคิดเห็น</h2>
-        <p class="muted" data-i18n="thanksBody">FANUC Thai จะนำไปพัฒนาการบริการต่อไป</p>
+        <p class="muted" data-i18n="thanksBody">Fanuc Thai Limited. จะนำไปพัฒนาการบริการต่อไป</p>
       </div>
     </div>
   </section>
@@ -275,7 +276,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09l";
+const APP_VERSION = "2026.09.09m";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -299,7 +300,7 @@ const TOKEN_TTL_HOURS = 24;
    1. i18n
    ========================================================================= */
 const I18N = {
-  appTitle:{th:"FANUC Thai — แบบสอบถามบริการ",en:"FANUC Thai — Service Survey",ja:"FANUC Thai — サービスアンケート"},
+  appTitle:{th:"Fanuc Thai Limited. — แบบสอบถามบริการ",en:"Fanuc Thai Limited. — Service Survey",ja:"Fanuc Thai Limited. — サービスアンケート"},
   appSub:{th:"ประเมินคุณภาพงานบริการภาคสนาม",en:"Field service quality evaluation",ja:"フィールドサービス品質評価"},
   logout:{th:"ออกจากระบบ",en:"Log out",ja:"ログアウト"},
   loginHead:{th:"เข้าสู่ระบบ (สำหรับพนักงาน)",en:"Sign in (staff only)",ja:"ログイン（社員専用）"},
@@ -343,7 +344,7 @@ const I18N = {
   sigNote:{th:"เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา",en:"Sign in the box above with your finger or a stylus",ja:"上の枠内に指またはペンでサインしてください"},
   submit:{th:"ส่งแบบสอบถาม",en:"Submit survey",ja:"アンケートを送信"},
   thanksHead:{th:"ขอบคุณสำหรับความคิดเห็น",en:"Thank you for your feedback",ja:"ご協力ありがとうございました"},
-  thanksBody:{th:"FANUC Thai จะนำไปพัฒนาการบริการต่อไป",en:"FANUC Thai will use it to improve our service.",ja:"FANUC Thaiはサービス改善に活用します。"},
+  thanksBody:{th:"Fanuc Thai Limited. จะนำไปพัฒนาการบริการต่อไป",en:"Fanuc Thai Limited. will use it to improve our service.",ja:"Fanuc Thai Limited.はサービス改善に活用します。"},
   dashHead:{th:"ผลแบบสอบถาม",en:"Survey results",ja:"アンケート結果"},
   dateFrom:{th:"ตั้งแต่วันที่",en:"From",ja:"開始日"},
   dateTo:{th:"ถึงวันที่",en:"To",ja:"終了日"},
@@ -715,7 +716,7 @@ async function makeQr(){
     } catch {}
 
     const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
-    const { data, error } = await sb.from('survey_sessions').insert({
+    const payload = {
       engineer_id: ENG.id,
       service_report_no: sr,
       service_order_no: so,
@@ -725,7 +726,13 @@ async function makeQr(){
       geo_accuracy: geo ? geo.acc : null,
       geo_at: geo ? new Date().toISOString() : null,
       geo_area: geoArea
-    }).select('id').single();
+    };
+    let { data, error } = await sb.from('survey_sessions').insert(payload).select('id').single();
+    // ยังไม่ได้รัน migrate_geo_area.sql -> column ไม่มี: ลองใหม่โดยตัด geo_area ออก (ไม่ให้พังการสร้าง QR)
+    if (error && /geo_area/.test(error.message || '')) {
+      delete payload.geo_area;
+      ({ data, error } = await sb.from('survey_sessions').insert(payload).select('id').single());
+    }
     if (error) throw error;
 
     renderQrCard(data.id, sr, so);
