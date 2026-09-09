@@ -10,6 +10,8 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09e - ตาราง "งานวันนี้" แยก Service Report No. / Service Order No. เป็นคนละคอลัมน์
+       2026.09.09d - แตะงาน "รอลูกค้า" -> เปิดหน้า survey ของ token นั้นใน tab ใหม่ด้วย (นอกจากโชว์การ์ด QR)
        2026.09.09c - ยกเลิก QR ได้จริง (RPC expire_session, ใช้ตอนพิมพ์เลขงานผิด);
                      แตะงานใน "งานวันนี้" ที่ยังรอลูกค้า เพื่อเปิด QR/ลิงก์เดิมส่งซ้ำ;
                      การ์ด QR โชว์เลข Report/Order ให้ช่างตรวจทาน  [ต้องรัน migrate_cancel.sql]
@@ -259,7 +261,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09c";
+const APP_VERSION = "2026.09.09e";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -304,6 +306,8 @@ const I18N = {
   cancelConfirm:{th:"ยกเลิก QR นี้? ลูกค้าจะสแกนไม่ได้อีก (ใช้เมื่อพิมพ์เลขงานผิด)",en:"Cancel this QR? The customer will no longer be able to use it.",ja:"このQRを取り消しますか？お客様は使用できなくなります。"},
   cancelDone:{th:"ยกเลิก QR แล้ว — แก้เลขแล้วสร้างใหม่ได้เลย",en:"QR cancelled — fix the number and create a new one",ja:"QRを取り消しました"},
   jobsHint:{th:"แตะงานที่ยัง “รอลูกค้า” เพื่อเปิด QR / ลิงก์เดิมส่งให้ลูกค้าอีกครั้ง",en:"Tap a “Waiting” job to reopen its QR / link",ja:"「待機中」の作業をタップするとQR・リンクを再表示"},
+  colReport:{th:"Service Report No.",en:"Service Report No.",ja:"レポート番号"},
+  colOrder:{th:"Service Order No.",en:"Service Order No.",ja:"オーダー番号"},
   jobDoneMsg:{th:"งานนี้ลูกค้าตอบแล้ว",en:"This job is already answered",ja:"この作業は回答済みです"},
   jobExpMsg:{th:"งานนี้หมดอายุแล้ว — สร้าง QR ใหม่",en:"This job has expired — create a new QR",ja:"この作業は期限切れです"},
   myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
@@ -643,20 +647,19 @@ async function loadMyJobs(){
     if (s.used) { state = 'used'; pill = `<span class="pill pill-used">${t('stUsed')}</span>`; }
     else if (new Date(s.expires_at).getTime() < now) { state = 'exp'; pill = `<span class="pill pill-exp">${t('stExpired')}</span>`; }
     else { state = 'wait'; pill = `<span class="pill pill-wait">${t('stWait')}</span>`; }
-    return `<tr data-id="${s.id}" data-state="${state}"><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}<br><span style="color:var(--sub)">${s.service_order_no}</span></td><td>${pill}</td></tr>`;
+    return `<tr data-id="${s.id}" data-state="${state}"><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}</td><td>${s.service_order_no}</td><td>${pill}</td></tr>`;
   }).join('');
   box.innerHTML = `<p class="muted" style="margin:0 0 8px">${t('jobsHint')}</p>`
-    + `<table><thead><tr><th>${t('colDateTime')}</th><th>Report / Order</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    + `<table><thead><tr><th>${t('colDateTime')}</th><th>${t('colReport')}</th><th>${t('colOrder')}</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   box.querySelectorAll('tr[data-id]').forEach(tr => {
     tr.style.cursor = 'pointer';
     tr.onclick = () => {
       if (tr.dataset.state === 'used') return toast(t('jobDoneMsg'), true);
       if (tr.dataset.state === 'exp')  return toast(t('jobExpMsg'), true);
-     const s = data.find(x => x.id === tr.dataset.id);
-     if (!s) return;
-     renderQrCard(s.id, s.service_report_no, s.service_order_no);
-     window.open(`${location.origin}${location.pathname}?t=${s.id}`, '_blank');
-         
+      const s = data.find(x => x.id === tr.dataset.id);
+      if (!s) return;
+      renderQrCard(s.id, s.service_report_no, s.service_order_no);
+      window.open(`${location.origin}${location.pathname}?t=${s.id}`, '_blank');
     };
   });
 }
