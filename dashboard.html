@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10k - หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login มีปุ่ม "เปลี่ยนรหัสผ่าน" บน app bar
        2026.09.10j - หัวตารางเข้มขึ้น (ทุกตาราง); คลิกหัวคอลัมน์ = เรียง asc/desc (▲▼); ปุ่ม Export แยกที่การ์ด
                      "อันดับคะแนน" และ "รายการทั้งหมด" (นอกจาก Export ทั้งหมด); hover แถว = พื้นอุ่น + แถบซ้ายสีแบรนด์
        2026.09.10i - ตัวกรองแถวเดียวกระชับ; "อันดับคะแนนของวิศวกร"; Report/Order หัวคอลัมน์ 2 บรรทัด (Service / Report No.);
@@ -84,6 +85,7 @@
       <span>📍 <span data-i18n="geoToggle">เก็บพิกัด</span></span>
     </label>
     <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
+    <button id="btnChgPw" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="changePw">เปลี่ยนรหัสผ่าน</button>
     <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" data-i18n="logout">ออกจากระบบ</button>
   </div>
 </header>
@@ -104,6 +106,7 @@
         <input type="password" id="loginPass" class="fc-input" autocomplete="current-password">
       </label>
       <button class="fc-btn fc-btn--primary" id="btnLogin" style="width:100%" data-i18n="signIn">เข้าสู่ระบบ</button>
+      <p style="text-align:center;margin:var(--fc-s2) 0 0"><a href="#" id="linkForgot" style="font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a></p>
       <p class="fc-note" style="margin-top:var(--fc-s3)" data-i18n="execOnly">เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น</p>
     </div>
   </section>
@@ -160,11 +163,26 @@
 <div id="appVer"></div>
 <div id="toast" class="fc-toast"></div>
 
+<div id="pwModal" class="fc-modal fc-hidden">
+  <div class="fc-modal__box">
+    <h3 id="pwTitle" data-i18n="changePw">เปลี่ยนรหัสผ่าน</h3>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="pwNew">รหัสผ่านใหม่</span>
+      <input type="password" id="pwNew" class="fc-input" autocomplete="new-password"></label>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="pwNew2">ยืนยันรหัสผ่านใหม่</span>
+      <input type="password" id="pwNew2" class="fc-input" autocomplete="new-password"></label>
+    <p id="pwErr" class="fc-field__error" style="min-height:16px"></p>
+    <div class="fc-row" style="gap:var(--fc-s2)">
+      <button class="fc-btn" id="pwCancel" style="flex:1" data-i18n="cancel">ยกเลิก</button>
+      <button class="fc-btn fc-btn--primary" id="pwSave" style="flex:1" data-i18n="save">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10j";
+const APP_VERSION = "2026.09.10k";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -188,6 +206,18 @@ const I18N = {
   execOnly:{th:"เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น",en:"Authorised management accounts only",ja:"許可された管理者のみ"},
   notExec:{th:"บัญชีนี้ไม่มีสิทธิ์ดูแดชบอร์ด",en:"This account is not allowed to view the dashboard",ja:"このアカウントには閲覧権限がありません"},
   loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログイン失敗: {err}"},
+  forgotPw:{th:"ลืมรหัสผ่าน?",en:"Forgot password?",ja:"パスワードをお忘れですか？"},
+  enterEmailFirst:{th:"กรอกอีเมลก่อน แล้วกด \"ลืมรหัสผ่าน?\" อีกครั้ง",en:"Enter your email first, then tap \"Forgot password?\"",ja:"先にメールを入力してください"},
+  resetSent:{th:"ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว (เช็ก spam ด้วย)",en:"A reset link was sent to your email (check spam too)",ja:"再設定リンクをメールに送りました"},
+  changePw:{th:"เปลี่ยนรหัสผ่าน",en:"Change password",ja:"パスワード変更"},
+  pwSetNew:{th:"ตั้งรหัสผ่านใหม่",en:"Set a new password",ja:"新しいパスワードを設定"},
+  pwNew:{th:"รหัสผ่านใหม่",en:"New password",ja:"新しいパスワード"},
+  pwNew2:{th:"ยืนยันรหัสผ่านใหม่",en:"Confirm new password",ja:"新しいパスワード（確認）"},
+  pwTooShort:{th:"รหัสผ่านต้องยาวอย่างน้อย 6 ตัว",en:"Password must be at least 6 characters",ja:"パスワードは6文字以上"},
+  pwMismatch:{th:"รหัสผ่านสองช่องไม่ตรงกัน",en:"The two passwords do not match",ja:"パスワードが一致しません"},
+  pwChanged:{th:"เปลี่ยนรหัสผ่านแล้ว",en:"Password changed",ja:"パスワードを変更しました"},
+  cancel:{th:"ยกเลิก",en:"Cancel",ja:"キャンセル"},
+  save:{th:"บันทึก",en:"Save",ja:"保存"},
   settings:{th:"การตั้งค่า",en:"Settings",ja:"設定"},
   geoToggle:{th:"เก็บพิกัด",en:"Capture location",ja:"位置情報を記録"},
   geoOnInfo:{th:"เปิดอยู่ — ช่างจะถูกขออนุญาตตำแหน่งตอนกดสร้าง QR (ถ้าไม่อนุญาต ระบบข้ามให้ ไม่บล็อก)",en:"On — engineers are asked for location when creating a QR (skipped if denied)",ja:"オン — QR作成時に位置情報の許可を求めます（拒否時はスキップ）"},
@@ -335,6 +365,10 @@ async function boot(){
   };
 
   if (!CONFIGURED) { $('cfgBanner').textContent = 'Supabase config missing'; $('cfgBanner').classList.remove('fc-hidden'); show('viewLogin'); return; }
+  wirePwUi();
+
+  // มาจากลิงก์ "ลืมรหัสผ่าน" ในอีเมล
+  if (location.hash.includes('type=recovery')) { show('viewLogin'); wireLogin(); return; }
 
   const { data:{ session } } = await sb.auth.getSession();
   if (session && isExecEmail(session.user.email)) { ME = (session.user.email||'').toLowerCase(); return startDash(); }
@@ -344,6 +378,46 @@ async function boot(){
 }
 
 function isExecEmail(email){ return EXEC_ALLOWLIST.includes((email || '').toLowerCase()); }
+
+/* ---------- เปลี่ยน / ลืมรหัสผ่าน ---------- */
+let pwRecovery = false;
+function openPwModal(isRecovery){
+  pwRecovery = !!isRecovery;
+  $('pwNew').value = ''; $('pwNew2').value = ''; $('pwErr').textContent = '';
+  $('pwTitle').textContent = isRecovery ? t('pwSetNew') : t('changePw');
+  $('pwModal').classList.remove('fc-hidden');
+  $('pwNew').focus();
+}
+function wirePwUi(){
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true); }
+  });
+  $('btnChgPw').onclick = () => openPwModal(false);
+  $('pwCancel').onclick = () => $('pwModal').classList.add('fc-hidden');
+  $('linkForgot').onclick = async (e) => {
+    e.preventDefault();
+    const email = $('loginEmail').value.trim().toLowerCase();
+    if (!email) { toast(t('enterEmailFirst'), true); $('loginEmail').focus(); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) return toast(error.message, true);
+    toast(t('resetSent'));
+  };
+  $('pwSave').onclick = async () => {
+    const a = $('pwNew').value, b = $('pwNew2').value;
+    if (a.length < 6) { $('pwErr').textContent = t('pwTooShort'); return; }
+    if (a !== b)      { $('pwErr').textContent = t('pwMismatch'); return; }
+    $('pwSave').disabled = true;
+    const { error } = await sb.auth.updateUser({ password: a });
+    $('pwSave').disabled = false;
+    if (error) { $('pwErr').textContent = error.message; return; }
+    $('pwModal').classList.add('fc-hidden');
+    toast(t('pwChanged'));
+    if (pwRecovery) {
+      try { await sb.auth.signOut({ scope: 'local' }); } catch {}
+      location.href = 'survey.html?loggedout=1';
+    }
+  };
+}
 
 function wireLogin(){
   $('btnLogin').onclick = async () => {
@@ -373,6 +447,7 @@ let pageSize = parseInt(localStorage.getItem('dashPageSize'), 10) || 10;
 async function startDash(){
   show('viewDash');
   $('btnLogout').classList.remove('fc-hidden');
+  $('btnChgPw').classList.remove('fc-hidden');
   $('fEngineer').options[0].text = '— All —';
   $('fDept').options[0].text = '— All —';
   const { data: engs } = await sb.from('engineers').select('id,fname,lname,department').order('fname');
