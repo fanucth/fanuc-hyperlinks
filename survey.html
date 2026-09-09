@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09k - รองรับ ?loggedout=1 จาก dashboard: เคลียร์ session + อยู่หน้า login (กัน loop เด้งกลับ dashboard); logout ใช้ scope:'local'
        2026.09.09j - ปรับข้อความ: Service Engineer / Management, placeholder อีเมล @fth.fanuc.com
        2026.09.09i - หน้า login มีแท็บเลือก วิศวกร / ผู้บริหาร; ผู้บริหาร login -> เด้งไป dashboard.html
        2026.09.09h - เก็บพิกัดตำแหน่งตอนช่างสร้าง QR (ถ้าผู้บริหารเปิดสวิตช์ใน dashboard) เก็บที่ survey_sessions.geo_*  [ต้องรัน migrate_geo.sql]
@@ -273,7 +274,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09j";
+const APP_VERSION = "2026.09.09k";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -519,12 +520,23 @@ async function boot(){
     applyI18n();
     rerenderDynamic();
   };
-  $('btnLogout').onclick = async () => { if (sb) await sb.auth.signOut(); location.href = location.pathname; };
+  $('btnLogout').onclick = async () => {
+    try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch {}
+    location.href = location.pathname;
+  };
 
   if (jobToken) { return startCustomer(); }
 
   // staff flow
   if (!CONFIGURED) { show('viewLogin'); return; }
+  // เพิ่งกด logout จาก dashboard -> เคลียร์ session ให้ชัวร์แล้วอยู่ที่หน้า login (กัน loop เด้งกลับ)
+  if (params.get('loggedout')) {
+    try { await sb.auth.signOut({ scope: 'local' }); } catch {}
+    history.replaceState(null, '', location.pathname);
+    show('viewLogin');
+    wireLogin();
+    return;
+  }
   const { data:{ session } } = await sb.auth.getSession();
   if (session) { return routeStaff(session); }
   show('viewLogin');
