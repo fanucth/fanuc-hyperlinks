@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10d - กด Sign out -> กลับไป survey.html (ประตูทางเข้าเดียว)
        2026.09.10c - ตาราง All responses: หัวตาราง sticky (ล็อกไว้), ลากปรับกว้างคอลัมน์ได้ (จำค่า),
                      ช่อง comment กว้างขึ้น, คอลัมน์วันที่แยกเป็น 2 บรรทัด (วันที่ / เวลา)
        2026.09.10b - ดูลายเซ็นลูกค้า: ใส่ลายน้ำ "ห้ามเผยแพร่" + อีเมลผู้เปิด + เวลา (กันเอาภาพไปใช้ต่อ)
@@ -136,7 +137,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10c";
+const APP_VERSION = "2026.09.10d";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -287,7 +288,7 @@ async function boot(){
     applyI18n();
     if (!$('viewDash').classList.contains('fc-hidden')) render();
   };
-  $('btnLogout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  $('btnLogout').onclick = async () => { await sb.auth.signOut(); location.href = 'survey.html'; };
 
   if (!CONFIGURED) { $('cfgBanner').textContent = 'Supabase config missing'; $('cfgBanner').classList.remove('fc-hidden'); show('viewLogin'); return; }
 
