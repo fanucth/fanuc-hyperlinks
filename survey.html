@@ -10,6 +10,8 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09g - เตือนเมื่อเลข Service Report/Order ซ้ำกับ QR ที่เคยสร้าง (ข้ามทุกช่าง) กดยืนยันสร้างต่อได้  [ต้องรัน migrate_dup_check.sql]
+       2026.09.09f - แก้ EXEC_ALLOWLIST เป็นอีเมลผู้บริหารจริง @fth.fanuc.com 5 ท่าน  [ต้องรัน fix_exec_allowlist.sql]
        2026.09.09e - ตาราง "งานวันนี้" แยก Service Report No. / Service Order No. เป็นคนละคอลัมน์
        2026.09.09d - แตะงาน "รอลูกค้า" -> เปิดหน้า survey ของ token นั้นใน tab ใหม่ด้วย (นอกจากโชว์การ์ด QR)
        2026.09.09c - ยกเลิก QR ได้จริง (RPC expire_session, ใช้ตอนพิมพ์เลขงานผิด);
@@ -261,7 +263,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09e";
+const APP_VERSION = "2026.09.09g";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -270,13 +272,13 @@ const SUPABASE_CONFIG = {
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
 };
 
-// อีเมลผู้บริหาร 4 ท่านที่เห็น dashboard ได้ (ต้องตรงกับ allowlist ใน RLS ด้วย)
+// อีเมลผู้บริหารที่เห็น dashboard ได้ (ต้องตรงกับตาราง exec_allowlist ใน DB ด้วย — ตัวพิมพ์เล็ก)
 const EXEC_ALLOWLIST = [
-  "oshikubo@fanucth.co.th",
-  "masada@fanucth.co.th",
-  "ito@fanucth.co.th",
-  "yamamoto@fanucth.co.th",
-  "weerachai@fanucth.co.th",
+  "ito.masayuki@fth.fanuc.com",
+  "masada.ryota@fth.fanuc.com",
+  "yamamoto.katsuhiko@fth.fanuc.com",
+  "oshikubo.takayuki@fth.fanuc.com",
+  "weerachai.j@fth.fanuc.com",
 ];
 
 const TOKEN_TTL_HOURS = 24;
@@ -308,6 +310,8 @@ const I18N = {
   jobsHint:{th:"แตะงานที่ยัง “รอลูกค้า” เพื่อเปิด QR / ลิงก์เดิมส่งให้ลูกค้าอีกครั้ง",en:"Tap a “Waiting” job to reopen its QR / link",ja:"「待機中」の作業をタップするとQR・リンクを再表示"},
   colReport:{th:"Service Report No.",en:"Service Report No.",ja:"レポート番号"},
   colOrder:{th:"Service Order No.",en:"Service Order No.",ja:"オーダー番号"},
+  dupWarn:{th:"⚠️ เลขงานนี้เคยถูกใช้สร้าง QR มาแล้ว:",en:"⚠️ This job number was already used to create a QR:",ja:"⚠️ この番号は既にQR作成に使われています:"},
+  dupProceed:{th:"ยืนยันสร้าง QR ใหม่ต่อไปหรือไม่?",en:"Create a new QR anyway?",ja:"それでも新しいQRを作成しますか？"},
   jobDoneMsg:{th:"งานนี้ลูกค้าตอบแล้ว",en:"This job is already answered",ja:"この作業は回答済みです"},
   jobExpMsg:{th:"งานนี้หมดอายุแล้ว — สร้าง QR ใหม่",en:"This job has expired — create a new QR",ja:"この作業は期限切れです"},
   myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
@@ -613,6 +617,17 @@ async function makeQr(){
   if (!sr || !so) return toast(t('needBothNo'), true);
   $('btnMakeQr').disabled = true;
   try {
+    // เตือนถ้าเลข Report/Order ซ้ำกับ QR ที่เคยสร้าง (ของช่างคนไหนก็ตาม)
+    const { data: dups } = await sb.rpc('check_job_dup', { p_report: sr, p_order: so });
+    if (dups && dups.length) {
+      const lines = dups.map(d => {
+        const f = d.match_field === 'both' ? `${sr} + ${so}` : (d.match_field === 'report' ? sr : so);
+        const st = d.used ? t('stUsed') : t('stWait');
+        return `• ${f} — ${d.engineer_name}, ${fmtDateTime(d.created_at)} (${st})`;
+      }).join('\n');
+      if (!confirm(`${t('dupWarn')}\n\n${lines}\n\n${t('dupProceed')}`)) return;
+    }
+
     const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
     const { data, error } = await sb.from('survey_sessions').insert({
       engineer_id: ENG.id,
