@@ -4,1243 +4,860 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.1</title>
-<!-- VERSION: v3.1 | Updated: 2026-09-02
-     Changes (v3.1):
-       - ความปลอดภัย: bucket scrap-photos เปลี่ยนจาก Public เป็น Private
-         รูปทั้งหมด (ตาราง modal ดูรูป + export PDF) แสดงผ่าน Signed URL ชั่วคราว (หมดอายุใน 1 ชม.)
-         ที่ขอได้เฉพาะตอน login อยู่เท่านั้น — คนที่ไม่ login เข้าระบบจะดู/ดาวน์โหลดรูปไม่ได้เลย
-         แม้จะมีลิงก์รูปหลุดออกไปก็ตาม (ต่างจากเดิมที่ใช้ public URL ถาวร)
-       - รองรับรูปเก่าที่ยังเก็บเป็น public URL แบบเดิมในฐานข้อมูล (ถอด path ออกมาขอ signed URL ให้อัตโนมัติ)
-     Changes (v3.0):
-       - เปลี่ยนหน้า login จาก prompt() ของเบราว์เซอร์ เป็นหน้าฟอร์ม login จริงในตัวเว็บ (ภาษาอังกฤษเสมอ)
-       - บังคับ login ก่อนถึงจะเห็น/ใช้แอปได้เลย (โหมด Cloud) — ไม่กด login (หรือปิดฟอร์มไม่ได้เลยเพราะไม่มีปุ่ม cancel)
-         จะเข้าแอปไม่ได้ ต่างจากของเดิมที่กด Cancel บน prompt() แล้วยังเห็นหน้าแอปอยู่ดี
-       - เพิ่มปุ่ม Logout ในหัวเว็บ (โชว์เฉพาะตอน login แล้ว)
-       - เพิ่มตัวเลือกภาษา TH / EN / JP ในหัวเว็บ (โชว์หลัง login) ค่าเริ่มต้นเป็นไทยเสมอ
-         จำค่าไว้ต่อเครื่อง (localStorage) ไม่กระทบ user อื่น
-     Changes (v2.9):
-       - เพิ่มหน้า "รายการที่บันทึกแล้ว" ให้ดึงข้อมูลจริงจาก Supabase (โหมด Cloud)
-         แทนที่จะโชว์แค่ของ session/เครื่องนี้ — มีช่องค้นหาตามรหัสชิ้นงาน + ปุ่มรีเฟรช
-       - เพิ่มปุ่ม "📷 ดูรูป" เปิด modal แสดงรูปก่อน/หลังทำลายของแต่ละรายการ (คลิกรูปเพื่อดูเต็มจอ)
-       - Export Excel/PDF (โหมด Cloud) ดึงข้อมูลทุกแถวจริงจาก Supabase ตอนกด export
-         (ไม่ใช่แค่ 200 แถวที่โชว์ในตาราง) รองรับ scale ถึงหลักพันรายการ
-       - Export PDF: แก้รูปที่เคยถูกยืดเป็นสี่เหลี่ยมจัตุรัส ให้รักษาสัดส่วนภาพจริงแทน (contain)
-       - Export Excel/PDF: ใส่วันที่-เวลาในชื่อไฟล์ กันไฟล์ทับกันตอน export ซ้ำ
-       - แก้บั๊ก: เปลี่ยนจาก sessionStorage เป็น localStorage (โหมดเก็บในเครื่อง) กันข้อมูลหายตอนปิดแท็บ
-       - แก้บั๊ก: ล็อกปุ่ม "บันทึกรายการนี้" ระหว่างกำลังอัปโหลด กันกดซ้ำเกิด record/รูปซ้ำ
-       - แก้บั๊ก: สลับลำดับ uploadToCloud ให้ insert record ก่อนอัปโหลดรูป
-         กันรูปค้างเป็น orphan ใน Storage เวลา insert ล้มเหลว
-       - เพิ่ม <meta name="robots" content="noindex, nofollow"> กัน Google index หน้าเว็บภายใน
-     Changes (v2.8):
-       - เปลี่ยนจาก jsQR (QR เท่านั้น) เป็น html5-qrcode
-       - เพิ่ม OCR (Tesseract.js) อ่าน Part No. จากตัวอักษรบนป้าย กรณีบาร์โค้ดชำรุด
-       - ย่อขนาดภาพก่อนบันทึก (ลดพื้นที่จาก ~4MB เหลือ ~200KB ต่อภาพ)
-       - ปุ่มเปิดไฟฉาย ช่วยสแกนในที่แสงน้อย
-       - ย้ายจาก Firebase เป็น Supabase (PostgreSQL)
-       - ปรับ Layout: ย้ายปุ่มไฟฉาย/หยุดสแกนขึ้นด้านบน ซ่อนกล้องตอนไม่ได้สแกน ให้พอดีจอมือถือ
-       - FIX: แก้บั๊กสแกนไม่ติด — ต้องโชว์กล้องก่อน start() เสมอ
-       - เพิ่มปุ่ม ✕ ล้างรหัสชิ้นงาน ข้างช่อง input (กดครั้งเดียวเคลียร์ค่า)
-       - เปลี่ยนมาอ่าน "Code 39 อย่างเดียว" สแกนเร็วขึ้น+แม่นยำขึ้น
-       - รองรับ "หลายภาพ" ต่อเฟส (ก่อน/หลังทำลาย) แทนที่จะจำกัดเฟสละ 1 รูป
-         → DB schema เปลี่ยนเป็น 1-to-many: ตาราง scrap_records + scrap_photos
+<title>FTH Service Survey</title>
+<!-- FTH Service Quality & CS Evaluation Survey
+     VERSION: ดูค่า APP_VERSION ในสคริปต์ (โชว์มุมขวาล่างของหน้า + console)
+     *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
+
+     CHANGELOG:
+       2026.09.09b - เพิ่ม Contact(tel) บนหน้าลูกค้า + ป้ายเวอร์ชันมุมจอ
+       2026.09.09a - engineers: ใช้ title + hire_date (คำนวณอายุงานตอนแสดง) แทน years_experience;
+                     เพิ่มแผนก Robodrill & Robocut / Roboshot; import ช่างจริง 51 คน
+       2026.09.04  - หน้าลูกค้า: แผนก 3 ภาษา, บรรทัด label:value, ช่องคอมเมนต์, ปรับขนาดรูป
+       2026.09.03  - scaffold: 3 โหมด (customer/engineer/dashboard), i18n TH/EN/JP, เทสต์ end-to-end ผ่าน
+
+     Design spec: V:\IT\Survey\SURVEY_SYSTEM_DESIGN.md
+     DB / RLS / RPC setup: V:\IT\Survey\SUPABASE_SETUP.sql
+
+     ไฟล์เดียว 3 โหมด:
+       - Customer  : survey.html?t=<token>   (จาก QR, ไม่ต้อง login) — โชว์รูป+ชื่อช่าง แล้วให้ตอบ 5 ข้อ + เซ็น
+       - Engineer  : survey.html             (login -> กรอกเลข report -> โชว์ QR)
+       - Dashboard : survey.html             (login ด้วย email ที่อยู่ใน EXEC_ALLOWLIST)
+
+     รูปช่าง: เก็บใน Supabase Storage bucket "engineer-photos" (public), ชื่อไฟล์อยู่ใน engineers.photo_path
+              อัปโหลดผ่าน bulk_add_engineers.mjs (คอลัมน์ photo ใน CSV) หรือ Storage UI
+
+     สถานะ 2026-09-03: เทสต์ end-to-end ผ่านแล้ว (ช่างสร้าง QR -> ลูกค้าตอบ+เซ็น -> dashboard เห็นผล)
+     Supabase project "survey" (ref soupmzzqsrwfnqmxevlg) ตั้งค่าครบ
+
+     เหลือทำ:
+       - import รายชื่อ engineer จริงทั้งชุด (ใช้ bulk_add_engineers.mjs) — ตอนนี้มีแต่ wisawa (เทสต์)
+       - K.Yamamoto เช็ค/แก้ข้อความคำถาม 5 ข้อในตัวแปร QUESTIONS (ตอนนี้ draft จากชื่อคอลัมน์ spec)
+         แก้ได้ทีหลังไม่กระทบ schema
 -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
     --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
-  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 80%,transparent);z-index:5;}
-  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:520px;margin:0 auto;}
-  header h1{font-size:18px;margin:0 0 2px;}
-  header p{margin:0;color:var(--sub);font-size:12.5px;}
-  .header-actions{display:none;align-items:center;gap:8px;flex:0 0 auto;}
+  body{margin:0;font-family:'Segoe UI',Tahoma,'Noto Sans Thai','Noto Sans JP',Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 82%,transparent);z-index:5;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:560px;margin:0 auto;}
+  header h1{font-size:17px;margin:0 0 2px;}
+  header p{margin:0;color:var(--sub);font-size:12px;}
+  .header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
   .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
   .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
-  .btn-logout:active{background:var(--accent2);color:#fff;}
-  main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
-  .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
+  main{max-width:560px;margin:0 auto;padding:8px 14px 90px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .card h2{font-size:14px;margin:0 0 12px;color:var(--accent);letter-spacing:.3px;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
+  input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{
+    width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:12px;}
+  textarea{resize:vertical;min-height:64px;font-family:inherit;line-height:1.5;margin-bottom:0;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
   .btn-primary{background:var(--accent);color:#1a1500;}
   .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
-  .btn-danger{background:var(--accent2);color:#fff;}
-  .btn-ok{background:var(--ok);color:#062f18;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  #reader{width:100%;height:180px;border-radius:10px;overflow:hidden;background:#000;margin-top:8px;position:relative;}
-  #reader video{width:100%!important;height:180px!important;object-fit:cover;display:block;}
-  #reader__scan_region{height:180px!important;}
-  #reader__scan_region img{display:none!important;}
-  #reader__dashboard{display:none!important;}
-  #reader img[alt="Info icon"]{display:none;}
-  .scan-note{font-size:11px;color:var(--sub);text-align:center;margin:6px 0 10px;line-height:1.4;}
-  .gallery-group{margin-top:10px;}
-  .gallery-label{font-size:12px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
-  .gallery-label b{color:var(--text);font-weight:600;}
-  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;}
-  .thumb{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:2px solid var(--line);background:#0a0e17;}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .thumb .del:active{background:var(--accent2);}
-  .thumb-add{aspect-ratio:1/1;border-radius:8px;border:2px dashed var(--line);background:var(--card2);color:var(--sub);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .thumb-add:active{background:var(--accent);color:#1a1500;}
-  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
-  .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
-  .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;}
-  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
-  th{color:var(--sub);font-weight:600;font-size:11px;}
-  .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:90%;text-align:center;}
+  .hidden{display:none!important;}
+  .banner{background:rgba(255,90,60,.12);border:1px solid var(--accent2);color:#ffd9d1;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.5;}
+  .q-block{margin-bottom:18px;}
+  .q-title{font-size:14px;margin-bottom:8px;line-height:1.4;}
+  .q-num{color:var(--accent);font-weight:700;margin-right:6px;}
+  .emoji-row{display:flex;gap:6px;}
+  .emoji-btn{flex:1;background:var(--card2);border:2px solid var(--line);border-radius:12px;padding:10px 4px 8px;cursor:pointer;text-align:center;transition:.12s;}
+  .emoji-btn .e{font-size:26px;display:block;line-height:1;}
+  .emoji-btn .l{font-size:9.5px;color:var(--sub);display:block;margin-top:5px;line-height:1.2;}
+  .emoji-btn.sel{border-color:var(--accent);background:rgba(255,180,0,.14);}
+  .emoji-btn.sel .l{color:var(--text);}
+  #sigPadWrap{border:2px dashed var(--line);border-radius:12px;background:#fff;position:relative;}
+  #sigPad{width:100%;height:180px;display:block;touch-action:none;}
+  .sig-clear{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 8px;cursor:pointer;}
+  .eng-info{background:var(--card2);border-radius:14px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:20px;}
+  .eng-info .name{font-size:20px;font-weight:700;margin-bottom:6px;}
+  .eng-info .meta{font-size:16px;color:var(--text);margin-top:4px;line-height:1.4;}
+  #ciPhoto{width:150px;height:150px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:3px solid var(--line);background:var(--card);}
+  #ciPhoto[hidden]{display:none;}
+  @media(max-width:400px){ #ciPhoto{width:120px;height:120px;} .eng-info{gap:14px;padding:14px;} }
+  #qrBox{background:#fff;padding:16px;border-radius:14px;display:inline-block;margin:6px auto 12px;}
+  #qrBox img,#qrBox canvas{display:block;}
+  .qr-wrap{text-align:center;}
+  .linktext{word-break:break-all;font-size:11.5px;color:var(--sub);background:var(--card2);border-radius:8px;padding:8px 10px;margin-bottom:8px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{color:var(--sub);font-weight:600;font-size:10.5px;text-transform:uppercase;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;}
+  .pill-used{background:rgba(61,220,132,.15);color:var(--ok);}
+  .pill-wait{background:rgba(255,180,0,.15);color:var(--accent);}
+  .pill-exp{background:rgba(255,90,60,.15);color:var(--accent2);}
+  .row2{display:flex;gap:8px;}
+  .row2>*{flex:1;}
+  .muted{color:var(--sub);font-size:12px;text-align:center;padding:16px 0;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:92%;text-align:center;}
   .toast.show{opacity:1;}
   .toast.err{background:var(--accent2);color:#fff;}
-  .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
-  .row2{display:flex;gap:8px;}
-  .row2 .btn{flex:1;}
-  .code-row{display:flex;gap:8px;align-items:stretch;}
-  .code-row input{flex:1;margin-bottom:10px;}
-  .btn-clear{flex:0 0 auto;width:44px;height:44px;margin-top:0;margin-bottom:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--sub);font-size:16px;font-weight:700;cursor:pointer;}
-  .btn-clear:active{background:var(--accent2);color:#fff;}
-  .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
-  .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
-  .btn-view{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;font-size:12px;}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
-  .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;}
-  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line);}
-  .modal-close{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;}
-  .modal-body{padding:14px;overflow-y:auto;}
-  .modal-body h3{font-size:12px;color:var(--sub);margin:12px 0 8px;}
-  .modal-body .gallery{margin-bottom:4px;}
-  .modal-body .thumb{cursor:pointer;}
-  .loading-note{font-size:12px;color:var(--sub);text-align:center;padding:10px;}
-  .login-overlay{position:fixed;inset:0;background:var(--bg);z-index:70;display:none;align-items:center;justify-content:center;padding:20px;}
-  .login-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 22px;max-width:360px;width:100%;}
-  .login-box h2{margin:0 0 4px;font-size:19px;}
-  .login-sub{margin:0 0 20px;color:var(--sub);font-size:13px;}
-  .login-box label{margin-top:2px;}
-  .login-error{color:#ffb4a8;background:rgba(255,90,60,.12);border:1px solid rgba(255,90,60,.35);border-radius:8px;padding:9px 11px;font-size:12.5px;margin-top:2px;margin-bottom:10px;}
+  .thanks{text-align:center;padding:40px 10px;}
+  .thanks .big{font-size:52px;}
+  .thanks h2{color:var(--ok);border:none;font-size:20px;margin:10px 0 6px;}
 </style>
 </head>
 <body>
+
 <header>
   <div class="header-row">
     <div>
-      <h1>📦 Scrap Photo Capture <span class="tag">v3.1</span></h1>
-      <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
-      <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
+      <h1 data-i18n="appTitle">FANUC Thai Service Survey</h1>
+      <p id="subLine" data-i18n="appSub">แบบสอบถามความพึงพอใจในการให้บริการ</p>
     </div>
-    <div class="header-actions" id="headerActions">
-      <select class="lang-select" id="langSelect" title="Language">
-        <option value="th">TH</option>
+    <div class="header-actions">
+      <select id="langSelect" class="lang-select" title="Language">
+        <option value="th">ไทย</option>
         <option value="en">EN</option>
-        <option value="ja">JP</option>
+        <option value="ja">日本語</option>
       </select>
-      <button class="btn-logout" id="btnLogout" data-i18n="logoutButton" style="display:none;">Logout</button>
+      <button id="btnLogout" class="btn-logout hidden" data-i18n="logout">ออกจากระบบ</button>
     </div>
   </div>
 </header>
 
-<!-- หน้า Login (โหมด Cloud เท่านั้น) — ภาษาอังกฤษเสมอ ไม่ผูกกับตัวเลือกภาษาของแอป
-     ไม่มีปุ่ม cancel/ปิด — ไม่ login สำเร็จ จะเข้าแอปไม่ได้เลย -->
-<div class="login-overlay" id="loginScreen">
-  <div class="login-box">
-    <h2>📦 Scrap Photo Capture</h2>
-    <p class="login-sub">Sign in to continue</p>
-    <p class="login-error" id="loginError" style="display:none;"></p>
-    <label for="loginEmail">Email</label>
-    <input type="email" id="loginEmail" placeholder="you@fanucth.co.th" autocomplete="username">
-    <label for="loginPassword">Password</label>
-    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
-    <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
-  </div>
-</div>
+<main>
+  <div id="cfgBanner" class="banner hidden"></div>
 
-<main id="appMain">
-  <div class="card">
-    <h2 data-i18n="sectionScanTitle">1) สแกน Barcode (Code 39)</h2>
-    <button class="btn btn-primary" id="btnStartScan" data-i18n="btnScanLabel">📷 เปิดกล้องสแกนรหัส</button>
-    <div class="row2" id="scanControls" style="display:none;">
-      <button class="btn btn-secondary" id="btnTorch" data-i18n="btnTorchLabel">🔦 ไฟฉาย</button>
-      <button class="btn btn-secondary" id="btnStopScan" data-i18n="btnStopLabel">⏹ หยุดสแกน</button>
+  <!-- ============ LOGIN (engineer / exec) ============ -->
+  <section id="viewLogin" class="hidden">
+    <div class="card">
+      <h2 data-i18n="loginHead">เข้าสู่ระบบ (สำหรับพนักงาน)</h2>
+      <label data-i18n="email">อีเมล</label>
+      <input type="email" id="loginEmail" autocomplete="username" placeholder="name@fanucth.co.th">
+      <label data-i18n="password">รหัสผ่าน</label>
+      <input type="password" id="loginPass" autocomplete="current-password">
+      <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
+      <p class="muted" data-i18n="loginNote">ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย</p>
     </div>
-    <div id="reader" style="display:none;"></div>
-    <button class="btn btn-secondary" id="btnOcr" data-i18n="btnOcrLabel" style="display:none;">🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)</button>
-    <p class="scan-note" id="scanNote" data-i18n="scanNoteText" style="display:none;">
-      ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.
-    </p>
-    <label style="margin-top:6px;" data-i18n="orEnterManually">หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)</label>
-    <div class="code-row">
-      <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
-      <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
+  </section>
+
+  <!-- ============ ENGINEER: create QR ============ -->
+  <section id="viewEngineer" class="hidden">
+    <div class="card">
+      <h2 data-i18n="engHead">สร้าง QR สำหรับงานนี้</h2>
+      <p class="muted" id="engWho" style="text-align:left;padding:0 0 12px"></p>
+      <label data-i18n="srNo">Service Report No. (จากกระดาษ)</label>
+      <input type="text" id="srNo" autocapitalize="characters">
+      <label data-i18n="soNo">Service Order No. (จาก SAP BYD)</label>
+      <input type="text" id="soNo" autocapitalize="characters">
+      <button class="btn btn-primary" id="btnMakeQr" data-i18n="makeQr">สร้าง QR Code</button>
     </div>
-  </div>
 
-  <div class="card">
-    <h2 data-i18n="sectionPhotoTitle">2) ถ่ายภาพหลักฐาน</h2>
-    <p class="note" data-i18n="sectionPhotoNote">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+    <div class="card qr-wrap hidden" id="qrCard">
+      <h2 data-i18n="qrHead">ให้ลูกค้าสแกน</h2>
+      <div id="qrBox"></div>
+      <div class="linktext" id="qrLink"></div>
+      <button class="btn btn-secondary" id="btnCopyLink" data-i18n="copyLink">คัดลอกลิงก์</button>
+      <div class="row2">
+        <button class="btn btn-secondary" id="btnCancelQr" data-i18n="cancelQr">ยกเลิก</button>
+        <button class="btn btn-secondary" id="btnNewJob" data-i18n="newJob">งานถัดไป</button>
+      </div>
+      <p class="muted" data-i18n="qrNote">QR นี้ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.</p>
+    </div>
 
-    <div class="gallery-group">
-      <div class="gallery-label"><span data-i18n="beforeLabel">📷 ก่อนทำลาย</span> <b id="countBefore">(0)</b></div>
-      <div class="gallery" id="galleryBefore">
-        <button class="thumb-add" id="btnBefore">+</button>
+    <div class="card">
+      <h2 data-i18n="myJobs">งานของฉันวันนี้</h2>
+      <div id="engJobs"><p class="muted" data-i18n="loading">กำลังโหลด...</p></div>
+    </div>
+  </section>
+
+  <!-- ============ CUSTOMER: survey form ============ -->
+  <section id="viewCustomer" class="hidden">
+    <div id="custLoading" class="muted" data-i18n="checkingLink">กำลังตรวจสอบลิงก์...</div>
+
+    <div id="custForm" class="hidden">
+      <div class="eng-info">
+        <img id="ciPhoto" alt="" hidden>
+        <div>
+          <div class="name" id="ciName">—</div>
+          <div class="meta" id="ciTitle"></div>
+          <div class="meta" id="ciDept"></div>
+          <div class="meta" id="ciYears"></div>
+          <div class="meta" id="ciTel"></div>
+          <div class="meta" id="ciReport"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="rateHead">โปรดให้คะแนนการบริการครั้งนี้</h2>
+        <div id="questions"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="commentHead">ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)</h2>
+        <textarea id="custComment" rows="3" maxlength="1000" data-i18n-ph="commentPh"></textarea>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="sigHead">ลงลายมือชื่อลูกค้า</h2>
+        <div id="sigPadWrap">
+          <canvas id="sigPad"></canvas>
+          <button type="button" class="sig-clear" id="btnSigClear" data-i18n="clear">ล้าง</button>
+        </div>
+        <p class="muted" style="text-align:left;padding:8px 0 0" data-i18n="sigNote">เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา</p>
+      </div>
+
+      <button class="btn btn-primary" id="btnSubmitSurvey" data-i18n="submit">ส่งแบบสอบถาม</button>
+    </div>
+
+    <div id="custError" class="hidden">
+      <div class="card"><p class="muted" id="custErrorMsg"></p></div>
+    </div>
+
+    <div id="custThanks" class="hidden">
+      <div class="thanks">
+        <div class="big">🙏</div>
+        <h2 data-i18n="thanksHead">ขอบคุณสำหรับความคิดเห็น</h2>
+        <p class="muted" data-i18n="thanksBody">FANUC Thai จะนำไปพัฒนาการบริการต่อไป</p>
       </div>
     </div>
+  </section>
 
-    <div class="gallery-group">
-      <div class="gallery-label"><span data-i18n="afterLabel">📷 หลังทำลาย</span> <b id="countAfter">(0)</b></div>
-      <div class="gallery" id="galleryAfter">
-        <button class="thumb-add" id="btnAfter">+</button>
+  <!-- ============ DASHBOARD (exec) ============ -->
+  <section id="viewDashboard" class="hidden">
+    <div class="card">
+      <h2 data-i18n="dashHead">ผลแบบสอบถาม</h2>
+      <div class="row2">
+        <div><label data-i18n="dateFrom">ตั้งแต่วันที่</label><input type="date" id="fFrom"></div>
+        <div><label data-i18n="dateTo">ถึงวันที่</label><input type="date" id="fTo"></div>
+      </div>
+      <label data-i18n="filterEngineer">วิศวกร</label>
+      <select id="fEngineer"><option value="">— ทั้งหมด —</option></select>
+      <div class="row2">
+        <button class="btn btn-primary" id="btnApplyFilter" data-i18n="apply">แสดงผล</button>
+        <button class="btn btn-secondary" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
       </div>
     </div>
-
-    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
-    <button class="btn btn-ok" id="btnSave" data-i18n="btnSaveLabel" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
-  </div>
-
-  <div class="card">
-    <h2><span data-i18n="sectionListTitle">3) รายการที่บันทึกแล้ว</span> (<span id="countTotal">0</span>)</h2>
-    <div class="code-row" id="searchRow" style="display:none;">
-      <input type="text" id="searchCode" data-i18n-placeholder="searchPlaceholder" placeholder="ค้นหาจากรหัสชิ้นงาน...">
-      <button class="btn-clear" id="btnRefreshList" data-i18n-title="refreshTitle" title="รีเฟรชรายการ">⟳</button>
+    <div class="card">
+      <div id="dashSummary" class="muted"></div>
+      <div style="overflow-x:auto"><table id="dashTable"></table></div>
     </div>
-    <div id="tableWrap"><div class="empty" data-i18n="emptyList">ยังไม่มีรายการ</div></div>
-    <div class="row2" style="margin-top:10px;">
-      <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
-      <button class="btn btn-secondary" id="btnExportPdf">📄 Export PDF</button>
-    </div>
-    <p class="note" id="storageNote" data-i18n="storageNoteLocal">
-      ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config
-      ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก
-    </p>
-  </div>
+  </section>
 </main>
 
-<div class="toast" id="toast"></div>
+<div id="appVer" style="position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5"></div>
+<div id="toast" class="toast"></div>
 
-<!-- Modal ดูรูปของแต่ละรายการ (ใช้เฉพาะโหมด Cloud) -->
-<div id="photoModal" class="modal-overlay" style="display:none;">
-  <div class="modal-box">
-    <div class="modal-head">
-      <b id="modalTitle">รายละเอียด</b>
-      <button id="modalClose" class="modal-close">✕</button>
-    </div>
-    <div id="modalBody" class="modal-body"></div>
-  </div>
-</div>
-
-<!-- ============================================================
-     ส่วนที่ 1: ตั้งค่า Supabase
-     วิธีใช้: ไปที่ Supabase Dashboard > Project Settings > API
-     นำ "Project URL" และ "Publishable key" มาใส่แทนค่าว่างด้านล่าง
-     ระบบจะสลับไปโหมด Cloud อัตโนมัติ ถ้าปล่อยว่างไว้จะเก็บในเครื่องเหมือนเดิม
-     ============================================================ -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
+/* =========================================================================
+   0. CONFIG
+   ========================================================================= */
+// เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
+// รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
+const APP_VERSION = "2026.09.09b";
+
 const SUPABASE_CONFIG = {
-  url: "https://xyqtuomhaxwsadrflafa.supabase.co",
-  anonKey: "sb_publishable_IaJXmtk_atVnsgoCw1c4aw_p4MD7IPj"
-};
-const CLOUD_MODE = !!SUPABASE_CONFIG.url;
-</script>
-
-<script>
-/* ============================================================
-   ส่วนที่ 0: ระบบภาษา (TH / EN / JP) — ค่าเริ่มต้นเป็นไทยเสมอ
-   จำค่าไว้ต่อเครื่องผ่าน localStorage ไม่กระทบ user คนอื่น
-   หมายเหตุ: หน้า Login (ก่อนเข้าระบบ) ตั้งใจให้เป็นภาษาอังกฤษตายตัวเสมอ
-   ไม่ผูกกับระบบนี้ — ระบบนี้มีผลกับตัวแอปหลัง login แล้วเท่านั้น
-   ============================================================ */
-const TRANSLATIONS = {
-  appSubtitle:       { th:'สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน', en:'Scan Code 39 → Photograph before/after → Export report', ja:'Code 39をスキャン → 廃棄前後を撮影 → レポート出力' },
-  modeLocal:         { th:'โหมด: เก็บข้อมูลในเครื่อง', en:'Mode: Local storage', ja:'モード: ローカル保存' },
-  modeCloud:         { th:'โหมด: อัปโหลดขึ้น Cloud', en:'Mode: Cloud upload', ja:'モード: クラウドアップロード' },
-  logoutButton:      { th:'ออกจากระบบ', en:'Logout', ja:'ログアウト' },
-  sectionScanTitle:  { th:'1) สแกน Barcode (Code 39)', en:'1) Scan Barcode (Code 39)', ja:'1) バーコードをスキャン (Code 39)' },
-  btnScanLabel:      { th:'📷 เปิดกล้องสแกนรหัส', en:'📷 Open camera to scan', ja:'📷 カメラでスキャン' },
-  btnTorchLabel:     { th:'🔦 ไฟฉาย', en:'🔦 Flashlight', ja:'🔦 ライト' },
-  btnStopLabel:      { th:'⏹ หยุดสแกน', en:'⏹ Stop scanning', ja:'⏹ スキャン停止' },
-  btnOcrLabel:       { th:'🔤 อ่านตัวอักษรจากป้าย (บาร์โค้ดชำรุด)', en:'🔤 Read text from label (barcode damaged)', ja:'🔤 ラベルの文字を読む（バーコード破損時）' },
-  scanNoteText:      { th:'ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.', en:'Hold parallel to the barcode, keep it inside the horizontal frame • 15–25 cm away', ja:'バーコードに平行に持ち、横長の枠内に収めてください • 15〜25cm離す' },
-  orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
-  itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
-  btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
-  sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
-  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除' },
-  beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
-  afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
-  btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
-  sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
-  searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
-  refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
-  emptyList:         { th:'ยังไม่มีรายการ', en:'No records yet', ja:'記録がありません' },
-  storageNoteLocal:  { th:'ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก', en:'Data is currently stored only in this browser. Once Supabase config is set, the system will automatically upload to Cloud Storage on every save.', ja:'現在データはこのブラウザにのみ保存されています。Supabaseの設定を行うと、保存の度に自動でクラウドへアップロードされます。' },
-  storageNoteCloud:  { th:'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก', en:'Photos are automatically uploaded to Supabase Storage every time you save.', ja:'保存の度に写真は自動的にSupabase Storageへアップロードされます。' },
-  colCode:   { th:'รหัส', en:'Code', ja:'品番' },
-  colBefore: { th:'ก่อน', en:'Before', ja:'廃棄前' },
-  colAfter:  { th:'หลัง', en:'After', ja:'廃棄後' },
-  colStatus: { th:'สถานะ', en:'Status', ja:'状態' },
-  colBy:     { th:'โดย', en:'By', ja:'記録者' },
-  colTime:   { th:'เวลา', en:'Time', ja:'日時' },
-  statusComplete: { th:'ครบก่อน/หลัง', en:'Complete', ja:'完了' },
-  statusPartial:  { th:'บันทึกบางส่วน', en:'Partial', ja:'一部のみ' },
-  viewPhotosBtn:  { th:'📷 ดูรูป', en:'📷 View photos', ja:'📷 写真を見る' },
-  noPhotos:       { th:'ไม่มีรูป', en:'No photos', ja:'写真なし' },
-  photoCountLabel:{ th:'({n} รูป)', en:'({n} photos)', ja:'（{n}枚）' },
-  loadingData:    { th:'⏳ กำลังโหลดข้อมูล...', en:'⏳ Loading data...', ja:'⏳ データ読み込み中...' },
-  generatingPdf:  { th:'⏳ กำลังสร้าง PDF...', en:'⏳ Generating PDF...', ja:'⏳ PDF作成中...' },
-  savingLabel:    { th:'⏳ กำลังบันทึก...', en:'⏳ Saving...', ja:'⏳ 保存中...' },
-  ocrReadingLabel:{ th:'⏳ กำลังอ่านตัวอักษร...', en:'⏳ Reading text...', ja:'⏳ 文字を読み取り中...' },
-  // ข้อความ toast แบบไดนามิก
-  codeCleared:       { th:'ล้างรหัสชิ้นงานแล้ว', en:'Item code cleared', ja:'品番をクリアしました' },
-  scanSuccess:       { th:'สแกนสำเร็จ: {code}', en:'Scan successful: {code}', ja:'スキャン成功: {code}' },
-  cameraOpenFail:    { th:'เปิดกล้องไม่ได้: {err}', en:'Could not open camera: {err}', ja:'カメラを開けません: {err}' },
-  torchUnsupported:  { th:'เครื่องนี้ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', en:'This device does not support flashlight control from the browser', ja:'この端末はブラウザからのライト制御に対応していません' },
-  torchOnMsg:        { th:'เปิดไฟฉาย', en:'Flashlight on', ja:'ライト点灯' },
-  torchOffMsg:       { th:'ปิดไฟฉาย', en:'Flashlight off', ja:'ライト消灯' },
-  libScanFail:       { th:'โหลดไลบรารีสแกนไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the scanner library. Check your internet connection and refresh.', ja:'スキャナーライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
-  libOcrFail:        { th:'โหลดไลบรารี OCR ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the OCR library. Check your internet connection and refresh.', ja:'OCRライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
-  libSupabaseFail:   { th:'โหลดไลบรารี Supabase ไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้า', en:'Failed to load the Supabase library. Check your internet connection and refresh.', ja:'Supabaseライブラリの読み込みに失敗しました。ネット接続を確認して再読み込みしてください。' },
-  ocrNeedCamera:     { th:'ยังไม่พร้อม กรุณาเปิดกล้องก่อน', en:'Not ready yet, please open the camera first', ja:'準備ができていません。先にカメラを開いてください' },
-  ocrReadSuccess:    { th:'อ่านได้: {part} (กรุณาตรวจสอบความถูกต้อง)', en:'Read: {part} (please verify it is correct)', ja:'読み取り結果: {part}（正しいか確認してください）' },
-  ocrNoPattern:      { th:'ไม่พบรูปแบบรหัสที่ถูกต้อง อ่านได้: {preview}', en:'No valid code pattern found. Read: {preview}', ja:'正しい形式のコードが見つかりません。読み取り内容: {preview}' },
-  ocrUnreadable:     { th:'อ่านตัวอักษรไม่ได้ ลองขยับให้ป้ายชัดขึ้น', en:'Could not read any text. Try repositioning for a clearer view.', ja:'文字を読み取れませんでした。ラベルがはっきり見えるよう位置を調整してください' },
-  ocrError:          { th:'OCR ผิดพลาด: {err}', en:'OCR error: {err}', ja:'OCRエラー: {err}' },
-  readImageFail:     { th:'อ่านไฟล์ภาพไม่สำเร็จ', en:'Failed to read the image file', ja:'画像ファイルの読み込みに失敗しました' },
-  readFileFail:      { th:'อ่านไฟล์ไม่สำเร็จ', en:'Failed to read the file', ja:'ファイルの読み込みに失敗しました' },
-  photoAdded:        { th:'เพิ่มภาพ{phase}ทำลายแล้ว (~{kb} KB) รวม {count} รูป', en:'Added {phase} photo (~{kb} KB), {count} total', ja:'{phase}の写真を追加しました（約{kb}KB）、合計{count}枚' },
-  phaseBeforeWord:   { th:'ก่อน', en:'before-destruction', ja:'廃棄前' },
-  phaseAfterWord:    { th:'หลัง', en:'after-destruction', ja:'廃棄後' },
-  photoLimitWarning: { th:'ถ่ายไปแล้ว {limit} รูป เช็คว่าไม่ได้กดซ้ำโดยไม่ตั้งใจ', en:'You have taken {limit} photos — check you did not tap by mistake', ja:'{limit}枚撮影しました。誤って連続タップしていないか確認してください' },
-  needCodeFirst:     { th:'กรุณาสแกนหรือกรอกรหัสชิ้นงานก่อน', en:'Please scan or enter the item code first', ja:'先に品番をスキャンまたは入力してください' },
-  photoDeleted:      { th:'ลบรูปแล้ว', en:'Photo deleted', ja:'写真を削除しました' },
-  needItemCode:      { th:'กรุณาระบุรหัสชิ้นงาน', en:'Please enter an item code', ja:'品番を入力してください' },
-  needAtLeastOnePhoto:{ th:'กรุณาถ่ายภาพอย่างน้อย 1 รูป', en:'Please take at least 1 photo', ja:'最低1枚は撮影してください' },
-  saveSuccess:       { th:'บันทึกรายการสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Record saved successfully ✅ ({before} before / {after} after)', ja:'保存に成功しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
-  cloudUploadFail:   { th:'อัปโหลดขึ้น Cloud ไม่สำเร็จ: {err}', en:'Cloud upload failed: {err}', ja:'クラウドへのアップロードに失敗しました: {err}' },
-  cloudLoadFail:     { th:'โหลดรายการจาก Cloud ไม่สำเร็จ: {err}', en:'Failed to load records from the cloud: {err}', ja:'クラウドからの記録読み込みに失敗しました: {err}' },
-  exportNoData:      { th:'ยังไม่มีข้อมูลให้ export', en:'No data available to export', ja:'エクスポートするデータがありません' },
-  exportLoadFail:    { th:'โหลดข้อมูลไม่สำเร็จ: {err}', en:'Failed to load data: {err}', ja:'データの読み込みに失敗しました: {err}' },
-  loginSuccessToast: { th:'เข้าสู่ระบบสำเร็จ', en:'Signed in successfully', ja:'ログインに成功しました' },
-  supabaseConnectFail:{ th:'เชื่อมต่อ Supabase ไม่สำเร็จ: {err}', en:'Failed to connect to Supabase: {err}', ja:'Supabaseへの接続に失敗しました: {err}' }
+  url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
+  // legacy anon key (JWT) — ปลอดภัยที่จะฝังในหน้าเว็บถ้าเปิด RLS ครบ (RLS เป็นตัวกันข้อมูล)
+  // ใช้ตัวนี้แทน publishable key เพราะ storage-api ยังรู้จัก publishable key ไม่ครบ (map role anon ไม่ได้)
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
 };
 
-let currentLang = localStorage.getItem('uiLang') || 'th';
+// อีเมลผู้บริหาร 4 ท่านที่เห็น dashboard ได้ (ต้องตรงกับ allowlist ใน RLS ด้วย)
+const EXEC_ALLOWLIST = [
+  "oshikubo@fanucth.co.th",
+  "masada@fanucth.co.th",
+  "ito@fanucth.co.th",
+  "yamamoto@fanucth.co.th",
+  "weerachai@fanucth.co.th",
+];
 
-function t(key, vars){
-  const entry = TRANSLATIONS[key];
-  let str = (entry && entry[currentLang]) || (entry && entry.th) || key;
-  if (vars) Object.keys(vars).forEach(k => { str = str.split('{' + k + '}').join(vars[k]); });
-  return str;
-}
+const TOKEN_TTL_HOURS = 24;
 
-function applyStaticI18n(){
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
-  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
-  document.documentElement.lang = currentLang;
-}
-
-// เรียกตอนสลับภาษา: อัปเดตทั้งข้อความ static และเนื้อหาที่ render แบบไดนามิก (ตาราง/แกลเลอรี่)
-function setLanguage(lang){
-  currentLang = lang;
-  localStorage.setItem('uiLang', lang);
-  applyStaticI18n();
-  document.getElementById('modeBadge').textContent = CLOUD_MODE ? t('modeCloud') : t('modeLocal');
-  renderGallery('before');
-  renderGallery('after');
-  if (CLOUD_MODE) { renderCloudTable(); } else { renderTable(); }
-}
-
-document.getElementById('langSelect').value = currentLang;
-document.getElementById('langSelect').onchange = (e) => setLanguage(e.target.value);
-applyStaticI18n(); // เซ็ตข้อความเริ่มต้นก่อน DOM อื่นๆ ทำงาน
-</script>
-
-<script>
-/* ============================================================
-   ส่วนที่ 2: ตัวแปรหลักและฟังก์ชันช่วย
-   ============================================================ */
-let html5QrCode = null;
-let scanning = false;
-let torchOn = false;
-let currentBefore = [], currentAfter = [], capturingMode = null;   // เก็บเป็น array รองรับหลายรูป/เฟส
-const PHOTO_SOFT_LIMIT = 10; // เตือนกันมือลั่นถ้าถ่ายเกินจำนวนนี้ ไม่ได้บล็อก
-let records = JSON.parse(localStorage.getItem('scrapRecords') || '[]'); // ใช้เฉพาะโหมดเก็บในเครื่อง (ไม่มี Supabase config)
-let cloudRecords = []; // แคชรายการล่าสุดที่ดึงจาก Supabase มาแสดง (โหมด Cloud)
-
-const itemCodeInput = document.getElementById('itemCode');
-const scanControls  = document.getElementById('scanControls');
-const scanNote      = document.getElementById('scanNote');
-const btnStartScan  = document.getElementById('btnStartScan');
-
-function toast(msg, isError){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.toggle('err', !!isError);
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
-}
-
-// ล้างรหัสชิ้นงาน กรณีสแกนมาแล้วไม่ตรง อยากลบแล้วสแกน/พิมพ์ใหม่
-document.getElementById('btnClearCode').onclick = () => {
-  itemCodeInput.value = '';
-  itemCodeInput.focus();
-  toast(t('codeCleared'));
+/* =========================================================================
+   1. i18n
+   ========================================================================= */
+const I18N = {
+  appTitle:{th:"FANUC Thai — แบบสอบถามบริการ",en:"FANUC Thai — Service Survey",ja:"FANUC Thai — サービスアンケート"},
+  appSub:{th:"ประเมินคุณภาพงานบริการภาคสนาม",en:"Field service quality evaluation",ja:"フィールドサービス品質評価"},
+  logout:{th:"ออกจากระบบ",en:"Log out",ja:"ログアウト"},
+  loginHead:{th:"เข้าสู่ระบบ (สำหรับพนักงาน)",en:"Sign in (staff only)",ja:"ログイン（社員専用）"},
+  email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
+  password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
+  signIn:{th:"เข้าสู่ระบบ",en:"Sign in",ja:"ログイン"},
+  loginNote:{th:"ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย",en:"Customers do not sign in — just scan the QR on the engineer's screen.",ja:"お客様はログイン不要です。エンジニアの画面のQRを読み取ってください。"},
+  engHead:{th:"สร้าง QR สำหรับงานนี้",en:"Create a QR for this job",ja:"この作業のQRを作成"},
+  srNo:{th:"Service Report No. (จากกระดาษ)",en:"Service Report No. (from paper report)",ja:"サービスレポート番号（紙の報告書）"},
+  soNo:{th:"Service Order No. (จาก SAP BYD)",en:"Service Order No. (from SAP BYD)",ja:"サービスオーダー番号（SAP BYD）"},
+  makeQr:{th:"สร้าง QR Code",en:"Generate QR code",ja:"QRコードを作成"},
+  qrHead:{th:"ให้ลูกค้าสแกน",en:"Ask the customer to scan",ja:"お客様に読み取ってもらう"},
+  copyLink:{th:"คัดลอกลิงก์",en:"Copy link",ja:"リンクをコピー"},
+  newJob:{th:"งานถัดไป",en:"Next job",ja:"次の作業"},
+  cancelQr:{th:"ยกเลิก QR นี้",en:"Cancel this QR",ja:"このQRを取消"},
+  qrNote:{th:"QR นี้ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.",en:"Single-use QR, expires in 24 h.",ja:"このQRは1回のみ有効、24時間で期限切れ。"},
+  myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
+  loading:{th:"กำลังโหลด...",en:"Loading...",ja:"読み込み中..."},
+  checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
+  rateHead:{th:"โปรดให้คะแนนการบริการครั้งนี้",en:"Please rate this service",ja:"今回のサービスを評価してください"},
+  commentHead:{th:"ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)",en:"Additional comments (optional)",ja:"ご意見・ご提案（任意）"},
+  commentPh:{th:"อยากให้เราปรับปรุงเรื่องอะไร หรือมีอะไรอยากบอกเพิ่มเติม...",en:"Anything we could improve, or anything else you'd like to tell us...",ja:"改善してほしい点や、その他お伝えたいことがあればご記入ください..."},
+  sigHead:{th:"ลงลายมือชื่อลูกค้า",en:"Customer signature",ja:"お客様のサイン"},
+  clear:{th:"ล้าง",en:"Clear",ja:"消去"},
+  sigNote:{th:"เซ็นในกรอบด้านบนด้วยนิ้วหรือปากกา",en:"Sign in the box above with your finger or a stylus",ja:"上の枠内に指またはペンでサインしてください"},
+  submit:{th:"ส่งแบบสอบถาม",en:"Submit survey",ja:"アンケートを送信"},
+  thanksHead:{th:"ขอบคุณสำหรับความคิดเห็น",en:"Thank you for your feedback",ja:"ご協力ありがとうございました"},
+  thanksBody:{th:"FANUC Thai จะนำไปพัฒนาการบริการต่อไป",en:"FANUC Thai will use it to improve our service.",ja:"FANUC Thaiはサービス改善に活用します。"},
+  dashHead:{th:"ผลแบบสอบถาม",en:"Survey results",ja:"アンケート結果"},
+  dateFrom:{th:"ตั้งแต่วันที่",en:"From",ja:"開始日"},
+  dateTo:{th:"ถึงวันที่",en:"To",ja:"終了日"},
+  filterEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
+  apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
+  exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
+  allEngineers:{th:"— ทั้งหมด —",en:"— All —",ja:"— すべて —"},
+  yrsExp:{th:"อายุงาน {n} ปี",en:"{n} yrs experience",ja:"経験{n}年"},
+  lblDepartment:{th:"แผนก",en:"Department",ja:"部署"},
+  lblTitle:{th:"ตำแหน่ง",en:"Position",ja:"役職"},
+  lblExperience:{th:"ประสบการณ์",en:"Experience",ja:"経験"},
+  lblTel:{th:"เบอร์ติดต่อ",en:"Contact",ja:"連絡先"},
+  yrsValue:{th:"{n} ปี",en:"{n} years",ja:"{n}年"},
+  lblReportNo:{th:"เลขที่งานบริการ",en:"Service Report No",ja:"サービスレポート番号"},
+  lblOrderNo:{th:"เลขที่ใบสั่งบริการ",en:"Service Order No",ja:"サービスオーダー番号"},
+  // สถานะงาน
+  stUsed:{th:"ตอบแล้ว",en:"Answered",ja:"回答済"},
+  stWait:{th:"รอลูกค้า",en:"Waiting",ja:"待機中"},
+  stExpired:{th:"หมดอายุ",en:"Expired",ja:"期限切れ"},
+  // toast / error
+  needBothNo:{th:"กรุณากรอกเลข Report และ Order ให้ครบ",en:"Please fill in both Report No. and Order No.",ja:"レポート番号とオーダー番号を両方入力してください"},
+  qrCreated:{th:"สร้าง QR แล้ว ให้ลูกค้าสแกน",en:"QR created — ask the customer to scan",ja:"QRを作成しました。お客様に読み取ってもらってください"},
+  linkCopied:{th:"คัดลอกลิงก์แล้ว",en:"Link copied",ja:"リンクをコピーしました"},
+  answerAll:{th:"กรุณาตอบให้ครบทุกข้อ",en:"Please answer every question",ja:"すべての質問に回答してください"},
+  needSignature:{th:"กรุณาลงลายมือชื่อก่อนส่ง",en:"Please sign before submitting",ja:"送信前にサインしてください"},
+  submitOk:{th:"ส่งแบบสอบถามเรียบร้อย",en:"Survey submitted",ja:"アンケートを送信しました"},
+  submitFail:{th:"ส่งไม่สำเร็จ: {err}",en:"Submit failed: {err}",ja:"送信に失敗しました: {err}"},
+  loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログインに失敗しました: {err}"},
+  noEngineerRow:{th:"ไม่พบข้อมูลพนักงานสำหรับอีเมลนี้ (ยังไม่ได้เพิ่มในตาราง engineers)",en:"No staff record for this email (not added to the engineers table yet).",ja:"このメールの社員データがありません（engineersテーブル未登録）。"},
+  linkInvalid:{th:"ลิงก์นี้ไม่ถูกต้องหรือหมดอายุแล้ว",en:"This link is invalid or has expired.",ja:"このリンクは無効か期限切れです。"},
+  linkUsed:{th:"แบบสอบถามนี้ถูกตอบไปแล้ว",en:"This survey has already been completed.",ja:"このアンケートは回答済みです。"},
+  cfgMissing:{th:"⚠️ ยังไม่ได้ตั้งค่า Supabase (SUPABASE_CONFIG) — ระบบยังเชื่อมต่อฐานข้อมูลไม่ได้",en:"⚠️ Supabase is not configured (SUPABASE_CONFIG) — no database connection yet.",ja:"⚠️ Supabase未設定（SUPABASE_CONFIG）— データベース未接続。"},
+  connFail:{th:"เชื่อมต่อฐานข้อมูลไม่สำเร็จ: {err}",en:"Database connection failed: {err}",ja:"データベース接続に失敗しました: {err}"},
+  noResults:{th:"ไม่มีข้อมูลในช่วงที่เลือก",en:"No results for the selected range",ja:"選択範囲にデータがありません"},
+  summaryLine:{th:"{n} รายการ · คะแนนเฉลี่ยรวม {avg}/5",en:"{n} responses · overall avg {avg}/5",ja:"{n}件 · 総合平均{avg}/5"},
+  colDateTime:{th:"วันเวลา",en:"Date / time",ja:"日時"},
 };
 
-/* ============================================================
-   ส่วนที่ 3: การสแกนบาร์โค้ด (Code 39 อย่างเดียว)
-   จำกัดแค่รูปแบบเดียว ช่วยให้ไลบรารีถอดรหัสเร็วขึ้นและแม่นยำขึ้น
-   (ไม่ต้องเสียเวลาไล่เช็คหลายรูปแบบต่อเฟรม + ลดโอกาสอ่านผิดรูปแบบ)
-   ============================================================ */
-function supportedFormats(){
-  const F = Html5QrcodeSupportedFormats;
-  return [ F.CODE_39 ];   // รูปแบบเดียวที่ป้ายอะไหล่ FANUC ใช้
-}
+// คำถาม 5 ข้อ — DRAFT จากชื่อคอลัมน์ใน spec (พี่แมค/K.Yamamoto ตรวจแก้ได้)
+const QUESTIONS = [
+  {key:"q1_response_time",   th:"ความรวดเร็วในการตอบสนองและเข้าให้บริการ", en:"Speed of response and arrival on site", ja:"対応と現場到着の早さ"},
+  {key:"q2_technical_skill", th:"ทักษะและความรู้ทางเทคนิคของวิศวกร",      en:"Engineer's technical skill and knowledge", ja:"エンジニアの技術力と知識"},
+  {key:"q3_communication_cost", th:"การสื่อสารเรื่องค่าใช้จ่าย / ใบเสนอราคา ชัดเจนและโปร่งใส", en:"Clear, transparent communication about cost / quotation", ja:"費用・見積りに関する説明の分かりやすさ"},
+  {key:"q4_professionalism", th:"ความเป็นมืออาชีพ มารยาท และความสุภาพ",   en:"Professionalism, manner and courtesy", ja:"プロ意識・態度・礼儀"},
+  {key:"q5_overall",         th:"ความพึงพอใจโดยรวมต่อบริการครั้งนี้",       en:"Overall satisfaction with this service", ja:"今回のサービスの総合満足度"},
+];
 
-// Code 39 อาจคืนค่ามาพร้อมเครื่องหมาย * ครอบหัวท้าย ต้องตัดออก
-function cleanCode(raw){
-  return String(raw).trim().replace(/^\*+/, '').replace(/\*+$/, '');
-}
-
-btnStartScan.onclick = async () => {
-  if (typeof Html5Qrcode === 'undefined') {
-    toast(t('libScanFail'), true);
-    return;
-  }
-  try {
-    // ต้องโชว์กล้องก่อน start เสมอ ไม่งั้นไลบรารีจะคำนวณขนาดกรอบสแกนเป็น 0
-    // (เจอปัญหานี้มาแล้ว: ซ่อนกล้องไว้ตอน start ทำให้สแกนไม่ติดเลยทั้ง Code 39 และ QR)
-    document.getElementById('reader').style.display = 'block';
-
-    html5QrCode = new Html5Qrcode("reader", {
-      formatsToSupport: supportedFormats(),
-      verbose: false
-    });
-
-    await html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 20,
-        // กลับไปใช้กรอบแถบแนวนอน เหมาะกับ Code 39 โดยเฉพาะ (ไม่ต้องรองรับ QR แล้ว)
-        // กรอบกว้าง+เตี้ย ช่วยให้เล็งง่าย ถือโทรศัพท์ขนานกับบาร์โค้ดแล้วสแกนติดทันที
-        qrbox: (vw, vh) => {
-          const w = Math.floor(Math.min(vw, vh * 2.5) * 0.9);
-          const h = Math.floor(w * 0.38);
-          return { width: w, height: h };
-        },
-        aspectRatio: 1.777,
-        disableFlip: true, // Code 39 ไม่ใช่ QR ไม่ต้องลองพลิกภาพ ช่วยลดงานประมวลผลต่อเฟรม
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-      },
-      (decodedText) => {
-        const code = cleanCode(decodedText);
-        if (!code) return;
-        itemCodeInput.value = code;
-        toast(t('scanSuccess', { code }));
-        if (navigator.vibrate) navigator.vibrate(120);
-        stopScan();
-      },
-      () => { /* ไม่พบรหัสในเฟรมนี้ เป็นเรื่องปกติ ไม่ต้องแจ้งผู้ใช้ */ }
-    );
-
-    scanning = true;
-    btnStartScan.style.display = 'none';
-    scanControls.style.display = 'flex';
-    document.getElementById('btnOcr').style.display = 'block';
-    scanNote.style.display = 'block';
-  } catch (e) {
-    document.getElementById('reader').style.display = 'none';
-    toast(t('cameraOpenFail', { err: e.message || e }), true);
-  }
+// แผนก 3 ภาษา — key = ค่าที่เก็บใน engineers.department (ตรงเป๊ะ)
+// IT เพิ่ม/แก้แผนกจริงได้ตรงนี้ ถ้าไม่เจอใน map จะโชว์ค่าดิบตามที่เก็บใน DB
+const DEPT_I18N = {
+  "Service - FA":                  { th:"FA",                   en:"FA",                   ja:"FA" },
+  "Service - Robot":               { th:"หุ่นยนต์",              en:"Robot",                ja:"ロボット" },
+  "Service - Robomachine":         { th:"Robomachine",          en:"Robomachine",          ja:"ロボマシン" },
+  "Service - Robodrill & Robocut": { th:"Robodrill & Robocut",  en:"Robodrill & Robocut",  ja:"ロボドリル・ロボカット" },
+  "Service - Roboshot":            { th:"Roboshot",             en:"Roboshot",             ja:"ロボショット" },
 };
-
-document.getElementById('btnStopScan').onclick = stopScan;
-
-async function stopScan(){
-  if (!html5QrCode || !scanning) return;
-  scanning = false;
-  torchOn = false;
-  try { await html5QrCode.stop(); await html5QrCode.clear(); } catch(e){}
-  html5QrCode = null;
-  btnStartScan.style.display = 'block';
-  scanControls.style.display = 'none';
-  document.getElementById('reader').style.display = 'none';
-  document.getElementById('btnOcr').style.display = 'none';
-  scanNote.style.display = 'none';
+function deptLabel(raw){
+  const m = DEPT_I18N[(raw || '').trim()];
+  return m ? (m[lang] || m.th) : (raw || '');
 }
 
-// ไฟฉาย ช่วยมากเวลาสแกนในโกดังที่แสงน้อย (บางเครื่อง/เบราว์เซอร์ไม่รองรับ)
-document.getElementById('btnTorch').onclick = async () => {
-  if (!html5QrCode || !scanning) return;
-  try {
-    torchOn = !torchOn;
-    await html5QrCode.applyVideoConstraints({
-      advanced: [{ torch: torchOn }]
-    });
-    toast(torchOn ? t('torchOnMsg') : t('torchOffMsg'));
-  } catch (e) {
-    torchOn = false;
-    toast(t('torchUnsupported'), true);
-  }
+// ตำแหน่งงาน 3 ภาษา — key = ค่าที่เก็บใน engineers.title (ตรงเป๊ะ) ไม่เจอใน map = โชว์ค่าดิบ
+const TITLE_I18N = {
+  "Manager":           { th:"ผู้จัดการ",           en:"Manager",           ja:"マネージャー" },
+  "Assistant Manager": { th:"ผู้ช่วยผู้จัดการ",     en:"Assistant Manager", ja:"アシスタントマネージャー" },
 };
-
-/* ============================================================
-   ส่วนที่ 3.5: OCR อ่าน Part No. จากตัวอักษรบนป้าย
-   ใช้เมื่อบาร์โค้ดชำรุด ซีด หรือมีรอยขีดเขียนทับจนสแกนไม่ติด
-   ============================================================ */
-
-// รูปแบบรหัสอะไหล่ FANUC เช่น A06B-1407-B153, A290-7321-X911, A860-2020-T301
-const PART_NO_PATTERN = /\b([A-Z]\d{2}[A-Z0-9])[-\s]?(\d{4})[-\s]?([A-Z]\d{3})\b/;
-
-// OCR มักสับสนระหว่างตัวอักษรกับตัวเลขที่หน้าตาคล้ายกัน
-// แก้ให้ตรงตำแหน่งตามรูปแบบรหัส FANUC
-function fixOcrConfusion(text){
-  return text
-    .toUpperCase()
-    .replace(/[·•・．]/g, '-')     // จุดที่ OCR อ่านผิดเป็นขีด
-    .replace(/[–—―]/g, '-')       // ขีดยาวรูปแบบต่าง ๆ
-    .replace(/\s+/g, ' ');
+function titleLabel(raw){
+  const s = (raw || '').trim();
+  if (!s) return '';
+  const m = TITLE_I18N[s];
+  return m ? (m[lang] || m.th) : s;
 }
 
-// ลองสลับตัวที่สับสนบ่อย แล้วหาว่ารูปแบบไหนตรง pattern
-function extractPartNo(rawText){
-  const base = fixOcrConfusion(rawText);
-
-  // ลองจากข้อความดิบก่อน
-  let m = base.match(PART_NO_PATTERN);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-
-  // ถ้ายังไม่เจอ ลองแก้ตัวที่ OCR สับสนบ่อย แล้วหาใหม่
-  const swapped = base
-    .replace(/O/g, '0')
-    .replace(/I/g, '1')
-    .replace(/L/g, '1')
-    .replace(/S/g, '5')
-    .replace(/Z/g, '2');
-  m = swapped.match(PART_NO_PATTERN);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-
-  // สุดท้าย หาอะไรก็ได้ที่มีรูปแบบ กลุ่ม-กลุ่ม-กลุ่ม
-  m = base.match(/\b([A-Z0-9]{4})[-\s]([A-Z0-9]{4})[-\s]([A-Z0-9]{4})\b/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-
-  return null;
-}
-
-// ตัดเฉพาะแถบกลางภาพมาทำ OCR จะเร็วและแม่นกว่าส่งทั้งเฟรม
-function grabFrameForOcr(){
-  const video = document.querySelector('#reader video');
-  if (!video || !video.videoWidth) return null;
-
-  const vw = video.videoWidth, vh = video.videoHeight;
-  const cropW = Math.floor(vw * 0.9);
-  const cropH = Math.floor(vh * 0.5);
-  const sx = Math.floor((vw - cropW) / 2);
-  const sy = Math.floor((vh - cropH) / 2);
-
-  const cv = document.createElement('canvas');
-  // ขยาย 2 เท่า ช่วยให้ OCR อ่านตัวอักษรเล็กได้ดีขึ้น
-  cv.width = cropW * 2;
-  cv.height = cropH * 2;
-  const c = cv.getContext('2d');
-  c.drawImage(video, sx, sy, cropW, cropH, 0, 0, cv.width, cv.height);
-
-  // แปลงเป็นขาวดำ contrast สูง ช่วย OCR มากกับป้ายสติกเกอร์
-  const img = c.getImageData(0, 0, cv.width, cv.height);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4){
-    const gray = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
-    const v = gray > 140 ? 255 : 0;
-    d[i] = d[i+1] = d[i+2] = v;
-  }
-  c.putImageData(img, 0, 0);
-  return cv;
-}
-
-let ocrRunning = false;
-
-document.getElementById('btnOcr').onclick = async () => {
-  if (ocrRunning) return;
-  if (typeof Tesseract === 'undefined'){
-    toast(t('libOcrFail'), true);
-    return;
-  }
-  const canvas = grabFrameForOcr();
-  if (!canvas){ toast(t('ocrNeedCamera'), true); return; }
-
-  const btn = document.getElementById('btnOcr');
-  const original = btn.textContent;
-  ocrRunning = true;
-  btn.disabled = true;
-  btn.textContent = t('ocrReadingLabel');
-
-  try {
-    const { data } = await Tesseract.recognize(canvas, 'eng', {
-      // จำกัดตัวอักษรที่เป็นไปได้ ช่วยลดการอ่านผิดอย่างมาก
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
-      tessedit_pageseg_mode: '6'   // มองภาพเป็นบล็อกข้อความเดียว
-    });
-
-    const part = extractPartNo(data.text || '');
-    if (part){
-      itemCodeInput.value = part;
-      toast(t('ocrReadSuccess', { part }));
-      if (navigator.vibrate) navigator.vibrate(120);
-      stopScan();
-    } else {
-      const preview = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
-      toast(preview ? t('ocrNoPattern', { preview }) : t('ocrUnreadable'), true);
-    }
-  } catch (e) {
-    toast(t('ocrError', { err: e.message || e }), true);
-  } finally {
-    ocrRunning = false;
-    btn.disabled = false;
-    btn.textContent = original;
-  }
-};
-
-/* ============================================================
-   ส่วนที่ 4: ถ่ายภาพและย่อขนาดก่อนบันทึก
-   ภาพจากมือถือใบละ 3–5 MB ถ้าเก็บเต็มขนาดจะเกินโควตาฟรีของ Firebase/Supabase
-   ย่อเหลือกว้าง 1280 px คุณภาพ 0.75 จะเหลือประมาณ 150–250 KB ต่อใบ
-   ============================================================ */
-const MAX_WIDTH = 1280;
-const JPEG_QUALITY = 0.75;
-
-function compressImage(file){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, MAX_WIDTH / img.width);
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        cv.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(cv.toDataURL('image/jpeg', JPEG_QUALITY));
-      };
-      img.onerror = () => reject(new Error(t('readImageFail')));
-      img.src = ev.target.result;
-    };
-    reader.onerror = () => reject(new Error(t('readFileFail')));
-    reader.readAsDataURL(file);
-  });
-}
-
-const fileInput = document.getElementById('fileInput');
-// หมายเหตุ: ปุ่ม "+" ในแกลเลอรี่ถูก re-render บ่อย (ทุกครั้งที่เพิ่ม/ลบรูป)
-// จึงผูก event ให้ปุ่ม "+" ไว้ในฟังก์ชัน renderGallery() แทนการผูกครั้งเดียวตรงนี้
-
-fileInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  fileInput.value = '';
-  if(!file) return;
-  try {
-    const dataUrl = await compressImage(file);
-    const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
-    arr.push(dataUrl);
-    renderGallery(capturingMode);
-    const kb = Math.round(dataUrl.length * 0.75 / 1024);
-    toast(t('photoAdded', {
-      phase: capturingMode === 'before' ? t('phaseBeforeWord') : t('phaseAfterWord'),
-      kb, count: arr.length
-    }));
-    if (arr.length === PHOTO_SOFT_LIMIT) {
-      toast(t('photoLimitWarning', { limit: PHOTO_SOFT_LIMIT }), true);
-    }
-  } catch (err) {
-    toast(err.message, true);
-  }
-};
-
-// วาดแกลเลอรี่รูปภาพของเฟสนั้นๆ ใหม่ (ใช้ทั้งตอนเพิ่มและตอนลบรูป)
-function renderGallery(phase){
-  const arr = (phase === 'before') ? currentBefore : currentAfter;
-  const gallery = document.getElementById(phase === 'before' ? 'galleryBefore' : 'galleryAfter');
-  const countEl = document.getElementById(phase === 'before' ? 'countBefore' : 'countAfter');
-
-  countEl.textContent = t('photoCountLabel', { n: arr.length });
-
-  let html = '';
-  arr.forEach((dataUrl, idx) => {
-    html += `<div class="thumb">
-      <img src="${dataUrl}" alt="">
-      <button class="del" data-phase="${phase}" data-idx="${idx}" title="ลบรูปนี้">✕</button>
-    </div>`;
-  });
-  html += `<button class="thumb-add" id="btn${phase === 'before' ? 'Before' : 'After'}">+</button>`;
-  gallery.innerHTML = html;
-
-  // ผูก event ปุ่ม + ใหม่ (เพราะ innerHTML เขียนทับ element เดิม)
-  document.getElementById(phase === 'before' ? 'btnBefore' : 'btnAfter').onclick = () => {
-    if(!itemCodeInput.value.trim()){ toast(t('needCodeFirst'), true); return; }
-    capturingMode = phase; fileInput.click();
-  };
-
-  // ผูก event ปุ่มลบทุกปุ่มในแกลเลอรี่นี้
-  gallery.querySelectorAll('.del').forEach(btn => {
-    btn.onclick = () => {
-      const p = btn.dataset.phase;
-      const i = parseInt(btn.dataset.idx, 10);
-      const targetArr = (p === 'before') ? currentBefore : currentAfter;
-      targetArr.splice(i, 1);
-      renderGallery(p);
-      toast(t('photoDeleted'));
-    };
-  });
-}
-
-/* ============================================================
-   ส่วนที่ 5: บันทึกรายการ
-   ============================================================ */
-const btnSave = document.getElementById('btnSave');
-
-btnSave.onclick = async () => {
-  const code = itemCodeInput.value.trim();
-  if(!code){ toast(t('needItemCode'), true); return; }
-  if(currentBefore.length === 0 && currentAfter.length === 0){
-    toast(t('needAtLeastOnePhoto'), true); return;
-  }
-
+// ประสบการณ์ทำงาน (ปีเต็ม) คำนวณจาก hire_date = 'YYYY-MM-DD' ตอนแสดงผล — อย่างน้อย 1
+function yearsFromHire(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return null;
+  const hire = new Date(+m[1], +m[2] - 1, +m[3]);
   const now = new Date();
-  const record = {
-    code,
-    before: currentBefore.slice(),   // copy array ไว้ก่อนเคลียร์
-    after: currentAfter.slice(),
-    savedAt: now.toLocaleString('th-TH')
-  };
+  let y = now.getFullYear() - hire.getFullYear();
+  const anniv = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
+  if (now < anniv) y -= 1;
+  return Math.max(1, y);
+}
 
-  // ล็อกปุ่มระหว่างบันทึก กันกดซ้ำ (ซ้ำแล้วจะได้ record/รูปซ้ำขึ้น Cloud)
-  btnSave.disabled = true;
-  const originalLabel = btnSave.textContent;
-  btnSave.textContent = t('savingLabel');
+const SCALE = [
+  {v:1, e:"😡", th:"ไม่พอใจมาก", en:"Very poor",  ja:"非常に不満"},
+  {v:2, e:"😕", th:"ไม่พอใจ",     en:"Poor",       ja:"不満"},
+  {v:3, e:"😐", th:"เฉยๆ",        en:"Neutral",    ja:"普通"},
+  {v:4, e:"🙂", th:"พอใจ",        en:"Good",       ja:"満足"},
+  {v:5, e:"😍", th:"พอใจมาก",     en:"Excellent",  ja:"非常に満足"},
+];
 
+let lang = localStorage.getItem('uiLang') || 'th';
+function t(key, vars){
+  const entry = I18N[key];
+  let s = (entry && (entry[lang] || entry.th)) || key;
+  if (vars) for (const k in vars) s = s.split('{'+k+'}').join(vars[k]);
+  return s;
+}
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
+  document.documentElement.lang = lang === 'ja' ? 'ja' : lang;
+}
+
+/* =========================================================================
+   2. helpers
+   ========================================================================= */
+function $(id){ return document.getElementById(id); }
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+function toast(msg, isErr){
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.toggle('err', !!isErr);
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2600);
+}
+// copy ที่ทำงานได้ทั้ง https และ http (LAN) — navigator.clipboard มีเฉพาะ secure context
+async function copyText(text){
   try {
-    if (CLOUD_MODE) {
-      await uploadToCloud(record);
-      await refreshCloudRecords();
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
     } else {
-      records.push(record);
-      try {
-        localStorage.setItem('scrapRecords', JSON.stringify(records));
-      } catch (e) {
-        // localStorage เต็ม (ภาพเยอะ) แต่ข้อมูลยังอยู่ในหน่วยความจำ ยัง export ได้
-        toast('Storage is full, please export then refresh the page', true);
-      }
-      renderTable();
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      ta.remove();
     }
-
-    currentBefore = []; currentAfter = [];
-    renderGallery('before');
-    renderGallery('after');
-    itemCodeInput.value = '';
-    toast(t('saveSuccess', { before: record.before.length, after: record.after.length }));
+    toast(t('linkCopied'));
   } catch (e) {
-    toast(t('cloudUploadFail', { err: e.message }), true);
-  } finally {
-    btnSave.disabled = false;
-    btnSave.textContent = originalLabel;
-  }
-};
-
-// แสดงรายการที่เก็บในเครื่อง (โหมดไม่มี Supabase config เท่านั้น)
-function renderTable(){
-  document.getElementById('countTotal').textContent = records.length;
-  const wrap = document.getElementById('tableWrap');
-  if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
-  records.forEach(r => {
-    const nBefore = (r.before || []).length;
-    const nAfter = (r.after || []).length;
-    const done = nBefore > 0 && nAfter > 0;
-    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
-  });
-  html += '</table>';
-  wrap.innerHTML = html;
-}
-if (!CLOUD_MODE) renderTable();
-renderGallery('before');
-renderGallery('after');
-
-/* ============================================================
-   ส่วนที่ 5.5: แสดงรายการจาก Supabase (โหมด Cloud) + ดูรูปรายตัว
-   ดึงข้อมูลจริงจาก scrap_records + scrap_photos ทุกครั้งที่บันทึกใหม่/กดรีเฟรช/ค้นหา
-   ============================================================ */
-const searchCodeInput = document.getElementById('searchCode');
-
-async function fetchCloudRecords(searchTerm){
-  let query = sb.from(TABLE_RECORDS)
-    .select('*, scrap_photos(id, phase, photo_url)')
-    .order('created_at', { ascending: false })
-    .limit(200); // แสดงล่าสุด 200 รายการพอสำหรับตรวจสอบ ส่วน Export ดึงครบทุกแถวแยกต่างหาก
-  if (searchTerm) query = query.ilike('item_code', `%${searchTerm}%`);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
-}
-
-async function refreshCloudRecords(){
-  try {
-    cloudRecords = await fetchCloudRecords(searchCodeInput.value.trim());
-    renderCloudTable();
-  } catch (e) {
-    toast(t('cloudLoadFail', { err: e.message }), true);
+    toast(text, false);   // copy ไม่ได้จริงๆ โชว์ลิงก์ให้กดค้างคัดลอกเอง
   }
 }
-
-function renderCloudTable(){
-  document.getElementById('countTotal').textContent = cloudRecords.length;
-  const wrap = document.getElementById('tableWrap');
-  if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th></th></tr>`;
-  cloudRecords.forEach(r => {
-    const photos  = r.scrap_photos || [];
-    const nBefore = photos.filter(p => p.phase === 'before').length;
-    const nAfter  = photos.filter(p => p.phase === 'after').length;
-    const done    = r.status === 'complete';
-    const dt      = new Date(r.created_at).toLocaleString('th-TH');
-    html += `<tr>
-      <td>${r.item_code}</td><td>${nBefore}</td><td>${nAfter}</td>
-      <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
-      <td>${r.created_by_email || '-'}</td><td>${dt}</td>
-      <td><button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button></td>
-    </tr>`;
-  });
-  html += '</table>';
-  wrap.innerHTML = html;
-
-  wrap.querySelectorAll('.btn-view').forEach(btn => {
-    btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
-  });
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-document.getElementById('btnRefreshList').onclick = refreshCloudRecords;
-let searchDebounce;
-searchCodeInput.oninput = () => {
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(refreshCloudRecords, 400); // รอพิมพ์นิ่งก่อนค่อยค้นหา กันยิง query รัวๆ
-};
-
-// เปิด modal แสดงรูปก่อน/หลังของ record ที่เลือก
-// v3.1: bucket เป็น private แล้ว ต้องขอ signed URL ก่อนแสดงรูปทุกครั้ง (เป็น async)
-async function showPhotoModal(record){
-  if (!record) return;
-  const photos = record.scrap_photos || [];
-  const before = photos.filter(p => p.phase === 'before');
-  const after  = photos.filter(p => p.phase === 'after');
-
-  document.getElementById('modalTitle').textContent = record.item_code;
-  document.getElementById('modalBody').innerHTML = `<div class="loading-note">${t('loadingData')}</div>`;
-  document.getElementById('photoModal').style.display = 'flex';
-
-  // ขอ signed URL ของทุกรูปพร้อมกัน รูปไหนขอไม่สำเร็จ (เช่น ไฟล์ถูกลบไปแล้ว) ให้ข้ามไปเงียบๆ
-  const withSignedUrl = (list) => Promise.all(list.map(async p => ({
-    ...p, _signedUrl: await getSignedPhotoUrl(p.photo_url).catch(() => null)
-  })));
-  const [beforeResolved, afterResolved] = await Promise.all([withSignedUrl(before), withSignedUrl(after)]);
-
-  const galleryHtml = (list) => {
-    const usable = list.filter(p => p._signedUrl);
-    if (usable.length === 0) return `<div class="empty" style="padding:6px 0;">${t('noPhotos')}</div>`;
-    return '<div class="gallery">' + usable.map(p =>
-      `<div class="thumb"><img src="${p._signedUrl}" alt="" onclick="window.open('${p._signedUrl}','_blank')"></div>`
-    ).join('') + '</div>';
-  };
-
-  document.getElementById('modalBody').innerHTML =
-    `<h3>${t('beforeLabel')} ${t('photoCountLabel', { n: before.length })}</h3>${galleryHtml(beforeResolved)}` +
-    `<h3>${t('afterLabel')} ${t('photoCountLabel', { n: after.length })}</h3>${galleryHtml(afterResolved)}`;
-}
-document.getElementById('modalClose').onclick = () => {
-  document.getElementById('photoModal').style.display = 'none';
-};
-document.getElementById('photoModal').onclick = (e) => {
-  if (e.target.id === 'photoModal') e.target.style.display = 'none';
-};
-
-/* ============================================================
-   ส่วนที่ 6: Export
-   โหมด Cloud: ดึงข้อมูล "ทั้งหมด" จาก Supabase ตอนกด export (ไม่ใช่แค่ 200 แถวที่โชว์อยู่)
-   โหมดเก็บในเครื่อง: ใช้ array records ตรงๆ เหมือนเดิม
-   ============================================================ */
-
-// วน .range() ทีละหน้าจนกว่าจะได้ครบทุกแถว ป้องกันข้อมูลตกหล่นตอน scale ใหญ่ (~3000 รายการ)
-async function fetchAllCloudRecords(){
-  const pageSize = 500;
-  let from = 0, all = [];
-  while (true){
-    const { data, error } = await sb.from(TABLE_RECORDS)
-      .select('*, scrap_photos(id, phase, photo_url)')
-      .order('created_at', { ascending: true })
-      .range(from, from + pageSize - 1);
-    if (error) throw error;
-    all = all.concat(data);
-    if (data.length < pageSize) break;
-    from += pageSize;
-  }
-  return all;
-}
-
-function timestampForFilename(){
-  const d = new Date();
+function fmtDateTime(iso){
+  if (!iso) return '';
+  const d = new Date(iso);
   const p = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-document.getElementById('btnExportExcel').onclick = async () => {
-  const btn = document.getElementById('btnExportExcel');
-  let sourceRows;
+/* =========================================================================
+   3. Supabase client
+   ========================================================================= */
+let sb = null;
+const CONFIGURED = !!(SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey);
+if (CONFIGURED) {
+  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+} else {
+  const b = $('cfgBanner');
+  b.textContent = t('cfgMissing');
+  b.classList.remove('hidden');
+}
 
-  if (CLOUD_MODE) {
-    btn.disabled = true; const original = btn.textContent; btn.textContent = t('loadingData');
-    try { sourceRows = await fetchAllCloudRecords(); }
-    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btn.disabled = false; btn.textContent = original; return; }
-    btn.disabled = false; btn.textContent = original;
-  } else {
-    sourceRows = records;
-  }
+/* =========================================================================
+   4. Router
+   ========================================================================= */
+const params = new URLSearchParams(location.search);
+const jobToken = params.get('t');
 
-  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
+async function boot(){
+  $('appVer').textContent = 'v' + APP_VERSION;
+  console.log('%cFTH Service Survey ' + APP_VERSION, 'font-weight:bold');
+  applyI18n();
+  $('langSelect').value = lang;
+  $('langSelect').onchange = e => {
+    lang = e.target.value;
+    localStorage.setItem('uiLang', lang);
+    applyI18n();
+    rerenderDynamic();
+  };
+  $('btnLogout').onclick = async () => { if (sb) await sb.auth.signOut(); location.href = location.pathname; };
 
-  const rows = sourceRows.map((r, i) => {
-    if (CLOUD_MODE) {
-      const photos  = r.scrap_photos || [];
-      const nBefore = photos.filter(p => p.phase === 'before').length;
-      const nAfter  = photos.filter(p => p.phase === 'after').length;
-      return {
-        'ลำดับ': i+1,
-        'รหัสชิ้นงาน': r.item_code,
-        'จำนวนภาพก่อนทำลาย': nBefore,
-        'จำนวนภาพหลังทำลาย': nAfter,
-        'สถานะ': r.status === 'complete' ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
-        'บันทึกโดย': r.created_by_email || '-',
-        'เวลาบันทึก': new Date(r.created_at).toLocaleString('th-TH')
-      };
+  if (jobToken) { return startCustomer(); }
+
+  // staff flow
+  if (!CONFIGURED) { show('viewLogin'); return; }
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session) { return routeStaff(session); }
+  show('viewLogin');
+  wireLogin();
+}
+
+function rerenderDynamic(){
+  if (!$('viewCustomer').classList.contains('hidden')) { renderEngInfo(); renderQuestions(); }
+  if (!$('viewEngineer').classList.contains('hidden')) { renderEngWho(); loadMyJobs(); }
+  if (!$('viewDashboard').classList.contains('hidden')) applyFilter();
+}
+
+/* =========================================================================
+   5. LOGIN
+   ========================================================================= */
+function wireLogin(){
+  $('btnLogin').onclick = async () => {
+    const email = $('loginEmail').value.trim().toLowerCase();
+    const password = $('loginPass').value;
+    if (!email || !password) return;
+    $('btnLogin').disabled = true;
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      hide('viewLogin');
+      await routeStaff(data.session);
+    } catch (e) {
+      toast(t('loginFail', { err: e.message || e }), true);
+    } finally {
+      $('btnLogin').disabled = false;
     }
-    const nBefore = (r.before || []).length;
-    const nAfter  = (r.after  || []).length;
-    return {
-      'ลำดับ': i+1,
-      'รหัสชิ้นงาน': r.code,
-      'จำนวนภาพก่อนทำลาย': nBefore,
-      'จำนวนภาพหลังทำลาย': nAfter,
-      'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
-      'เวลาบันทึก': r.savedAt
+  };
+}
+
+async function routeStaff(session){
+  const email = (session.user.email || '').toLowerCase();
+  $('btnLogout').classList.remove('hidden');
+
+  if (EXEC_ALLOWLIST.map(x=>x.toLowerCase()).includes(email)) {
+    return startDashboard();
+  }
+  // engineer: หา row ในตาราง engineers
+  const { data: eng, error } = await sb.from('engineers').select('*').eq('email', email).maybeSingle();
+  if (error) { toast(t('connFail',{err:error.message}), true); show('viewLogin'); return; }
+  if (!eng) { toast(t('noEngineerRow'), true); show('viewLogin'); return; }
+  startEngineer(eng);
+}
+
+/* =========================================================================
+   6. ENGINEER
+   ========================================================================= */
+let ENG = null;
+function renderEngWho(){
+  if (!ENG) return;
+  const bits = [`${ENG.fname} ${ENG.lname}`];
+  if (ENG.title) bits.push(titleLabel(ENG.title));
+  if (ENG.department) bits.push(deptLabel(ENG.department));
+  const engYrs = yearsFromHire(ENG.hire_date);
+  if (engYrs != null) bits.push(t('yrsExp', { n: engYrs }));
+  $('engWho').textContent = bits.join(' · ');
+}
+function startEngineer(eng){
+  ENG = eng;
+  show('viewEngineer');
+  renderEngWho();
+  $('btnMakeQr').onclick = makeQr;
+  $('btnNewJob').onclick = () => {
+    hide('qrCard'); $('srNo').value = ''; $('soNo').value = '';
+    $('qrBox').innerHTML = ''; $('srNo').focus();
+  };
+  // ยกเลิก: กลับไปหน้าฟอร์มก่อนสร้าง QR (เก็บเลขที่กรอกไว้ให้แก้ต่อได้) — token ที่สร้างแล้วปล่อยให้หมดอายุเองใน 24 ชม.
+  $('btnCancelQr').onclick = () => {
+    hide('qrCard'); $('qrBox').innerHTML = ''; $('qrLink').textContent = '';
+    $('srNo').focus(); loadMyJobs();
+  };
+  $('btnCopyLink').onclick = () => copyText($('qrLink').textContent);
+  loadMyJobs();
+}
+
+async function makeQr(){
+  const sr = $('srNo').value.trim();
+  const so = $('soNo').value.trim();
+  if (!sr || !so) return toast(t('needBothNo'), true);
+  $('btnMakeQr').disabled = true;
+  try {
+    const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
+    const { data, error } = await sb.from('survey_sessions').insert({
+      engineer_id: ENG.id,
+      service_report_no: sr,
+      service_order_no: so,
+      expires_at
+    }).select('id').single();
+    if (error) throw error;
+
+    const url = `${location.origin}${location.pathname}?t=${data.id}`;
+    $('qrBox').innerHTML = '';
+    new QRCode($('qrBox'), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+    $('qrLink').textContent = url;
+    show('qrCard');
+    $('qrCard').scrollIntoView({ behavior:'smooth' });
+    toast(t('qrCreated'));
+    loadMyJobs();
+  } catch (e) {
+    toast(t('submitFail', { err: e.message || e }), true);
+  } finally {
+    $('btnMakeQr').disabled = false;
+  }
+}
+
+async function loadMyJobs(){
+  if (!ENG) return;
+  const start = new Date(); start.setHours(0,0,0,0);
+  const { data, error } = await sb.from('survey_sessions')
+    .select('*').eq('engineer_id', ENG.id).gte('created_at', start.toISOString())
+    .order('created_at', { ascending:false });
+  const box = $('engJobs');
+  if (error) { box.innerHTML = `<p class="muted">${error.message}</p>`; return; }
+  if (!data || !data.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
+  const now = Date.now();
+  const rows = data.map(s => {
+    let pill;
+    if (s.used) pill = `<span class="pill pill-used">${t('stUsed')}</span>`;
+    else if (new Date(s.expires_at).getTime() < now) pill = `<span class="pill pill-exp">${t('stExpired')}</span>`;
+    else pill = `<span class="pill pill-wait">${t('stWait')}</span>`;
+    return `<tr><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}<br><span style="color:var(--sub)">${s.service_order_no}</span></td><td>${pill}</td></tr>`;
+  }).join('');
+  box.innerHTML = `<table><thead><tr><th>${t('colDateTime')}</th><th>Report / Order</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* =========================================================================
+   7. CUSTOMER
+   ========================================================================= */
+let sigPad = null;
+let CUST_INFO = null;
+const answers = {};
+
+function renderEngInfo(){
+  if (!CUST_INFO) return;
+  $('ciName').textContent = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
+  $('ciTitle').textContent = CUST_INFO.title
+    ? `${t('lblTitle')} : ${titleLabel(CUST_INFO.title)}` : '';
+  $('ciDept').textContent = CUST_INFO.department
+    ? `${t('lblDepartment')} : ${deptLabel(CUST_INFO.department)}` : '';
+  const yrs = yearsFromHire(CUST_INFO.hire_date);
+  $('ciYears').textContent = yrs != null
+    ? `${t('lblExperience')} : ${t('yrsValue', { n: yrs })}` : '';
+  $('ciTel').textContent = CUST_INFO.tel
+    ? `${t('lblTel')} : ${CUST_INFO.tel}` : '';
+  $('ciReport').textContent = CUST_INFO.service_report_no
+    ? `${t('lblReportNo')} : ${CUST_INFO.service_report_no}` : '';
+  const img = $('ciPhoto');
+  if (CUST_INFO.photo_path) {
+    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${CUST_INFO.photo_path}`;
+    img.alt = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
+    img.hidden = false;
+    img.onerror = () => { img.hidden = true; };   // ไม่มีรูป/โหลดไม่ได้ ก็ซ่อนไป
+  } else {
+    img.hidden = true;
+  }
+}
+
+async function startCustomer(){
+  show('viewCustomer');
+  if (!CONFIGURED) {
+    hide('custLoading'); show('custError');
+    $('custErrorMsg').textContent = t('cfgMissing');
+    return;
+  }
+  try {
+    // RPC ตรวจ token + คืนข้อมูลวิศวกร (ดู SUPABASE_SETUP.sql: fn get_survey_session)
+    const { data, error } = await sb.rpc('get_survey_session', { p_token: jobToken });
+    if (error) throw error;
+    if (!data || !data.length) return custErr(t('linkInvalid'));
+    const info = data[0];
+    if (info.used) return custErr(t('linkUsed'));
+    if (info.expired) return custErr(t('linkInvalid'));
+
+    CUST_INFO = info;
+    renderEngInfo();
+    renderQuestions();
+    hide('custLoading'); show('custForm');
+    initSigPad();   // ต้องเรียกหลัง show() ไม่งั้น canvas กว้าง=0 เซ็นไม่ติด
+    $('btnSubmitSurvey').onclick = submitSurvey;
+    $('btnSigClear').onclick = () => sigPad && sigPad.clear();
+  } catch (e) {
+    custErr(t('connFail', { err: e.message || e }));
+  }
+}
+function custErr(msg){
+  hide('custLoading'); hide('custForm'); show('custError');
+  $('custErrorMsg').textContent = msg;
+}
+
+function renderQuestions(){
+  const wrap = $('questions');
+  wrap.innerHTML = QUESTIONS.map((q, i) => `
+    <div class="q-block">
+      <div class="q-title"><span class="q-num">${i+1}.</span>${q[lang] || q.th}</div>
+      <div class="emoji-row" data-q="${q.key}">
+        ${SCALE.map(s => `
+          <div class="emoji-btn ${answers[q.key]===s.v?'sel':''}" data-v="${s.v}">
+            <span class="e">${s.e}</span><span class="l">${s[lang]||s.th}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('.emoji-row').forEach(row => {
+    row.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.onclick = () => {
+        answers[row.dataset.q] = Number(btn.dataset.v);
+        row.querySelectorAll('.emoji-btn').forEach(b => b.classList.toggle('sel', b === btn));
+      };
+    });
+  });
+}
+
+function fitSigCanvas(){
+  const canvas = $('sigPad');
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const w = canvas.offsetWidth || canvas.parentElement.offsetWidth || 300;
+  const h = canvas.offsetHeight || 180;
+  // เก็บลายเซ็นเดิมไว้ตอน resize
+  const data = sigPad && !sigPad.isEmpty() ? sigPad.toData() : null;
+  canvas.width = w * ratio;
+  canvas.height = h * ratio;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(ratio, ratio);
+  if (sigPad) { sigPad.clear(); if (data) sigPad.fromData(data); }
+}
+function initSigPad(){
+  sigPad = new SignaturePad($('sigPad'), { backgroundColor: 'rgba(255,255,255,0)', penColor: '#111', minWidth: 0.7, maxWidth: 2.2 });
+  fitSigCanvas();
+  window.addEventListener('resize', fitSigCanvas);
+}
+
+async function submitSurvey(){
+  for (const q of QUESTIONS) if (!answers[q.key]) return toast(t('answerAll'), true);
+  if (!sigPad || sigPad.isEmpty()) return toast(t('needSignature'), true);
+
+  $('btnSubmitSurvey').disabled = true;
+  try {
+    const blob = await (await fetch(sigPad.toDataURL('image/png'))).blob();
+    const path = `${jobToken}.png`;
+    // ห้ามใช้ upsert:true — storage-api จะใช้ INSERT ... ON CONFLICT DO UPDATE
+    // ซึ่ง Postgres บังคับให้ role ต้องมี SELECT policy บน storage.objects ด้วย
+    // แต่ anon มีแค่ INSERT (ตั้งใจ ไม่เปิดให้ anon อ่านลายเซ็นคนอื่น) -> RLS ตีตก
+    // ชื่อไฟล์เป็น token ซึ่งไม่ซ้ำอยู่แล้ว จึงไม่ต้อง upsert
+    const up = await sb.storage.from('survey-signatures').upload(path, blob, { contentType: 'image/png' });
+    // ถ้าเคยอัปสำเร็จแล้วแต่ RPC พังตอนกดครั้งก่อน กดส่งซ้ำจะเจอ "already exists" — ถือว่าผ่าน ใช้ไฟล์เดิม
+    if (up.error && !/exist|duplicate|409/i.test(up.error.message || '')) {
+      up.error.message = '[signature upload] ' + up.error.message; throw up.error;
+    }
+
+    const { error } = await sb.rpc('submit_survey', {
+      p_token: jobToken,
+      p_q1: answers.q1_response_time,
+      p_q2: answers.q2_technical_skill,
+      p_q3: answers.q3_communication_cost,
+      p_q4: answers.q4_professionalism,
+      p_q5: answers.q5_overall,
+      p_signature_path: path,
+      p_comment: ($('custComment').value || '').trim() || null
+    });
+    if (error) { error.message = '[submit_survey RPC] ' + error.message; throw error; }
+
+    hide('custForm'); show('custThanks');
+    toast(t('submitOk'));
+  } catch (e) {
+    toast(t('submitFail', { err: e.message || e }), true);
+    $('btnSubmitSurvey').disabled = false;
+  }
+}
+
+/* =========================================================================
+   8. DASHBOARD
+   ========================================================================= */
+let dashRows = [];
+async function startDashboard(){
+  show('viewDashboard');
+  $('fEngineer').options[0].text = t('allEngineers');
+  const { data: engs } = await sb.from('engineers').select('id,fname,lname').order('fname');
+  (engs || []).forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.id; o.textContent = `${e.fname} ${e.lname}`;
+    $('fEngineer').appendChild(o);
+  });
+  $('btnApplyFilter').onclick = applyFilter;
+  $('btnExport').onclick = exportXlsx;
+  applyFilter();
+}
+
+async function applyFilter(){
+  const from = $('fFrom').value ? new Date($('fFrom').value + 'T00:00:00').toISOString() : null;
+  const to   = $('fTo').value   ? new Date($('fTo').value   + 'T23:59:59').toISOString() : null;
+  const engId = $('fEngineer').value;
+
+  // view v_survey_full: response + session + engineer (ดู SUPABASE_SETUP.sql)
+  let q = sb.from('v_survey_full').select('*').order('submitted_at', { ascending:false });
+  if (from) q = q.gte('submitted_at', from);
+  if (to)   q = q.lte('submitted_at', to);
+  if (engId) q = q.eq('engineer_id', engId);
+
+  const { data, error } = await q;
+  const tbl = $('dashTable');
+  if (error) { $('dashSummary').textContent = error.message; tbl.innerHTML = ''; return; }
+  dashRows = data || [];
+  if (!dashRows.length) {
+    $('dashSummary').textContent = t('noResults'); tbl.innerHTML = ''; return;
+  }
+  const avg = dashRows.reduce((s,r)=>s+(r.q1_response_time+r.q2_technical_skill+r.q3_communication_cost+r.q4_professionalism+r.q5_overall)/5,0)/dashRows.length;
+  $('dashSummary').textContent = t('summaryLine', { n: dashRows.length, avg: avg.toFixed(2) });
+
+  tbl.innerHTML = `
+    <thead><tr>
+      <th>#</th><th>Date</th><th>Engineer</th><th>Report / Order</th>
+      <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th><th>Comment</th><th>Sig</th>
+    </tr></thead>
+    <tbody>${dashRows.map((r,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${fmtDateTime(r.submitted_at)}</td>
+        <td>${r.fname||''} ${r.lname||''}</td>
+        <td>${r.service_report_no||''}<br><span style="color:var(--sub)">${r.service_order_no||''}</span></td>
+        <td>${r.q1_response_time}</td><td>${r.q2_technical_skill}</td><td>${r.q3_communication_cost}</td>
+        <td>${r.q4_professionalism}</td><td>${r.q5_overall}</td>
+        <td style="max-width:220px;white-space:pre-wrap;word-break:break-word" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
+        <td><a href="#" data-sig="${r.signature_path||''}" style="color:var(--accent)">👁</a></td>
+      </tr>`).join('')}</tbody>`;
+
+  tbl.querySelectorAll('a[data-sig]').forEach(a => {
+    a.onclick = async (ev) => {
+      ev.preventDefault();
+      const p = a.dataset.sig;
+      if (!p) return;
+      const { data, error } = await sb.storage.from('survey-signatures').createSignedUrl(p, 3600);
+      if (error) return toast(error.message, true);
+      window.open(data.signedUrl, '_blank');
     };
   });
-  const ws = XLSX.utils.json_to_sheet(rows);
+}
+
+function exportXlsx(){
+  if (!dashRows.length) return toast(t('noResults'), true);
+  const aoa = dashRows.map(r => ({
+    submitted_at: fmtDateTime(r.submitted_at),
+    engineer: `${r.fname||''} ${r.lname||''}`.trim(),
+    department: r.department || '',
+    service_report_no: r.service_report_no || '',
+    service_order_no: r.service_order_no || '',
+    q1_response_time: r.q1_response_time,
+    q2_technical_skill: r.q2_technical_skill,
+    q3_communication_cost: r.q3_communication_cost,
+    q4_professionalism: r.q4_professionalism,
+    q5_overall: r.q5_overall,
+    comment: r.comment || '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ScrapRecords');
-  XLSX.writeFile(wb, `scrap_records_${timestampForFilename()}.xlsx`);
-};
-
-// แปลง URL รูป (คนละ origin กับหน้าเว็บ) เป็น dataURL เพื่อฝังลง PDF ได้ (jsPDF ใส่ remote URL ตรงๆ ไม่ได้)
-function blobToDataURL(blob){
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(new Error(t('readImageFail')));
-    r.readAsDataURL(blob);
-  });
-}
-async function urlToDataURL(url){
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(t('readImageFail'));
-  return blobToDataURL(await res.blob());
+  XLSX.utils.book_append_sheet(wb, ws, 'survey');
+  const now = new Date();
+  const p = n => String(n).padStart(2,'0');
+  XLSX.writeFile(wb, `survey_${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}_${p(now.getHours())}${p(now.getMinutes())}.xlsx`);
 }
 
-// โหลดขนาดจริงของรูป จะได้วางลง PDF แบบรักษาสัดส่วน ไม่ยืด/บีบภาพให้ผิดรูป
-function getImageSize(dataUrl){
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
-    img.onerror = () => resolve({ w: 1, h: 1 });
-    img.src = dataUrl;
-  });
-}
-
-document.getElementById('btnExportPdf').onclick = async () => {
-  const btnPdf = document.getElementById('btnExportPdf');
-  let sourceRows;
-
-  if (CLOUD_MODE) {
-    btnPdf.disabled = true; const original = btnPdf.textContent; btnPdf.textContent = t('loadingData');
-    try { sourceRows = await fetchAllCloudRecords(); }
-    catch (e) { toast(t('exportLoadFail', { err: e.message }), true); btnPdf.disabled = false; btnPdf.textContent = original; return; }
-    btnPdf.disabled = false; btnPdf.textContent = original;
-  } else {
-    sourceRows = records;
-  }
-
-  if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
-
-  btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
-
-  try {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({unit:'pt', format:'a4'});
-    const PAGE_BOTTOM = 780;
-    const THUMB = 110, GAP = 10, COLS = 4;
-    let y = 40;
-
-    pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
-    pdf.setFontSize(10);
-
-    // วางรูปเป็นกริด รักษาสัดส่วนภาพจริง (contain ภายในกรอบ THUMB x THUMB แทนการยืดเป็นสี่เหลี่ยมจัตุรัส)
-    // รองรับจำนวนไม่จำกัด ขึ้นหน้าใหม่อัตโนมัติเมื่อพื้นที่ไม่พอ
-    // หมายเหตุ: จัดรูปให้ชิดขอบบนของกรอบ (ไม่ centered แนวตั้ง) + ขยับ y ลงตาม "ความสูงจริง" ของรูปที่สูงสุดในแถวนั้น
-    // (ไม่ใช่เผื่อเต็ม THUMB เสมอ) กันรูปแนวนอน/wide เหลือพื้นที่ว่างเยอะก่อนขึ้นหัวข้อถัดไป
-    async function drawPhotoGrid(label, photoDataUrls, startY){
-      let yy = startY;
-      pdf.setFontSize(10); pdf.setTextColor(90);
-      pdf.text(label + ' (' + photoDataUrls.length + ')', 40, yy); yy += 4;
-      pdf.setTextColor(0);
-      if (photoDataUrls.length === 0){ yy += 14; return yy; }
-
-      let col = 0;
-      let rowMaxH = 0; // ความสูงจริงของรูปที่สูงสุดในแถวปัจจุบัน
-      for (const dataUrl of photoDataUrls){
-        if (col === 0) { yy += 4; rowMaxH = 0; }
-        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; rowMaxH = 0; }
-        const x = 40 + col * (THUMB + GAP);
-        try {
-          const { w, h } = await getImageSize(dataUrl);
-          const scale = Math.min(THUMB / w, THUMB / h);
-          const dw = w * scale, dh = h * scale;
-          const dx = x + (THUMB - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง (กันรูป wide ลอยห่างจาก label)
-          pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
-          rowMaxH = Math.max(rowMaxH, dh);
-        } catch(e){}
-        col++;
-        if (col >= COLS){ col = 0; yy += rowMaxH + GAP; }
-      }
-      if (col !== 0) yy += rowMaxH + GAP; // แถวสุดท้ายไม่เต็ม ก็ยังต้องขยับ y ลงตามความสูงจริง ไม่ใช่เผื่อเต็ม THUMB
-      return yy;
-    }
-
-    for (const r of sourceRows){
-      if (y > PAGE_BOTTOM - 60){ pdf.addPage(); y = 40; }
-
-      let itemCode, savedAt, beforePhotos, afterPhotos;
-      if (CLOUD_MODE) {
-        const photos = r.scrap_photos || [];
-        itemCode = r.item_code;
-        savedAt  = new Date(r.created_at).toLocaleString('th-TH');
-        // รูปจาก cloud เก็บเป็น path (bucket private ตั้งแต่ v3.1) ต้องขอ signed URL ก่อน
-        // แล้วค่อย fetch มาแปลงเป็น dataURL ถึงจะฝังใน PDF ได้ — รูปไหนขอ/โหลดไม่สำเร็จ ข้ามไปเงียบๆ
-        const toPdfImage = async (p) => {
-          const signed = await getSignedPhotoUrl(p.photo_url).catch(() => null);
-          if (!signed) return null;
-          return urlToDataURL(signed).catch(() => null);
-        };
-        beforePhotos = await Promise.all(photos.filter(p=>p.phase==='before').map(toPdfImage));
-        afterPhotos  = await Promise.all(photos.filter(p=>p.phase==='after').map(toPdfImage));
-        beforePhotos = beforePhotos.filter(Boolean);
-        afterPhotos  = afterPhotos.filter(Boolean);
-      } else {
-        itemCode = r.code; savedAt = r.savedAt;
-        beforePhotos = r.before || []; afterPhotos = r.after || [];
-      }
-
-      pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
-      pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
-
-      y = await drawPhotoGrid('Before', beforePhotos, y);
-      y = await drawPhotoGrid('After',  afterPhotos,  y);
-      y += 16; // เว้นช่องว่างก่อนรายการถัดไป
-    }
-    pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
-  } finally {
-    btnPdf.disabled = false;
-    btnPdf.textContent = originalPdfLabel;
-  }
-};
-
-/* ============================================================
-   ส่วนที่ 7: Supabase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
-   ============================================================ */
-let sb = null; // Supabase client
-const BUCKET = 'scrap-photos';
-const TABLE_RECORDS = 'scrap_records';
-const TABLE_PHOTOS  = 'scrap_photos';
-
-/* ============================================================
-   ส่วนที่ 6.5: Signed URL สำหรับดูรูป (bucket เป็น Private)
-   ตั้งแต่ v3.1 — bucket scrap-photos ไม่เปิด public read แล้ว
-   ต้องขอ URL ชั่วคราว (signed URL) ทุกครั้งที่จะแสดงรูป และขอได้เฉพาะตอน login อยู่เท่านั้น
-   คอลัมน์ photo_url เก็บเป็น "path" ในตั้งแต่ v3.1 (ไม่ใช่ URL เต็มแบบเดิม)
-   แต่ยังรองรับข้อมูลเก่าที่เก็บเป็น public URL เต็มไว้ด้วย (ถอด path ออกมาเอง)
-   ============================================================ */
-const SIGNED_URL_TTL = 600; // วินาที (10 นาที) — พอสำหรับเปิดดู/export ต่อเนื่อง แต่ลดหน้าต่างความเสี่ยงถ้าลิงก์หลุดออกไป
-const signedUrlCache = new Map(); // path -> { url, expiresAt }
-
-// รองรับทั้งค่าเก่า (public URL เต็ม) และค่าใหม่ (path ตรงๆ) ที่เก็บในคอลัมน์ photo_url
-function extractStoragePath(value){
-  const marker = `/${BUCKET}/`;
-  const idx = value.indexOf(marker);
-  return idx === -1 ? value : value.slice(idx + marker.length);
-}
-
-async function getSignedPhotoUrl(pathOrUrl){
-  const path = extractStoragePath(pathOrUrl);
-  const cached = signedUrlCache.get(path);
-  if (cached && cached.expiresAt > Date.now()) return cached.url;
-  const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
-  if (error) throw error;
-  signedUrlCache.set(path, { url: data.signedUrl, expiresAt: Date.now() + (SIGNED_URL_TTL - 60) * 1000 });
-  return data.signedUrl;
-}
-
-function showLoginScreen(){
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('appMain').style.display = 'none';
-  document.getElementById('btnLogout').style.display = 'none';
-}
-function showAppScreen(){
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appMain').style.display = 'block';
-  document.getElementById('headerActions').style.display = 'flex';
-  if (CLOUD_MODE) document.getElementById('btnLogout').style.display = 'inline-flex';
-}
-
-async function initSupabase(){
-  document.getElementById('headerActions').style.display = 'flex'; // เลือกภาษาใช้ได้ทั้ง 2 โหมด
-
-  if (!CLOUD_MODE) { showAppScreen(); return; } // โหมดเก็บในเครื่อง ไม่มีระบบ login
-
-  if (typeof window.supabase === 'undefined'){
-    toast(t('libSupabaseFail'), true);
-    return;
-  }
-  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-
-  document.getElementById('modeBadge').textContent = t('modeCloud');
-  document.getElementById('storageNote').textContent = t('storageNoteCloud');
-  document.getElementById('searchRow').style.display = 'flex';
-
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) { showAppScreen(); await refreshCloudRecords(); }
-  else { showLoginScreen(); }
-
-  sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
-    if (event === 'SIGNED_OUT') { showLoginScreen(); }
-  });
-}
-
-// ฟอร์ม login ในหน้าเว็บ (แทนที่ prompt() เดิม) — ไม่มีปุ่ม cancel/ปิด
-// ไม่ login สำเร็จ = เข้า appMain ไม่ได้เลย ต่างจาก prompt() เดิมที่กด Cancel แล้วยังเห็นแอปอยู่ดี
-const btnLogin      = document.getElementById('btnLogin');
-const loginEmailEl  = document.getElementById('loginEmail');
-const loginPassEl   = document.getElementById('loginPassword');
-const loginErrorEl  = document.getElementById('loginError');
-
-async function doLogin(){
-  const email = loginEmailEl.value.trim();
-  const password = loginPassEl.value;
-  loginErrorEl.style.display = 'none';
-  if (!email || !password){
-    loginErrorEl.textContent = 'Please enter both email and password.';
-    loginErrorEl.style.display = 'block';
-    return;
-  }
-  btnLogin.disabled = true;
-  const original = btnLogin.textContent;
-  btnLogin.textContent = 'Signing in...';
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  btnLogin.disabled = false;
-  btnLogin.textContent = original;
-  if (error){
-    loginErrorEl.textContent = 'Login failed: ' + error.message;
-    loginErrorEl.style.display = 'block';
-  } else {
-    loginPassEl.value = '';
-  }
-}
-btnLogin.onclick = doLogin;
-loginPassEl.onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
-loginEmailEl.onkeydown = (e) => { if (e.key === 'Enter') loginPassEl.focus(); };
-
-document.getElementById('btnLogout').onclick = async () => {
-  if (sb) await sb.auth.signOut();
-};
-
-function dataUrlToBlob(dataUrl){
-  const [head, b64] = dataUrl.split(',');
-  const mime = head.match(/:(.*?);/)[1];
-  const bin = atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
-
-// อัพโหลดรูปเดียวขึ้น Storage คืนค่า "path" (ไม่ใช่ public URL แล้ว ตั้งแต่ v3.1 ที่ bucket เป็น private)
-// ตอนแสดงผลต้องขอ signed URL จาก path นี้ทุกครั้งผ่าน getSignedPhotoUrl()
-async function uploadOne(itemCode, dataUrl, phase, idx){
-  const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
-  const blob = dataUrlToBlob(dataUrl);
-  const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
-    contentType: 'image/jpeg', upsert: false
-  });
-  if (error) throw error;
-  return path;
-}
-
-// อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
-async function uploadPhaseAll(itemCode, photos, phase){
-  return Promise.all(photos.map((dataUrl, idx) => uploadOne(itemCode, dataUrl, phase, idx)));
-}
-
-// บันทึก 1 รายการ (record) + รูปทั้งหมด (photos) ตามโครงสร้าง 1-to-many
-// scrap_records (1 แถวต่อ 1 ครั้งที่บันทึก) → scrap_photos (หลายแถวต่อ 1 record)
-//
-// หมายเหตุลำดับการทำงาน: insert แถว record ก่อน แล้วค่อยอัปโหลดรูป —
-// เดิมอัปโหลดรูปก่อน ถ้า insert record ล้มเหลว (เช่น permission ผิดตอน setup)
-// รูปจะขึ้น Storage ค้างเป็น orphan ไฟล์โดยไม่มี record อ้างอิงเลย
-// สลับลำดับแบบนี้ ถ้าพลาดตรงไหนจะเห็น record ตั้งแต่ขั้นแรกเสมอ ตรวจสอบ/แก้ไขทีหลังง่ายกว่า
-async function uploadToCloud(record){
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) throw new Error('Please sign in first');
-
-  const status = (record.before.length > 0 && record.after.length > 0) ? 'complete' : 'partial';
-  const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
-    item_code: record.code,
-    status,
-    created_by: user.id,
-    created_by_email: user.email
-  }).select().single();
-  if (recErr) throw recErr;
-
-  const [beforeUrls, afterUrls] = await Promise.all([
-    uploadPhaseAll(record.code, record.before, 'before'),
-    uploadPhaseAll(record.code, record.after,  'after')
-  ]);
-
-  const photoRows = [
-    ...beforeUrls.map(url => ({ record_id: inserted.id, phase: 'before', photo_url: url })),
-    ...afterUrls.map(url  => ({ record_id: inserted.id, phase: 'after',  photo_url: url }))
-  ];
-  if (photoRows.length > 0){
-    const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
-    if (photoErr) throw photoErr;
-  }
-}
-
-initSupabase().catch(e => {
-  toast(t('supabaseConnectFail', { err: e.message }), true);
-});
+/* ========================================================================= */
+boot();
 </script>
 </body>
 </html>
