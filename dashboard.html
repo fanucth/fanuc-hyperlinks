@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10j - หัวตารางเข้มขึ้น (ทุกตาราง); คลิกหัวคอลัมน์ = เรียง asc/desc (▲▼); ปุ่ม Export แยกที่การ์ด
+                     "อันดับคะแนน" และ "รายการทั้งหมด" (นอกจาก Export ทั้งหมด); hover แถว = พื้นอุ่น + แถบซ้ายสีแบรนด์
        2026.09.10i - ตัวกรองแถวเดียวกระชับ; "อันดับคะแนนของวิศวกร"; Report/Order หัวคอลัมน์ 2 บรรทัด (Service / Report No.);
                      Comm/Cost -> Communication/Cost; หัวตารางมีพื้นหลัง (--fc-th-bg) ต่างจากแถวข้อมูล
        2026.09.10h - เพิ่มคอลัมน์ IP ลูกค้า (เก็บฝั่ง server ตอน submit จาก cf-connecting-ip) + client_ua ใน export  [ต้องรัน migrate_client_ip.sql]
@@ -138,6 +140,7 @@
       <div class="fc-card__head">
         <h2 class="fc-card__title" data-i18n="ranking">อันดับรายช่าง</h2>
         <span class="fc-mut" id="rankNote"></span>
+        <button class="fc-btn fc-btn--sm fc-right" id="btnExportRank" data-i18n="exportBtn">Export</button>
       </div>
       <div id="sumBox" class="fc-table-wrap"><table class="fc-table fc-table--zebra" id="sumTable"></table></div>
     </div>
@@ -146,6 +149,7 @@
       <div class="fc-card__head">
         <h2 class="fc-card__title" data-i18n="detail">รายการทั้งหมด</h2>
         <span class="fc-mut" id="detCount"></span>
+        <button class="fc-btn fc-btn--sm fc-right" id="btnExportDet" data-i18n="exportBtn">Export</button>
       </div>
       <div id="detBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
       <div class="pager" id="pager"></div>
@@ -160,7 +164,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10i";
+const APP_VERSION = "2026.09.10j";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -205,7 +209,8 @@ const I18N = {
   next:{th:"ถัดไป",en:"Next",ja:"次へ"},
   colRepOrd:{th:"Report / Order No.",en:"Report / Order No.",ja:"レポート / オーダー番号"},
   apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
-  exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
+  exportXlsx:{th:"Export ทั้งหมด",en:"Export all",ja:"すべて出力"},
+  exportBtn:{th:"Export",en:"Export",ja:"出力"},
   ranking:{th:"อันดับคะแนนของวิศวกร",en:"Engineer score ranking",ja:"エンジニア評価ランキング"},
   rankNoteTxt:{th:"เรียงตามคะแนนเฉลี่ยรวมในช่วงที่เลือก (เฉพาะช่างที่มีรายการ ≥ ขั้นต่ำ)",en:"By overall average in the selected range (responses ≥ minimum)",ja:"選択期間の総合平均順（件数 ≥ 最小）"},
   detail:{th:"รายการทั้งหมด",en:"All responses",ja:"全回答"},
@@ -276,6 +281,7 @@ function makeResizable(table, key){
     const grip = document.createElement('span');
     grip.className = 'fc-col-resize';
     th.appendChild(grip);
+    grip.addEventListener('click', e => e.stopPropagation());   // อย่าให้ทริกเกอร์ sort
     grip.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
       const sx = e.clientX, sw = th.offsetWidth;
@@ -383,6 +389,8 @@ async function startDash(){
   });
   $('btnApply').onclick = applyFilter;
   $('btnExport').onclick = exportXlsx;
+  $('btnExportRank').onclick = exportRanking;
+  $('btnExportDet').onclick = exportDetail;
   $('qMonth').onclick = () => setRange('month');
   $('qLastMonth').onclick = () => setRange('lastmonth');
   $('qYear').onclick  = () => setRange('year');
@@ -466,6 +474,44 @@ function qsum(r){ return r.q1_response_time + r.q2_technical_skill + r.q3_commun
 function skeleton(box){
   box.innerHTML = Array.from({length:6}).map(() =>
     `<div class="fc-skeleton" style="height:20px;margin:10px 12px"></div>`).join('');
+}
+
+/* ---------- sorting ---------- */
+let detSort  = { key: 'submitted_at', dir: 'desc' };
+let rankSort = { key: 'avg', dir: 'desc' };
+
+function sortVal(kind, o, key){
+  if (kind === 'det') return key === 'engineer' ? `${o.fname||''} ${o.lname||''}` : o[key];
+  return key[0] === 'q' && key.length === 2 ? o.q[+key[1]] / o.n : o[key];   // q0..q4 = avg ต่อข้อ
+}
+function sortArr(arr, st, kind){
+  return arr.slice().sort((a, b) => {
+    let x = sortVal(kind, a, st.key), y = sortVal(kind, b, st.key), c;
+    if (st.key === 'submitted_at' || st.key === 'job_created_at') c = new Date(x) - new Date(y);
+    else {
+      const nx = parseFloat(x), ny = parseFloat(y),
+            xn = isFinite(nx) && String(x).trim() !== '',
+            yn = isFinite(ny) && String(y).trim() !== '';
+      if (xn && yn) c = nx - ny;
+      else c = String(x ?? '').localeCompare(String(y ?? ''), 'th');
+    }
+    return st.dir === 'asc' ? c : -c;
+  });
+}
+// สร้าง <th> ที่กดเรียงได้
+function th(label, key, st, cls, style){
+  const ind = st.key === key ? (st.dir === 'asc' ? '▲' : '▼') : '↕';
+  return `<th${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''} data-sort="${key}">${label}<span class="sort-ind${st.key === key ? ' on' : ''}">${ind}</span></th>`;
+}
+function wireSort(table, st, rerender){
+  table.querySelectorAll('th[data-sort]').forEach(el => {
+    el.onclick = () => {
+      const k = el.dataset.sort;
+      if (st.key === k) st.dir = st.dir === 'asc' ? 'desc' : 'asc';
+      else { st.key = k; st.dir = 'asc'; }
+      rerender();
+    };
+  });
 }
 
 async function applyFilter(){
@@ -552,23 +598,25 @@ function renderRanking(){
     return;
   }
   const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
-  const list = agg().filter(e => e.n >= minN).sort((a,b) => b.avg - a.avg);
+  const list = sortArr(agg().filter(e => e.n >= minN), rankSort, 'rank');
   const c = v => `<td class="fc-c">${v.toFixed(2)}</td>`;
   const medal = i => i === 0 ? '<span class="medal">🥇</span>' : i === 1 ? '<span class="medal">🥈</span>' : i === 2 ? '<span class="medal">🥉</span>' : (i + 1);
-  box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover">
+  const S = rankSort;
+  box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover" id="sumTable">
     <thead><tr>
-      <th class="fc-c">${t('colRank')}</th><th>${t('colEngineer')}</th><th>${t('colDept')}</th>
-      <th class="fc-c">${t('colCount')}</th>
-      <th class="fc-c">${t('q1')}</th><th class="fc-c">${t('q2')}</th><th class="fc-c">${t('q3')}</th>
-      <th class="fc-c">${t('q4')}</th><th class="fc-c">${t('q5')}</th><th class="fc-c">${t('colAvg')}</th>
+      ${th(t('colRank'), 'avg', S, 'fc-c')}${th(t('colEngineer'), 'name', S)}${th(t('colDept'), 'dept', S)}
+      ${th(t('colCount'), 'n', S, 'fc-c')}
+      ${th(t('q1'), 'q0', S, 'fc-c')}${th(t('q2'), 'q1', S, 'fc-c')}${th(t('q3'), 'q2', S, 'fc-c')}
+      ${th(t('q4'), 'q3', S, 'fc-c')}${th(t('q5'), 'q4', S, 'fc-c')}${th(t('colAvg'), 'avg', S, 'fc-c')}
     </tr></thead>
     <tbody>${list.map((e,i) => `
       <tr>
-        <td class="fc-c fc-rank">${medal(i)}</td>
+        <td class="fc-c fc-rank">${S.key === 'avg' && S.dir === 'desc' ? medal(i) : (i + 1)}</td>
         <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
         ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
         <td class="fc-c"><b>${e.avg.toFixed(2)}</b></td>
       </tr>`).join('')}</tbody></table>`;
+  wireSort($('sumTable'), rankSort, renderRanking);
 }
 
 function geoCell(r){
@@ -588,22 +636,24 @@ function renderDetail(){
   const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
   if (page > maxPage) page = maxPage;
   const start = page * pageSize;
-  const view = rows.slice(start, start + pageSize);
+  const sorted = sortArr(rows, detSort, 'det');
+  const view = sorted.slice(start, start + pageSize);
+  const S = detSort;
 
   box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover" id="detTable">
     <thead><tr>
       <th class="fc-c" style="width:44px">#</th>
-      <th style="width:104px">${t('colDate')}</th>
-      <th style="width:150px">${t('colEngineer')}</th>
-      <th style="width:150px">${t('colDept')}</th>
-      <th class="fc-c" style="width:88px">${t('colReport')}</th>
-      <th class="fc-c" style="width:88px">${t('colOrder')}</th>
-      <th class="fc-c" style="width:54px">${t('q1')}</th><th class="fc-c" style="width:54px">${t('q2')}</th>
-      <th class="fc-c" style="width:96px">${t('q3')}</th><th class="fc-c" style="width:54px">${t('q4')}</th>
-      <th class="fc-c" style="width:64px">${t('q5')}</th>
-      <th style="width:320px">${t('colComment')}</th>
-      <th style="width:150px">${t('colGeo')}</th>
-      <th style="width:118px">${t('colIP')}</th>
+      ${th(t('colDate'), 'submitted_at', S, '', 'width:104px')}
+      ${th(t('colEngineer'), 'engineer', S, '', 'width:150px')}
+      ${th(t('colDept'), 'department', S, '', 'width:150px')}
+      ${th(t('colReport'), 'service_report_no', S, 'fc-c', 'width:88px')}
+      ${th(t('colOrder'), 'service_order_no', S, 'fc-c', 'width:88px')}
+      ${th(t('q1'), 'q1_response_time', S, 'fc-c', 'width:54px')}${th(t('q2'), 'q2_technical_skill', S, 'fc-c', 'width:54px')}
+      ${th(t('q3'), 'q3_communication_cost', S, 'fc-c', 'width:96px')}${th(t('q4'), 'q4_professionalism', S, 'fc-c', 'width:54px')}
+      ${th(t('q5'), 'q5_overall', S, 'fc-c', 'width:64px')}
+      ${th(t('colComment'), 'comment', S, '', 'width:320px')}
+      ${th(t('colGeo'), 'geo_area', S, '', 'width:150px')}
+      ${th(t('colIP'), 'client_ip', S, '', 'width:118px')}
       <th class="fc-c" style="width:66px">${t('colSig')}</th>
     </tr></thead>
     <tbody>${view.map((r,k) => `
@@ -622,6 +672,7 @@ function renderDetail(){
         <td class="fc-c"><a href="#" class="sig-btn" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}" title="${t('colSig')}">👁</a></td>
       </tr>`).join('')}</tbody></table>`;
   makeResizable($('detTable'), 'dashDetCols');
+  wireSort($('detTable'), detSort, () => { page = 0; renderDetail(); });
   box.querySelectorAll('a[data-sig]').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig, a.dataset.rp, a.dataset.so); };
   });
@@ -693,9 +744,8 @@ async function viewSignature(path, rp, so){
   } catch (e) { toast(e.message || e, true); }
 }
 
-function exportXlsx(){
-  if (!rows.length) return toast(t('noResults'), true);
-  const detail = rows.map(r => ({
+function detailRowsForXlsx(){
+  return sortArr(rows, detSort, 'det').map(r => ({
     submitted_at: fmtDateTime(r.submitted_at),
     engineer: `${r.fname||''} ${r.lname||''}`.trim(),
     department: r.department || '', title: r.title || '', tel: r.tel || '',
@@ -708,17 +758,25 @@ function exportXlsx(){
     q3_communication_cost: r.q3_communication_cost, q4_professionalism: r.q4_professionalism,
     q5_overall: r.q5_overall, comment: r.comment || '',
   }));
-  const summary = agg().sort((a,b) => b.avg - a.avg).map((e,i) => ({
+}
+function rankingRowsForXlsx(){
+  const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
+  return sortArr(agg().filter(e => e.n >= minN), rankSort, 'rank').map((e,i) => ({
     rank: i + 1, engineer: e.name, department: e.dept, responses: e.n,
     avg_q1:+(e.q[0]/e.n).toFixed(2), avg_q2:+(e.q[1]/e.n).toFixed(2), avg_q3:+(e.q[2]/e.n).toFixed(2),
     avg_q4:+(e.q[3]/e.n).toFixed(2), avg_q5:+(e.q[4]/e.n).toFixed(2), avg_overall:+e.avg.toFixed(2),
   }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'ranking');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'detail');
-  const d = new Date(), p = n => String(n).padStart(2,'0');
-  XLSX.writeFile(wb, `survey_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`);
 }
+function saveXlsx(sheets, tag){
+  if (!rows.length) return toast(t('noResults'), true);
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(([name, data]) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), name));
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  XLSX.writeFile(wb, `survey_${tag}_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`);
+}
+function exportXlsx()   { saveXlsx([['ranking', rankingRowsForXlsx()], ['detail', detailRowsForXlsx()]], 'all'); }
+function exportRanking(){ saveXlsx([['ranking', rankingRowsForXlsx()]], 'ranking'); }
+function exportDetail() { saveXlsx([['detail', detailRowsForXlsx()]], 'responses'); }
 
 boot();
 </script>
