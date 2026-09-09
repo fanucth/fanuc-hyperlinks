@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09l - logout แจ้ง "ออกจากระบบเรียบร้อย"; เก็บ geo_area (อำเภอ/จังหวัด) ตอนสร้าง QR ด้วย reverse-geocode  [ต้องรัน migrate_geo_area.sql]
        2026.09.09k - รองรับ ?loggedout=1 จาก dashboard: เคลียร์ session + อยู่หน้า login (กัน loop เด้งกลับ dashboard); logout ใช้ scope:'local'
        2026.09.09j - ปรับข้อความ: Service Engineer / Management, placeholder อีเมล @fth.fanuc.com
        2026.09.09i - หน้า login มีแท็บเลือก วิศวกร / ผู้บริหาร; ผู้บริหาร login -> เด้งไป dashboard.html
@@ -274,7 +275,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09k";
+const APP_VERSION = "2026.09.09l";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -305,6 +306,7 @@ const I18N = {
   roleEngineer:{th:"วิศวกรบริการ",en:"Service Engineer",ja:"サービスエンジニア"},
   roleManager:{th:"ผู้บริหาร",en:"Management",ja:"マネジメント"},
   notExecMsg:{th:"บัญชีนี้ไม่มีสิทธิ์ผู้บริหาร",en:"This account has no manager access",ja:"このアカウントに管理者権限はありません"},
+  loggedOutOk:{th:"ออกจากระบบเรียบร้อยแล้ว",en:"Signed out successfully",ja:"ログアウトしました"},
   pickManager:{th:"บัญชีนี้เป็นผู้บริหาร — กรุณาเลือกแท็บ \"ผู้บริหาร\"",en:"This is a manager account — please pick the \"Manager\" tab",ja:"管理者アカウントです —「管理者」タブを選んでください"},
   email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
   password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
@@ -522,19 +524,20 @@ async function boot(){
   };
   $('btnLogout').onclick = async () => {
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch {}
-    location.href = location.pathname;
+    location.href = location.pathname + '?loggedout=1';
   };
 
   if (jobToken) { return startCustomer(); }
 
   // staff flow
   if (!CONFIGURED) { show('viewLogin'); return; }
-  // เพิ่งกด logout จาก dashboard -> เคลียร์ session ให้ชัวร์แล้วอยู่ที่หน้า login (กัน loop เด้งกลับ)
+  // เพิ่งกด logout (จาก dashboard หรือหน้านี้) -> เคลียร์ session + อยู่หน้า login + แจ้งสำเร็จ
   if (params.get('loggedout')) {
     try { await sb.auth.signOut({ scope: 'local' }); } catch {}
     history.replaceState(null, '', location.pathname);
     show('viewLogin');
     wireLogin();
+    setTimeout(() => toast(t('loggedOutOk')), 60);
     return;
   }
   const { data:{ session } } = await sb.auth.getSession();
@@ -658,6 +661,19 @@ function getGeo(){
   });
 }
 
+// แปลงพิกัด -> "อำเภอ, จังหวัด" (best-effort, ครั้งเดียวตอนสร้าง QR) — พังก็คืน null
+async function reverseGeo(lat, lng){
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=th`, { signal: ctrl.signal });
+    clearTimeout(to);
+    const j = await r.json();
+    const parts = [j.locality || j.city, j.principalSubdivision].filter(Boolean);
+    return parts.length ? parts.join(', ') : null;
+  } catch { return null; }
+}
+
 // วาด QR + ลิงก์ของ token ที่ระบุ (ใช้ทั้งตอนสร้างใหม่ และตอนเปิดงานเดิมจากตาราง)
 function renderQrCard(id, sr, so){
   currentToken = id;
@@ -688,10 +704,14 @@ async function makeQr(){
     }
 
     // เก็บพิกัด ถ้าผู้บริหารเปิดสวิตช์ geo_capture ไว้
-    let geo = null;
+    let geo = null, geoArea = null;
     try {
       const { data: st } = await sb.from('app_settings').select('value').eq('key', 'geo_capture').maybeSingle();
-      if (st && st.value === 'on') { toast(t('geoLocating')); geo = await getGeo(); }
+      if (st && st.value === 'on') {
+        toast(t('geoLocating'));
+        geo = await getGeo();
+        if (geo) geoArea = await reverseGeo(geo.lat, geo.lng);
+      }
     } catch {}
 
     const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
@@ -703,7 +723,8 @@ async function makeQr(){
       geo_lat: geo ? geo.lat : null,
       geo_lng: geo ? geo.lng : null,
       geo_accuracy: geo ? geo.acc : null,
-      geo_at: geo ? new Date().toISOString() : null
+      geo_at: geo ? new Date().toISOString() : null,
+      geo_area: geoArea
     }).select('id').single();
     if (error) throw error;
 
