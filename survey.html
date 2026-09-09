@@ -4,9 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>FTH Service Survey - v0.1</title>
-<!-- VERSION: v0.1 (scaffold) | Created: 2026-09-03
-     FTH Service Quality & CS Evaluation Survey
+<title>FTH Service Survey</title>
+<!-- FTH Service Quality & CS Evaluation Survey
+     VERSION: ดูค่า APP_VERSION ในสคริปต์ (โชว์มุมขวาล่างของหน้า + console)
+     *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
+
+     CHANGELOG:
+       2026.09.09c - ยกเลิก QR ได้จริง (RPC expire_session, ใช้ตอนพิมพ์เลขงานผิด);
+                     แตะงานใน "งานวันนี้" ที่ยังรอลูกค้า เพื่อเปิด QR/ลิงก์เดิมส่งซ้ำ;
+                     การ์ด QR โชว์เลข Report/Order ให้ช่างตรวจทาน  [ต้องรัน migrate_cancel.sql]
+       2026.09.09b - เพิ่ม Contact(tel) บนหน้าลูกค้า + ป้ายเวอร์ชันมุมจอ  [ต้องรัน migrate_rpc.sql]
+       2026.09.09a - engineers: ใช้ title + hire_date (คำนวณอายุงานตอนแสดง) แทน years_experience;
+                     เพิ่มแผนก Robodrill & Robocut / Roboshot; import ช่างจริง 51 คน
+       2026.09.04  - หน้าลูกค้า: แผนก 3 ภาษา, บรรทัด label:value, ช่องคอมเมนต์, ปรับขนาดรูป
+       2026.09.03  - scaffold: 3 โหมด (customer/engineer/dashboard), i18n TH/EN/JP, เทสต์ end-to-end ผ่าน
+
      Design spec: V:\IT\Survey\SURVEY_SYSTEM_DESIGN.md
      DB / RLS / RPC setup: V:\IT\Survey\SUPABASE_SETUP.sql
 
@@ -148,6 +160,7 @@
     <div class="card qr-wrap hidden" id="qrCard">
       <h2 data-i18n="qrHead">ให้ลูกค้าสแกน</h2>
       <div id="qrBox"></div>
+      <div class="muted" id="qrJobRef" style="margin:2px 0 6px"></div>
       <div class="linktext" id="qrLink"></div>
       <button class="btn btn-secondary" id="btnCopyLink" data-i18n="copyLink">คัดลอกลิงก์</button>
       <div class="row2">
@@ -172,8 +185,10 @@
         <img id="ciPhoto" alt="" hidden>
         <div>
           <div class="name" id="ciName">—</div>
+          <div class="meta" id="ciTitle"></div>
           <div class="meta" id="ciDept"></div>
           <div class="meta" id="ciYears"></div>
+          <div class="meta" id="ciTel"></div>
           <div class="meta" id="ciReport"></div>
         </div>
       </div>
@@ -235,12 +250,17 @@
   </section>
 </main>
 
+<div id="appVer" style="position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5"></div>
 <div id="toast" class="toast"></div>
 
 <script>
 /* =========================================================================
    0. CONFIG
    ========================================================================= */
+// เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
+// รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
+const APP_VERSION = "2026.09.09c";
+
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   // legacy anon key (JWT) — ปลอดภัยที่จะฝังในหน้าเว็บถ้าเปิด RLS ครบ (RLS เป็นตัวกันข้อมูล)
@@ -280,6 +300,12 @@ const I18N = {
   newJob:{th:"งานถัดไป",en:"Next job",ja:"次の作業"},
   cancelQr:{th:"ยกเลิก QR นี้",en:"Cancel this QR",ja:"このQRを取消"},
   qrNote:{th:"QR นี้ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.",en:"Single-use QR, expires in 24 h.",ja:"このQRは1回のみ有効、24時間で期限切れ。"},
+  qrJobRef:{th:"งาน",en:"Job",ja:"作業"},
+  cancelConfirm:{th:"ยกเลิก QR นี้? ลูกค้าจะสแกนไม่ได้อีก (ใช้เมื่อพิมพ์เลขงานผิด)",en:"Cancel this QR? The customer will no longer be able to use it.",ja:"このQRを取り消しますか？お客様は使用できなくなります。"},
+  cancelDone:{th:"ยกเลิก QR แล้ว — แก้เลขแล้วสร้างใหม่ได้เลย",en:"QR cancelled — fix the number and create a new one",ja:"QRを取り消しました"},
+  jobsHint:{th:"แตะงานที่ยัง “รอลูกค้า” เพื่อเปิด QR / ลิงก์เดิมส่งให้ลูกค้าอีกครั้ง",en:"Tap a “Waiting” job to reopen its QR / link",ja:"「待機中」の作業をタップするとQR・リンクを再表示"},
+  jobDoneMsg:{th:"งานนี้ลูกค้าตอบแล้ว",en:"This job is already answered",ja:"この作業は回答済みです"},
+  jobExpMsg:{th:"งานนี้หมดอายุแล้ว — สร้าง QR ใหม่",en:"This job has expired — create a new QR",ja:"この作業は期限切れです"},
   myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
   loading:{th:"กำลังโหลด...",en:"Loading...",ja:"読み込み中..."},
   checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
@@ -301,7 +327,9 @@ const I18N = {
   allEngineers:{th:"— ทั้งหมด —",en:"— All —",ja:"— すべて —"},
   yrsExp:{th:"อายุงาน {n} ปี",en:"{n} yrs experience",ja:"経験{n}年"},
   lblDepartment:{th:"แผนก",en:"Department",ja:"部署"},
+  lblTitle:{th:"ตำแหน่ง",en:"Position",ja:"役職"},
   lblExperience:{th:"ประสบการณ์",en:"Experience",ja:"経験"},
+  lblTel:{th:"เบอร์ติดต่อ",en:"Contact",ja:"連絡先"},
   yrsValue:{th:"{n} ปี",en:"{n} years",ja:"{n}年"},
   lblReportNo:{th:"เลขที่งานบริการ",en:"Service Report No",ja:"サービスレポート番号"},
   lblOrderNo:{th:"เลขที่ใบสั่งบริการ",en:"Service Order No",ja:"サービスオーダー番号"},
@@ -340,13 +368,39 @@ const QUESTIONS = [
 // แผนก 3 ภาษา — key = ค่าที่เก็บใน engineers.department (ตรงเป๊ะ)
 // IT เพิ่ม/แก้แผนกจริงได้ตรงนี้ ถ้าไม่เจอใน map จะโชว์ค่าดิบตามที่เก็บใน DB
 const DEPT_I18N = {
-  "Service - FA":          { th:"FA",          en:"FA",          ja:"FA" },
-  "Service - Robot":       { th:"หุ่นยนต์",     en:"Robot",       ja:"ロボット" },
-  "Service - Robomachine": { th:"Robomachine", en:"Robomachine", ja:"ロボマシン" },
+  "Service - FA":                  { th:"FA",                   en:"FA",                   ja:"FA" },
+  "Service - Robot":               { th:"หุ่นยนต์",              en:"Robot",                ja:"ロボット" },
+  "Service - Robomachine":         { th:"Robomachine",          en:"Robomachine",          ja:"ロボマシン" },
+  "Service - Robodrill & Robocut": { th:"Robodrill & Robocut",  en:"Robodrill & Robocut",  ja:"ロボドリル・ロボカット" },
+  "Service - Roboshot":            { th:"Roboshot",             en:"Roboshot",             ja:"ロボショット" },
 };
 function deptLabel(raw){
   const m = DEPT_I18N[(raw || '').trim()];
   return m ? (m[lang] || m.th) : (raw || '');
+}
+
+// ตำแหน่งงาน 3 ภาษา — key = ค่าที่เก็บใน engineers.title (ตรงเป๊ะ) ไม่เจอใน map = โชว์ค่าดิบ
+const TITLE_I18N = {
+  "Manager":           { th:"ผู้จัดการ",           en:"Manager",           ja:"マネージャー" },
+  "Assistant Manager": { th:"ผู้ช่วยผู้จัดการ",     en:"Assistant Manager", ja:"アシスタントマネージャー" },
+};
+function titleLabel(raw){
+  const s = (raw || '').trim();
+  if (!s) return '';
+  const m = TITLE_I18N[s];
+  return m ? (m[lang] || m.th) : s;
+}
+
+// ประสบการณ์ทำงาน (ปีเต็ม) คำนวณจาก hire_date = 'YYYY-MM-DD' ตอนแสดงผล — อย่างน้อย 1
+function yearsFromHire(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return null;
+  const hire = new Date(+m[1], +m[2] - 1, +m[3]);
+  const now = new Date();
+  let y = now.getFullYear() - hire.getFullYear();
+  const anniv = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
+  if (now < anniv) y -= 1;
+  return Math.max(1, y);
 }
 
 const SCALE = [
@@ -432,6 +486,8 @@ const params = new URLSearchParams(location.search);
 const jobToken = params.get('t');
 
 async function boot(){
+  $('appVer').textContent = 'v' + APP_VERSION;
+  console.log('%cFTH Service Survey ' + APP_VERSION, 'font-weight:bold');
   applyI18n();
   $('langSelect').value = lang;
   $('langSelect').onchange = e => {
@@ -501,8 +557,10 @@ let ENG = null;
 function renderEngWho(){
   if (!ENG) return;
   const bits = [`${ENG.fname} ${ENG.lname}`];
+  if (ENG.title) bits.push(titleLabel(ENG.title));
   if (ENG.department) bits.push(deptLabel(ENG.department));
-  if (ENG.years_experience != null) bits.push(t('yrsExp', { n: ENG.years_experience }));
+  const engYrs = yearsFromHire(ENG.hire_date);
+  if (engYrs != null) bits.push(t('yrsExp', { n: engYrs }));
   $('engWho').textContent = bits.join(' · ');
 }
 function startEngineer(eng){
@@ -511,16 +569,38 @@ function startEngineer(eng){
   renderEngWho();
   $('btnMakeQr').onclick = makeQr;
   $('btnNewJob').onclick = () => {
+    currentToken = null;
     hide('qrCard'); $('srNo').value = ''; $('soNo').value = '';
     $('qrBox').innerHTML = ''; $('srNo').focus();
   };
-  // ยกเลิก: กลับไปหน้าฟอร์มก่อนสร้าง QR (เก็บเลขที่กรอกไว้ให้แก้ต่อได้) — token ที่สร้างแล้วปล่อยให้หมดอายุเองใน 24 ชม.
-  $('btnCancelQr').onclick = () => {
+  // ยกเลิก QR: ทำให้ token หมดอายุทันทีที่ server (ใช้ตอนพิมพ์เลขงานผิด) — เก็บเลขที่กรอกไว้ให้แก้แล้วสร้างใหม่
+  $('btnCancelQr').onclick = async () => {
+    if (!currentToken) { hide('qrCard'); return; }
+    if (!confirm(t('cancelConfirm'))) return;
+    const { data, error } = await sb.rpc('expire_session', { p_token: currentToken });
+    if (error) return toast(error.message, true);
+    if (!data) return toast(t('jobDoneMsg'), true);   // ลูกค้ากดส่งไปแล้ว ยกเลิกไม่ได้
+    toast(t('cancelDone'));
+    currentToken = null;
     hide('qrCard'); $('qrBox').innerHTML = ''; $('qrLink').textContent = '';
     $('srNo').focus(); loadMyJobs();
   };
   $('btnCopyLink').onclick = () => copyText($('qrLink').textContent);
   loadMyJobs();
+}
+
+let currentToken = null;
+
+// วาด QR + ลิงก์ของ token ที่ระบุ (ใช้ทั้งตอนสร้างใหม่ และตอนเปิดงานเดิมจากตาราง)
+function renderQrCard(id, sr, so){
+  currentToken = id;
+  const url = `${location.origin}${location.pathname}?t=${id}`;
+  $('qrBox').innerHTML = '';
+  new QRCode($('qrBox'), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  $('qrLink').textContent = url;
+  $('qrJobRef').textContent = `${t('qrJobRef')}: ${sr} / ${so}`;
+  show('qrCard');
+  $('qrCard').scrollIntoView({ behavior:'smooth' });
 }
 
 async function makeQr(){
@@ -538,12 +618,7 @@ async function makeQr(){
     }).select('id').single();
     if (error) throw error;
 
-    const url = `${location.origin}${location.pathname}?t=${data.id}`;
-    $('qrBox').innerHTML = '';
-    new QRCode($('qrBox'), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
-    $('qrLink').textContent = url;
-    show('qrCard');
-    $('qrCard').scrollIntoView({ behavior:'smooth' });
+    renderQrCard(data.id, sr, so);
     toast(t('qrCreated'));
     loadMyJobs();
   } catch (e) {
@@ -564,13 +639,23 @@ async function loadMyJobs(){
   if (!data || !data.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
   const now = Date.now();
   const rows = data.map(s => {
-    let pill;
-    if (s.used) pill = `<span class="pill pill-used">${t('stUsed')}</span>`;
-    else if (new Date(s.expires_at).getTime() < now) pill = `<span class="pill pill-exp">${t('stExpired')}</span>`;
-    else pill = `<span class="pill pill-wait">${t('stWait')}</span>`;
-    return `<tr><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}<br><span style="color:var(--sub)">${s.service_order_no}</span></td><td>${pill}</td></tr>`;
+    let pill, state;
+    if (s.used) { state = 'used'; pill = `<span class="pill pill-used">${t('stUsed')}</span>`; }
+    else if (new Date(s.expires_at).getTime() < now) { state = 'exp'; pill = `<span class="pill pill-exp">${t('stExpired')}</span>`; }
+    else { state = 'wait'; pill = `<span class="pill pill-wait">${t('stWait')}</span>`; }
+    return `<tr data-id="${s.id}" data-state="${state}"><td>${fmtDateTime(s.created_at)}</td><td>${s.service_report_no}<br><span style="color:var(--sub)">${s.service_order_no}</span></td><td>${pill}</td></tr>`;
   }).join('');
-  box.innerHTML = `<table><thead><tr><th>${t('colDateTime')}</th><th>Report / Order</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  box.innerHTML = `<p class="muted" style="margin:0 0 8px">${t('jobsHint')}</p>`
+    + `<table><thead><tr><th>${t('colDateTime')}</th><th>Report / Order</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  box.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => {
+      if (tr.dataset.state === 'used') return toast(t('jobDoneMsg'), true);
+      if (tr.dataset.state === 'exp')  return toast(t('jobExpMsg'), true);
+      const s = data.find(x => x.id === tr.dataset.id);
+      if (s) renderQrCard(s.id, s.service_report_no, s.service_order_no);
+    };
+  });
 }
 
 /* =========================================================================
@@ -583,10 +668,15 @@ const answers = {};
 function renderEngInfo(){
   if (!CUST_INFO) return;
   $('ciName').textContent = `${CUST_INFO.fname} ${CUST_INFO.lname}`;
+  $('ciTitle').textContent = CUST_INFO.title
+    ? `${t('lblTitle')} : ${titleLabel(CUST_INFO.title)}` : '';
   $('ciDept').textContent = CUST_INFO.department
     ? `${t('lblDepartment')} : ${deptLabel(CUST_INFO.department)}` : '';
-  $('ciYears').textContent = CUST_INFO.years_experience != null
-    ? `${t('lblExperience')} : ${t('yrsValue', { n: CUST_INFO.years_experience })}` : '';
+  const yrs = yearsFromHire(CUST_INFO.hire_date);
+  $('ciYears').textContent = yrs != null
+    ? `${t('lblExperience')} : ${t('yrsValue', { n: yrs })}` : '';
+  $('ciTel').textContent = CUST_INFO.tel
+    ? `${t('lblTel')} : ${CUST_INFO.tel}` : '';
   $('ciReport').textContent = CUST_INFO.service_report_no
     ? `${t('lblReportNo')} : ${CUST_INFO.service_report_no}` : '';
   const img = $('ciPhoto');
