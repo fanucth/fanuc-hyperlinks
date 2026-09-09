@@ -175,6 +175,7 @@
           <div class="meta" id="ciTitle"></div>
           <div class="meta" id="ciDept"></div>
           <div class="meta" id="ciYears"></div>
+          <div class="meta" id="ciTel"></div>
           <div class="meta" id="ciReport"></div>
         </div>
       </div>
@@ -304,6 +305,7 @@ const I18N = {
   lblDepartment:{th:"แผนก",en:"Department",ja:"部署"},
   lblTitle:{th:"ตำแหน่ง",en:"Position",ja:"役職"},
   lblExperience:{th:"ประสบการณ์",en:"Experience",ja:"経験"},
+  lblTel:{th:"เบอร์ติดต่อ",en:"Contact",ja:"連絡先"},
   yrsValue:{th:"{n} ปี",en:"{n} years",ja:"{n}年"},
   lblReportNo:{th:"เลขที่งานบริการ",en:"Service Report No",ja:"サービスレポート番号"},
   lblOrderNo:{th:"เลขที่ใบสั่งบริการ",en:"Service Order No",ja:"サービスオーダー番号"},
@@ -620,6 +622,8 @@ function renderEngInfo(){
   const yrs = yearsFromHire(CUST_INFO.hire_date);
   $('ciYears').textContent = yrs != null
     ? `${t('lblExperience')} : ${t('yrsValue', { n: yrs })}` : '';
+  $('ciTel').textContent = CUST_INFO.tel
+    ? `${t('lblTel')} : ${CUST_INFO.tel}` : '';
   $('ciReport').textContent = CUST_INFO.service_report_no
     ? `${t('lblReportNo')} : ${CUST_INFO.service_report_no}` : '';
   const img = $('ciPhoto');
