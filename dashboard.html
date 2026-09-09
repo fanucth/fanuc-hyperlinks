@@ -12,6 +12,13 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10i - ตัวกรองแถวเดียวกระชับ; "อันดับคะแนนของวิศวกร"; Report/Order หัวคอลัมน์ 2 บรรทัด (Service / Report No.);
+                     Comm/Cost -> Communication/Cost; หัวตารางมีพื้นหลัง (--fc-th-bg) ต่างจากแถวข้อมูล
+       2026.09.10h - เพิ่มคอลัมน์ IP ลูกค้า (เก็บฝั่ง server ตอน submit จาก cf-connecting-ip) + client_ua ใน export  [ต้องรัน migrate_client_ip.sql]
+       2026.09.10g - ชื่อบริษัท = Fanuc Thai Limited.; ปุ่มเปิด/ปิดเก็บพิกัดย้ายขึ้น app bar (เอาการ์ดตั้งค่าออก);
+                     KPI ใหม่ 6 การ์ด (คะแนน/จำนวน สูงสุด เดือนนี้+เดือนก่อน, ไม่ขึ้นกับตัวกรอง);
+                     ตาราง: เส้นแนวตั้ง + ไฮไลต์แถวตอนชี้เมาส์; อันดับ/Q จัดกึ่งกลาง; แยก Report/Order เป็น 2 คอลัมน์กึ่งกลาง;
+                     Sig -> Signature + ปุ่มดูใหญ่ขึ้น; แก้ "Overall" ซ้ำ (คอลัมน์เฉลี่ย = Average)
        2026.09.10f - เต็มจอ + โลโก้ FANUC มุมซ้าย; All responses: หน้าละ 10 (ปรับได้ 10/25/50/100) + Prev/Next,
                      เพิ่มคอลัมน์แผนก, รวม Report/Order เป็นคอลัมน์เดียว 2 บรรทัด; filter เพิ่ม "เดือนก่อน";
                      Location แสดงอำเภอ/จังหวัด (geo_area); watermark ลายเซ็นอ่านออก + ใส่ RP/SO  [ต้องรัน migrate_geo_area.sql]
@@ -38,7 +45,19 @@
   .toggle-geo{display:flex;align-items:center;gap:var(--fc-s3);cursor:pointer;font-size:16px;}
   .toggle-geo input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--fc-primary);}
   .medal{font-size:16px;}
-  .quick-row{display:flex;gap:var(--fc-s2);flex-wrap:wrap;margin-bottom:var(--fc-s4);}
+  .geo-switch{display:flex;align-items:center;gap:var(--fc-s2);font-size:13px;color:var(--fc-text-dim);
+    border:1px solid var(--fc-border-strong);border-radius:var(--fc-radius);padding:5px 10px;min-height:36px;cursor:pointer;white-space:nowrap;}
+  .geo-switch input{width:16px;height:16px;margin:0;accent-color:var(--fc-primary);}
+  .kpi-name{font-family:var(--fc-font-head);font-weight:600;font-size:20px;line-height:1.35;}
+  /* แถบตัวกรองแบบกระชับ (แถวเดียวบนจอกว้าง) */
+  .fc-card--tight{padding:var(--fc-s3) var(--fc-s4);}
+  .filters-bar{display:flex;flex-wrap:wrap;gap:var(--fc-s2);align-items:flex-end;}
+  .filters-bar .fc-field{margin:0;}
+  .filters-bar .fc-field__label{font-size:11px;margin-bottom:2px;}
+  .filters-bar .fc-input,.filters-bar .fc-select{min-height:32px;padding:5px 8px;font-size:13px;}
+  .filters-bar .f-date{width:132px;} .filters-bar .f-sel{width:150px;} .filters-bar .f-min{width:64px;text-align:center;}
+  .filters-bar .fc-btn{min-height:32px;padding:6px 12px;font-size:13px;}
+  .filters-bar .qbtns{display:flex;gap:4px;align-self:flex-end;}
   .login-wrap{max-width:380px;margin:var(--fc-s6) auto 0;}
   a.geo-link,a.sig-link{color:var(--fc-primary);text-decoration:none;font-size:12px;}
   a.geo-link{font-family:var(--fc-font-body);}
@@ -50,7 +69,7 @@
 <header class="fc-appbar">
   <img class="appbar-logo" src="fanuc-logo.png" alt="FANUC" onerror="this.style.display='none'">
   <div class="fc-appbar__brand">
-    <h1 class="fc-appbar__title" data-i18n="appTitle">FANUC Thai — แดชบอร์ดผลสำรวจ</h1>
+    <h1 class="fc-appbar__title" data-i18n="appTitle">Fanuc Thai Limited. — แดชบอร์ดผลสำรวจ</h1>
     <span class="fc-appbar__sub" data-i18n="appSub">ผลสำรวจความพึงพอใจลูกค้า — สำหรับผู้บริหาร</span>
   </div>
   <div class="fc-appbar__spacer"></div>
@@ -58,6 +77,10 @@
     <select id="langSelect" class="fc-select" style="width:auto;min-height:36px;padding:6px 10px;font-size:14px" title="Language">
       <option value="th">ไทย</option><option value="en">EN</option><option value="ja">日本語</option>
     </select>
+    <label class="geo-switch fc-hidden" id="geoSwitch" title="">
+      <input type="checkbox" id="setGeo">
+      <span>📍 <span data-i18n="geoToggle">เก็บพิกัด</span></span>
+    </label>
     <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
     <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" data-i18n="logout">ออกจากระบบ</button>
   </div>
@@ -88,38 +111,26 @@
 
     <div class="fc-kpis" id="kpis" style="margin-bottom:var(--fc-s4)"></div>
 
-    <div class="fc-card">
-      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="settings">การตั้งค่า</h2></div>
-      <label class="toggle-geo">
-        <input type="checkbox" id="setGeo">
-        <span data-i18n="geoToggle">เก็บพิกัดตำแหน่งตอนช่างสร้าง QR</span>
-      </label>
-      <p class="fc-note" id="setGeoInfo" style="margin-top:var(--fc-s2)"></p>
-    </div>
-
-    <div class="fc-card">
-      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="filters">ตัวกรอง</h2></div>
-      <div class="quick-row">
-        <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
-        <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนก่อน</button>
-        <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
-        <button class="fc-btn fc-btn--sm" id="qAll" data-i18n="allTime">ทั้งหมด</button>
-      </div>
-      <div class="fc-inline">
-        <label class="fc-field"><span class="fc-field__label" data-i18n="dateFrom">ตั้งแต่วันที่</span>
-          <input type="date" id="fFrom" class="fc-input"></label>
-        <label class="fc-field"><span class="fc-field__label" data-i18n="dateTo">ถึงวันที่</span>
-          <input type="date" id="fTo" class="fc-input"></label>
-        <label class="fc-field"><span class="fc-field__label" data-i18n="filterDept">แผนก</span>
-          <select id="fDept" class="fc-select"><option value="">— All —</option></select></label>
-        <label class="fc-field"><span class="fc-field__label" data-i18n="filterEngineer">วิศวกร</span>
-          <select id="fEngineer" class="fc-select"><option value="">— All —</option></select></label>
-        <label class="fc-field" style="max-width:140px"><span class="fc-field__label" data-i18n="minN">ขั้นต่ำ (รายการ)</span>
-          <input type="number" id="fMinN" class="fc-input" value="1" min="1" style="text-align:center"></label>
-        <div class="fc-inline__act">
-          <button class="fc-btn fc-btn--primary" id="btnApply" data-i18n="apply">แสดงผล</button>
-          <button class="fc-btn" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
+    <div class="fc-card fc-card--tight">
+      <div class="filters-bar">
+        <div class="qbtns">
+          <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
+          <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนก่อน</button>
+          <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
+          <button class="fc-btn fc-btn--sm" id="qAll" data-i18n="allTime">ทั้งหมด</button>
         </div>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="dateFrom">ตั้งแต่วันที่</span>
+          <input type="date" id="fFrom" class="fc-input f-date"></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="dateTo">ถึงวันที่</span>
+          <input type="date" id="fTo" class="fc-input f-date"></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="filterDept">แผนก</span>
+          <select id="fDept" class="fc-select f-sel"><option value="">— All —</option></select></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="filterEngineer">วิศวกร</span>
+          <select id="fEngineer" class="fc-select f-sel"><option value="">— All —</option></select></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="minN">ขั้นต่ำ</span>
+          <input type="number" id="fMinN" class="fc-input f-min" value="1" min="1"></label>
+        <button class="fc-btn fc-btn--primary" id="btnApply" data-i18n="apply">แสดงผล</button>
+        <button class="fc-btn" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
       </div>
     </div>
 
@@ -149,7 +160,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10f";
+const APP_VERSION = "2026.09.10i";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -164,7 +175,7 @@ const EXEC_ALLOWLIST = [
 
 /* ---------- i18n ---------- */
 const I18N = {
-  appTitle:{th:"FANUC Thai — แดชบอร์ดผลสำรวจ",en:"FANUC Thai — Survey Dashboard",ja:"FANUC Thai — アンケート集計"},
+  appTitle:{th:"Fanuc Thai Limited. — แดชบอร์ดผลสำรวจ",en:"Fanuc Thai Limited. — Survey Dashboard",ja:"Fanuc Thai Limited. — アンケート集計"},
   appSub:{th:"ผลสำรวจความพึงพอใจลูกค้า — สำหรับผู้บริหาร",en:"Customer satisfaction results — management view",ja:"顧客満足度の結果 — 管理者用"},
   signIn:{th:"เข้าสู่ระบบ",en:"Sign in",ja:"ログイン"},
   email:{th:"อีเมล",en:"Email",ja:"メール"},
@@ -174,7 +185,7 @@ const I18N = {
   notExec:{th:"บัญชีนี้ไม่มีสิทธิ์ดูแดชบอร์ด",en:"This account is not allowed to view the dashboard",ja:"このアカウントには閲覧権限がありません"},
   loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログイン失敗: {err}"},
   settings:{th:"การตั้งค่า",en:"Settings",ja:"設定"},
-  geoToggle:{th:"เก็บพิกัดตำแหน่งตอนช่างสร้าง QR",en:"Capture location when an engineer creates a QR",ja:"エンジニアがQR作成時に位置情報を記録"},
+  geoToggle:{th:"เก็บพิกัด",en:"Capture location",ja:"位置情報を記録"},
   geoOnInfo:{th:"เปิดอยู่ — ช่างจะถูกขออนุญาตตำแหน่งตอนกดสร้าง QR (ถ้าไม่อนุญาต ระบบข้ามให้ ไม่บล็อก)",en:"On — engineers are asked for location when creating a QR (skipped if denied)",ja:"オン — QR作成時に位置情報の許可を求めます（拒否時はスキップ）"},
   geoOffInfo:{th:"ปิดอยู่ — ไม่มีการขอ/เก็บตำแหน่ง",en:"Off — no location is requested or stored",ja:"オフ — 位置情報は要求も保存もしません"},
   geoUpdatedBy:{th:"แก้ล่าสุดโดย {who} เมื่อ {when}",en:"Last changed by {who} on {when}",ja:"最終変更: {who} / {when}"},
@@ -195,15 +206,20 @@ const I18N = {
   colRepOrd:{th:"Report / Order No.",en:"Report / Order No.",ja:"レポート / オーダー番号"},
   apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
   exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
-  ranking:{th:"อันดับรายช่าง",en:"Engineer ranking",ja:"エンジニアランキング"},
+  ranking:{th:"อันดับคะแนนของวิศวกร",en:"Engineer score ranking",ja:"エンジニア評価ランキング"},
   rankNoteTxt:{th:"เรียงตามคะแนนเฉลี่ยรวมในช่วงที่เลือก (เฉพาะช่างที่มีรายการ ≥ ขั้นต่ำ)",en:"By overall average in the selected range (responses ≥ minimum)",ja:"選択期間の総合平均順（件数 ≥ 最小）"},
   detail:{th:"รายการทั้งหมด",en:"All responses",ja:"全回答"},
   noResults:{th:"ไม่มีข้อมูลในช่วงที่เลือก",en:"No results for this range",ja:"該当データなし"},
   emptyHint:{th:"ลองขยายช่วงวันที่ หรือกดปุ่ม “ทั้งหมด”",en:"Try widening the date range or press “All time”",ja:"期間を広げるか「全期間」を押してください"},
-  kpiResponses:{th:"จำนวนแบบสอบถาม",en:"Responses",ja:"回答数"},
-  kpiAvg:{th:"คะแนนเฉลี่ยรวม",en:"Overall average",ja:"総合平均"},
-  kpiTop:{th:"อันดับ 1 ช่วงนี้",en:"Top this range",ja:"期間トップ"},
-  kpiEngineers:{th:"ช่างที่มีผล",en:"Engineers with data",ja:"データのあるエンジニア"},
+  kpiResponses:{th:"จำนวนแบบสอบถาม (ช่วงที่กรอง)",en:"Responses (filtered)",ja:"回答数（フィルター）"},
+  kpiAvg:{th:"คะแนนเฉลี่ยรวม (ช่วงที่กรอง)",en:"Overall average (filtered)",ja:"総合平均（フィルター）"},
+  kpiTopRateM:{th:"คะแนนสูงสุด — เดือนนี้",en:"Top rating — this month",ja:"最高評価 — 今月"},
+  kpiTopRespM:{th:"ทำมากสุด — เดือนนี้",en:"Most responses — this month",ja:"最多回答 — 今月"},
+  kpiTopRateL:{th:"คะแนนสูงสุด — เดือนก่อน",en:"Top rating — last month",ja:"最高評価 — 先月"},
+  kpiTopRespL:{th:"ทำมากสุด — เดือนก่อน",en:"Most responses — last month",ja:"最多回答 — 先月"},
+  kpiNoData:{th:"ยังไม่มีข้อมูล",en:"No data yet",ja:"データなし"},
+  unitScore:{th:"คะแนน",en:"avg",ja:"点"},
+  unitResp:{th:"รายการ",en:"responses",ja:"件"},
   rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
   rateMid:{th:"ดี",en:"Good",ja:"良好"},
   rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
@@ -211,19 +227,20 @@ const I18N = {
   colEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
   colDept:{th:"แผนก",en:"Dept",ja:"部署"},
   colCount:{th:"จำนวน",en:"Responses",ja:"件数"},
-  colAvg:{th:"เฉลี่ยรวม",en:"Overall",ja:"総合平均"},
+  colAvg:{th:"เฉลี่ยรวม",en:"Average",ja:"平均"},
   colDate:{th:"วันที่ตอบ",en:"Submitted",ja:"回答日時"},
-  colReport:{th:"Service Report No.",en:"Service Report No.",ja:"レポート番号"},
-  colOrder:{th:"Service Order No.",en:"Service Order No.",ja:"オーダー番号"},
+  colReport:{th:"Service<br>Report No.",en:"Service<br>Report No.",ja:"サービス<br>レポート番号"},
+  colOrder:{th:"Service<br>Order No.",en:"Service<br>Order No.",ja:"サービス<br>オーダー番号"},
   colComment:{th:"ข้อเสนอแนะ",en:"Comment",ja:"コメント"},
   colGeo:{th:"ตำแหน่ง",en:"Location",ja:"位置"},
-  colSig:{th:"ลายเซ็น",en:"Sig",ja:"署名"},
+  colIP:{th:"IP ลูกค้า",en:"Client IP",ja:"顧客IP"},
+  colSig:{th:"ลายเซ็น",en:"Signature",ja:"署名"},
   wmShort:{th:"ห้ามเผยแพร่",en:"DO NOT DISTRIBUTE",ja:"複製・配布禁止"},
-  wmFull:{th:"สำเนาลายมือชื่อลูกค้า — ใช้เพื่อการตรวจสอบภายในของ FANUC Thai เท่านั้น ห้ามทำซ้ำ ดัดแปลง หรือเผยแพร่ต่อบุคคลภายนอก",en:"Customer signature copy — for FANUC Thai internal verification only. Do not reproduce, alter, or distribute.",ja:"お客様署名の複製 — FANUC Thai 社内確認用のみ。複製・改変・外部配布を禁じます。"},
+  wmFull:{th:"สำเนาลายมือชื่อลูกค้า — ใช้เพื่อการตรวจสอบภายในของ Fanuc Thai Limited. เท่านั้น ห้ามทำซ้ำ ดัดแปลง หรือเผยแพร่ต่อบุคคลภายนอก",en:"Customer signature copy — for Fanuc Thai Limited. internal verification only. Do not reproduce, alter, or distribute.",ja:"お客様署名の複製 — Fanuc Thai Limited. 社内確認用のみ。複製・改変・外部配布を禁じます。"},
   popupBlocked:{th:"เบราว์เซอร์บล็อกป๊อปอัป — อนุญาตแล้วลองใหม่",en:"Pop-up blocked — allow pop-ups and retry",ja:"ポップアップがブロックされました"},
   q1:{th:"ตอบสนอง",en:"Response",ja:"対応速度"},
   q2:{th:"ทักษะ",en:"Skill",ja:"技術力"},
-  q3:{th:"สื่อสาร/ค่าใช้จ่าย",en:"Comm/Cost",ja:"説明/費用"},
+  q3:{th:"การสื่อสาร/<br>ค่าใช้จ่าย",en:"Communication/<br>Cost",ja:"説明/<br>費用"},
   q4:{th:"มืออาชีพ",en:"Professional",ja:"プロ意識"},
   q5:{th:"ภาพรวม",en:"Overall",ja:"総合"},
 };
@@ -371,8 +388,10 @@ async function startDash(){
   $('qYear').onclick  = () => setRange('year');
   $('qAll').onclick   = () => setRange('all');
   $('fMinN').onchange = render;
-  loadGeoSetting();
+  $('geoSwitch').classList.remove('fc-hidden');
   $('setGeo').onchange = saveGeoSetting;
+  loadGeoSetting();
+  loadLeaders();
   applyFilter();
 }
 
@@ -382,7 +401,40 @@ async function loadGeoSetting(){
   $('setGeo').checked = on;
   let info = on ? t('geoOnInfo') : t('geoOffInfo');
   if (data && data.updated_by) info += ' · ' + t('geoUpdatedBy', { who: data.updated_by, when: fmtDateTime(data.updated_at) });
-  $('setGeoInfo').textContent = info;
+  $('geoSwitch').title = info;
+}
+
+// ผู้นำเดือนนี้/เดือนก่อน (ไม่ขึ้นกับตัวกรอง) — คะแนนสูงสุด + ทำมากสุด
+let leaders = null;
+async function loadLeaders(){
+  const now = new Date();
+  const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const { data } = await sb.from('v_survey_full')
+    .select('engineer_id,fname,lname,department,submitted_at,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall')
+    .gte('submitted_at', lmStart.toISOString());
+  const mKey = d => { const x = new Date(d); return x.getFullYear() + '-' + x.getMonth(); };
+  const curKey = now.getFullYear() + '-' + now.getMonth();
+  const lastKey = lmStart.getFullYear() + '-' + lmStart.getMonth();
+  const bucket = { [curKey]: {}, [lastKey]: {} };
+  (data || []).forEach(r => {
+    const k = mKey(r.submitted_at); if (!bucket[k]) return;
+    const g = bucket[k][r.engineer_id] || (bucket[k][r.engineer_id] =
+      { name:`${r.fname||''} ${r.lname||''}`.trim(), dept:r.department||'', n:0, sum:0 });
+    g.n++;
+    g.sum += (r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall) / 5;
+  });
+  const pick = (k, by) => {
+    const arr = Object.values(bucket[k] || {});
+    if (!arr.length) return null;
+    return by === 'rate'
+      ? arr.slice().sort((a,b) => (b.sum/b.n) - (a.sum/a.n))[0]
+      : arr.slice().sort((a,b) => b.n - a.n)[0];
+  };
+  leaders = {
+    rateM: pick(curKey, 'rate'), respM: pick(curKey, 'resp'),
+    rateL: pick(lastKey, 'rate'), respL: pick(lastKey, 'resp'),
+  };
+  renderKpis();
 }
 async function saveGeoSetting(){
   const on = $('setGeo').checked;
@@ -465,23 +517,31 @@ function rateBadge(v){
   return `<span class="fc-badge fc-badge--danger">${t('rateLow')} ${v.toFixed(2)}</span>`;
 }
 
+function leaderCard(labelKey, g, kind){
+  const body = g
+    ? `<div class="kpi-name">🥇 ${esc(g.name)}</div>
+       <div class="fc-kpi__sub">${esc(g.dept)} · ${kind === 'rate'
+          ? (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' · ' + g.n + ' ' + t('unitResp')
+          : g.n + ' ' + t('unitResp') + ' · ' + (g.sum / g.n).toFixed(2) + ' ' + t('unitScore')}</div>`
+    : `<div class="kpi-name" style="color:var(--fc-text-mute)">${t('kpiNoData')}</div>`;
+  return `<div class="fc-kpi"><div class="fc-kpi__label">${t(labelKey)}</div>${body}</div>`;
+}
+
 function renderKpis(){
   const box = $('kpis');
-  if (!rows.length) { box.innerHTML = ''; return; }
-  const overall = rows.reduce((s,r) => s + qsum(r)/5, 0) / rows.length;
-  const list = agg().sort((a,b) => b.avg - a.avg);
-  const top = list[0];
-  box.innerHTML = `
-    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiResponses')}</div>
-      <div class="fc-kpi__value">${rows.length}</div></div>
-    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiAvg')}</div>
-      <div class="fc-kpi__value">${overall.toFixed(2)}</div>
-      <div class="fc-kpi__sub">${rateBadge(overall)}</div></div>
-    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiTop')}</div>
-      <div class="fc-kpi__value" style="font-size:20px">🥇 ${esc(top.name)}</div>
-      <div class="fc-kpi__sub">${esc(top.dept)} · ${top.avg.toFixed(2)} · ${top.n} ${t('colCount')}</div></div>
-    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiEngineers')}</div>
-      <div class="fc-kpi__value">${list.length}</div></div>`;
+  const L = leaders || {};
+  const filtered = rows.length
+    ? `<div class="fc-kpi"><div class="fc-kpi__label">${t('kpiResponses')}</div>
+         <div class="fc-kpi__value">${rows.length}</div></div>
+       <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiAvg')}</div>
+         <div class="fc-kpi__value">${(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length).toFixed(2)}</div>
+         <div class="fc-kpi__sub">${rateBadge(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length)}</div></div>`
+    : '';
+  box.innerHTML = filtered
+    + leaderCard('kpiTopRateM', L.rateM, 'rate')
+    + leaderCard('kpiTopRespM', L.respM, 'resp')
+    + leaderCard('kpiTopRateL', L.rateL, 'rate')
+    + leaderCard('kpiTopRespL', L.respL, 'resp');
 }
 
 function renderRanking(){
@@ -493,21 +553,21 @@ function renderRanking(){
   }
   const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
   const list = agg().filter(e => e.n >= minN).sort((a,b) => b.avg - a.avg);
-  const c = v => `<td class="fc-n">${v.toFixed(2)}</td>`;
+  const c = v => `<td class="fc-c">${v.toFixed(2)}</td>`;
   const medal = i => i === 0 ? '<span class="medal">🥇</span>' : i === 1 ? '<span class="medal">🥈</span>' : i === 2 ? '<span class="medal">🥉</span>' : (i + 1);
-  box.innerHTML = `<table class="fc-table fc-table--zebra">
+  box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover">
     <thead><tr>
-      <th class="fc-rank">${t('colRank')}</th><th>${t('colEngineer')}</th><th>${t('colDept')}</th>
-      <th class="fc-n">${t('colCount')}</th>
-      <th class="fc-n">${t('q1')}</th><th class="fc-n">${t('q2')}</th><th class="fc-n">${t('q3')}</th>
-      <th class="fc-n">${t('q4')}</th><th class="fc-n">${t('q5')}</th><th class="fc-n">${t('colAvg')}</th>
+      <th class="fc-c">${t('colRank')}</th><th>${t('colEngineer')}</th><th>${t('colDept')}</th>
+      <th class="fc-c">${t('colCount')}</th>
+      <th class="fc-c">${t('q1')}</th><th class="fc-c">${t('q2')}</th><th class="fc-c">${t('q3')}</th>
+      <th class="fc-c">${t('q4')}</th><th class="fc-c">${t('q5')}</th><th class="fc-c">${t('colAvg')}</th>
     </tr></thead>
     <tbody>${list.map((e,i) => `
       <tr>
-        <td class="fc-rank">${medal(i)}</td>
-        <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="fc-n">${e.n}</td>
+        <td class="fc-c fc-rank">${medal(i)}</td>
+        <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
         ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
-        <td class="fc-n"><b>${e.avg.toFixed(2)}</b></td>
+        <td class="fc-c"><b>${e.avg.toFixed(2)}</b></td>
       </tr>`).join('')}</tbody></table>`;
 }
 
@@ -530,32 +590,36 @@ function renderDetail(){
   const start = page * pageSize;
   const view = rows.slice(start, start + pageSize);
 
-  box.innerHTML = `<table class="fc-table fc-table--zebra" id="detTable">
+  box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover" id="detTable">
     <thead><tr>
-      <th class="fc-n" style="width:44px">#</th>
+      <th class="fc-c" style="width:44px">#</th>
       <th style="width:104px">${t('colDate')}</th>
       <th style="width:150px">${t('colEngineer')}</th>
       <th style="width:150px">${t('colDept')}</th>
-      <th style="width:104px">${t('colRepOrd')}</th>
-      <th class="fc-n" style="width:52px">${t('q1')}</th><th class="fc-n" style="width:52px">${t('q2')}</th>
-      <th class="fc-n" style="width:52px">${t('q3')}</th><th class="fc-n" style="width:52px">${t('q4')}</th>
-      <th class="fc-n" style="width:52px">${t('q5')}</th>
-      <th style="width:380px">${t('colComment')}</th>
+      <th class="fc-c" style="width:88px">${t('colReport')}</th>
+      <th class="fc-c" style="width:88px">${t('colOrder')}</th>
+      <th class="fc-c" style="width:54px">${t('q1')}</th><th class="fc-c" style="width:54px">${t('q2')}</th>
+      <th class="fc-c" style="width:96px">${t('q3')}</th><th class="fc-c" style="width:54px">${t('q4')}</th>
+      <th class="fc-c" style="width:64px">${t('q5')}</th>
+      <th style="width:320px">${t('colComment')}</th>
       <th style="width:150px">${t('colGeo')}</th>
-      <th style="width:52px">${t('colSig')}</th>
+      <th style="width:118px">${t('colIP')}</th>
+      <th class="fc-c" style="width:66px">${t('colSig')}</th>
     </tr></thead>
     <tbody>${view.map((r,k) => `
       <tr>
-        <td class="fc-n">${start + k + 1}</td>
+        <td class="fc-c">${start + k + 1}</td>
         <td class="fc-n"><div>${fmtD(r.submitted_at)}</div><div style="color:var(--fc-text-mute);font-size:12px">${fmtT(r.submitted_at)}</div></td>
         <td>${esc(`${r.fname||''} ${r.lname||''}`.trim())}</td>
         <td>${esc(r.department||'')}</td>
-        <td class="fc-n"><div>${esc(r.service_report_no||'')}</div><div style="color:var(--fc-text-mute);font-size:12px">${esc(r.service_order_no||'')}</div></td>
-        <td class="fc-n">${r.q1_response_time}</td><td class="fc-n">${r.q2_technical_skill}</td><td class="fc-n">${r.q3_communication_cost}</td>
-        <td class="fc-n">${r.q4_professionalism}</td><td class="fc-n">${r.q5_overall}</td>
+        <td class="fc-c">${esc(r.service_report_no||'')}</td>
+        <td class="fc-c">${esc(r.service_order_no||'')}</td>
+        <td class="fc-c">${r.q1_response_time}</td><td class="fc-c">${r.q2_technical_skill}</td><td class="fc-c">${r.q3_communication_cost}</td>
+        <td class="fc-c">${r.q4_professionalism}</td><td class="fc-c">${r.q5_overall}</td>
         <td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
         <td style="white-space:normal;line-height:1.5">${geoCell(r)}</td>
-        <td><a href="#" class="sig-link" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}">👁</a></td>
+        <td style="font-family:var(--fc-font-mono);font-size:12px;color:var(--fc-text-dim)">${esc(r.client_ip||'')}</td>
+        <td class="fc-c"><a href="#" class="sig-btn" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}" title="${t('colSig')}">👁</a></td>
       </tr>`).join('')}</tbody></table>`;
   makeResizable($('detTable'), 'dashDetCols');
   box.querySelectorAll('a[data-sig]').forEach(a => {
@@ -600,7 +664,7 @@ async function viewSignature(path, rp, so){
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
       g.drawImage(img, pad, pad);
       // ลายน้ำเฉียง — เว้นระยะจากความกว้างข้อความจริง ไม่ให้ทับกัน
-      const stamp = `FANUC THAI · RP ${rp || '-'} · SO ${so || '-'} · ${ME} · ${fmtDateTime(new Date().toISOString())} · ${t('wmShort')}`;
+      const stamp = `FANUC THAI LIMITED · RP ${rp || '-'} · SO ${so || '-'} · ${ME} · ${fmtDateTime(new Date().toISOString())} · ${t('wmShort')}`;
       g.save();
       g.translate(cv.width / 2, cv.height / 2);
       g.rotate(-0.38);
@@ -639,6 +703,7 @@ function exportXlsx(){
     location_area: r.geo_area || '',
     geo_lat: r.geo_lat != null ? r.geo_lat : '', geo_lng: r.geo_lng != null ? r.geo_lng : '',
     geo_accuracy_m: r.geo_accuracy != null ? Math.round(r.geo_accuracy) : '',
+    client_ip: r.client_ip || '', client_ua: r.client_ua || '',
     q1_response_time: r.q1_response_time, q2_technical_skill: r.q2_technical_skill,
     q3_communication_cost: r.q3_communication_cost, q4_professionalism: r.q4_professionalism,
     q5_overall: r.q5_overall, comment: r.comment || '',
