@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,129 +9,136 @@
      VERSION: ดู APP_VERSION ในสคริปต์ (มุมขวาล่าง + console) — bump ทุกครั้งก่อนอัปขึ้น GitHub
      ผู้บริหารเท่านั้น (อีเมลใน EXEC_ALLOWLIST + ตาราง exec_allowlist / RLS is_exec())
      ข้อมูลจาก view v_survey_full (ดู SUPABASE_SETUP.sql)
+     UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10b - ดูลายเซ็นลูกค้า: ใส่ลายน้ำ "ห้ามเผยแพร่" + อีเมลผู้เปิด + เวลา (กันเอาภาพไปใช้ต่อ)
+       2026.09.10a - รื้อ UI ใหม่ตาม FANUC Web UI Kit (fanuc-ui.css): app bar, KPI, badge, ตารางมาตรฐาน,
+                     light/dark toggle, skeleton, empty state
+       2026.09.09c - filter แผนก + ปุ่มลัด เดือนนี้/ปีนี้ + อันดับช่าง (🥇🥈🥉) + ขั้นต่ำรายการ; "All" ภาษาอังกฤษ
+       2026.09.09b - สวิตช์ "เก็บพิกัดตอนช่างสร้าง QR" (exec เปิด/ปิด) + คอลัมน์ 📍 + export  [ต้องรัน migrate_geo.sql]
        2026.09.09a - เวอร์ชันแรก: login exec, filter วันที่/ช่าง, สรุปรายช่าง, ตารางรายการ, export Excel (2 sheet)
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fanuc-ui.css">
 <style>
-  :root{
-    --bg:#0f1420; --card:#171e2e; --card2:#1e2740; --accent:#ffb400; --accent2:#ff5a3c;
-    --text:#eef1f7; --sub:#9aa4bd; --ok:#3ddc84; --line:#2a3350;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:'Segoe UI',Tahoma,'Noto Sans Thai','Noto Sans JP',Arial,sans-serif;background:var(--bg);color:var(--text);}
-  header{padding:16px 18px 10px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 82%,transparent);z-index:5;}
-  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;max-width:1000px;margin:0 auto;}
-  header h1{font-size:17px;margin:0 0 2px;}
-  header p{margin:0;color:var(--sub);font-size:12px;}
-  .header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
-  .lang-select{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;}
-  .btn-logout{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
-  main{max-width:1000px;margin:0 auto;padding:8px 14px 90px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
-  .card h2{font-size:14px;margin:0 0 12px;color:var(--accent);letter-spacing:.3px;}
-  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input[type=email],input[type=password],input[type=date],select{
-    width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:12px;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
-  .btn-primary{background:var(--accent);color:#1a1500;}
-  .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
-  .hidden{display:none!important;}
-  .banner{background:rgba(255,90,60,.12);border:1px solid var(--accent2);color:#ffd9d1;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.5;}
-  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-  .filters>div{flex:1;min-width:150px;}
-  .filters .acts{display:flex;gap:8px;flex:0 0 auto;min-width:0;}
-  .filters .acts .btn{width:auto;padding:11px 16px;margin:0;}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap;}
-  th{color:var(--sub);font-weight:600;font-size:10.5px;text-transform:uppercase;}
-  td.wrap{white-space:normal;word-break:break-word;max-width:260px;}
-  .num{text-align:center;}
-  .scrollx{overflow-x:auto;}
-  .muted{color:var(--sub);font-size:12px;text-align:center;padding:16px 0;}
-  .sumline{color:var(--sub);font-size:12.5px;margin-bottom:10px;}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:92%;text-align:center;}
-  .toast.show{opacity:1;}
-  .toast.err{background:var(--accent2);color:#fff;}
-  a.sig{color:var(--accent);text-decoration:none;}
-  #appVer{position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5;}
+  /* เฉพาะหน้านี้ — ประกอบจากโทเก้น .fc ไม่มี hex */
+  #appVer{position:fixed;right:var(--fc-s2);bottom:var(--fc-s1);font-size:12px;color:var(--fc-text-mute);opacity:.7;pointer-events:none;user-select:none;z-index:5;}
+  .toggle-geo{display:flex;align-items:center;gap:var(--fc-s3);cursor:pointer;font-size:16px;}
+  .toggle-geo input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--fc-primary);}
+  .medal{font-size:16px;}
+  .quick-row{display:flex;gap:var(--fc-s2);flex-wrap:wrap;margin-bottom:var(--fc-s4);}
+  .login-wrap{max-width:380px;margin:var(--fc-s6) auto 0;}
+  a.geo-link,a.sig-link{color:var(--fc-primary);text-decoration:none;font-family:var(--fc-font-mono);font-size:12px;}
 </style>
 </head>
-<body>
-<header>
-  <div class="header-row">
-    <div>
-      <h1 data-i18n="appTitle">FANUC Thai — Survey Dashboard</h1>
-      <p data-i18n="appSub">ผลสำรวจความพึงพอใจลูกค้า — สำหรับผู้บริหาร</p>
-    </div>
-    <div class="header-actions">
-      <select id="langSelect" class="lang-select" title="Language">
-        <option value="th">ไทย</option><option value="en">EN</option><option value="ja">日本語</option>
-      </select>
-      <button id="btnLogout" class="btn-logout hidden" data-i18n="logout">ออกจากระบบ</button>
-    </div>
+<body class="fc">
+<header class="fc-appbar">
+  <div class="fc-appbar__brand">
+    <h1 class="fc-appbar__title" data-i18n="appTitle">FANUC Thai — แดชบอร์ดผลสำรวจ</h1>
+    <span class="fc-appbar__sub" data-i18n="appSub">ผลสำรวจความพึงพอใจลูกค้า — สำหรับผู้บริหาร</span>
+  </div>
+  <div class="fc-appbar__spacer"></div>
+  <div class="fc-appbar__actions">
+    <select id="langSelect" class="fc-select" style="width:auto;min-height:36px;padding:6px 10px;font-size:14px" title="Language">
+      <option value="th">ไทย</option><option value="en">EN</option><option value="ja">日本語</option>
+    </select>
+    <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
+    <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" data-i18n="logout">ออกจากระบบ</button>
   </div>
 </header>
 
-<main>
-  <div id="cfgBanner" class="banner hidden"></div>
+<main class="fc-container">
+  <div id="cfgBanner" class="fc-card fc-hidden" style="border-color:var(--fc-danger)"></div>
 
   <!-- LOGIN -->
-  <section id="viewLogin" class="hidden">
-    <div class="card" style="max-width:380px;margin:24px auto;">
-      <h2 data-i18n="signIn">เข้าสู่ระบบ</h2>
-      <label data-i18n="email">อีเมล</label>
-      <input type="email" id="loginEmail" autocomplete="username">
-      <label data-i18n="password">รหัสผ่าน</label>
-      <input type="password" id="loginPass" autocomplete="current-password">
-      <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
-      <p class="muted" data-i18n="execOnly">เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น</p>
+  <section id="viewLogin" class="fc-hidden">
+    <div class="fc-card login-wrap">
+      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="signIn">เข้าสู่ระบบ</h2></div>
+      <label class="fc-field">
+        <span class="fc-field__label" data-i18n="email">อีเมล</span>
+        <input type="email" id="loginEmail" class="fc-input" autocomplete="username">
+      </label>
+      <label class="fc-field">
+        <span class="fc-field__label" data-i18n="password">รหัสผ่าน</span>
+        <input type="password" id="loginPass" class="fc-input" autocomplete="current-password">
+      </label>
+      <button class="fc-btn fc-btn--primary" id="btnLogin" style="width:100%" data-i18n="signIn">เข้าสู่ระบบ</button>
+      <p class="fc-note" style="margin-top:var(--fc-s3)" data-i18n="execOnly">เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น</p>
     </div>
   </section>
 
   <!-- DASHBOARD -->
-  <section id="viewDash" class="hidden">
-    <div class="card">
-      <h2 data-i18n="filters">ตัวกรอง</h2>
-      <div class="filters">
-        <div><label data-i18n="dateFrom">ตั้งแต่วันที่</label><input type="date" id="fFrom"></div>
-        <div><label data-i18n="dateTo">ถึงวันที่</label><input type="date" id="fTo"></div>
-        <div><label data-i18n="filterEngineer">วิศวกร</label>
-          <select id="fEngineer"><option value="">— ทั้งหมด —</option></select></div>
-        <div class="acts">
-          <button class="btn btn-primary" id="btnApply" data-i18n="apply">แสดงผล</button>
-          <button class="btn btn-secondary" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
+  <section id="viewDash" class="fc-hidden">
+
+    <div class="fc-kpis" id="kpis" style="margin-bottom:var(--fc-s4)"></div>
+
+    <div class="fc-card">
+      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="settings">การตั้งค่า</h2></div>
+      <label class="toggle-geo">
+        <input type="checkbox" id="setGeo">
+        <span data-i18n="geoToggle">เก็บพิกัดตำแหน่งตอนช่างสร้าง QR</span>
+      </label>
+      <p class="fc-note" id="setGeoInfo" style="margin-top:var(--fc-s2)"></p>
+    </div>
+
+    <div class="fc-card">
+      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="filters">ตัวกรอง</h2></div>
+      <div class="quick-row">
+        <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
+        <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
+        <button class="fc-btn fc-btn--sm" id="qAll" data-i18n="allTime">ทั้งหมด</button>
+      </div>
+      <div class="fc-inline">
+        <label class="fc-field"><span class="fc-field__label" data-i18n="dateFrom">ตั้งแต่วันที่</span>
+          <input type="date" id="fFrom" class="fc-input"></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="dateTo">ถึงวันที่</span>
+          <input type="date" id="fTo" class="fc-input"></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="filterDept">แผนก</span>
+          <select id="fDept" class="fc-select"><option value="">— All —</option></select></label>
+        <label class="fc-field"><span class="fc-field__label" data-i18n="filterEngineer">วิศวกร</span>
+          <select id="fEngineer" class="fc-select"><option value="">— All —</option></select></label>
+        <label class="fc-field" style="max-width:140px"><span class="fc-field__label" data-i18n="minN">ขั้นต่ำ (รายการ)</span>
+          <input type="number" id="fMinN" class="fc-input" value="1" min="1" style="text-align:center"></label>
+        <div class="fc-inline__act">
+          <button class="fc-btn fc-btn--primary" id="btnApply" data-i18n="apply">แสดงผล</button>
+          <button class="fc-btn" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2 data-i18n="byEngineer">สรุปรายช่าง</h2>
-      <div id="sumLine" class="sumline"></div>
-      <div class="scrollx"><table id="sumTable"></table></div>
+    <div class="fc-card">
+      <div class="fc-card__head">
+        <h2 class="fc-card__title" data-i18n="ranking">อันดับรายช่าง</h2>
+        <span class="fc-mut" id="rankNote"></span>
+      </div>
+      <div id="sumBox" class="fc-table-wrap"><table class="fc-table fc-table--zebra" id="sumTable"></table></div>
     </div>
 
-    <div class="card">
-      <h2 data-i18n="detail">รายการทั้งหมด</h2>
-      <div class="scrollx"><table id="detTable"></table></div>
+    <div class="fc-card">
+      <div class="fc-card__head">
+        <h2 class="fc-card__title" data-i18n="detail">รายการทั้งหมด</h2>
+        <span class="fc-mut" id="detCount"></span>
+      </div>
+      <div id="detBox" class="fc-table-wrap"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
     </div>
   </section>
 </main>
 
 <div id="appVer"></div>
-<div id="toast" class="toast"></div>
+<div id="toast" class="fc-toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.09a";
+const APP_VERSION = "2026.09.10b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
 };
-// ต้องตรงกับตาราง exec_allowlist ใน DB (ตัวพิมพ์เล็ก)
 const EXEC_ALLOWLIST = [
   "ito.masayuki@fth.fanuc.com",
   "masada.ryota@fth.fanuc.com",
@@ -151,26 +158,48 @@ const I18N = {
   execOnly:{th:"เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น",en:"Authorised management accounts only",ja:"許可された管理者のみ"},
   notExec:{th:"บัญชีนี้ไม่มีสิทธิ์ดูแดชบอร์ด",en:"This account is not allowed to view the dashboard",ja:"このアカウントには閲覧権限がありません"},
   loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログイン失敗: {err}"},
+  settings:{th:"การตั้งค่า",en:"Settings",ja:"設定"},
+  geoToggle:{th:"เก็บพิกัดตำแหน่งตอนช่างสร้าง QR",en:"Capture location when an engineer creates a QR",ja:"エンジニアがQR作成時に位置情報を記録"},
+  geoOnInfo:{th:"เปิดอยู่ — ช่างจะถูกขออนุญาตตำแหน่งตอนกดสร้าง QR (ถ้าไม่อนุญาต ระบบข้ามให้ ไม่บล็อก)",en:"On — engineers are asked for location when creating a QR (skipped if denied)",ja:"オン — QR作成時に位置情報の許可を求めます（拒否時はスキップ）"},
+  geoOffInfo:{th:"ปิดอยู่ — ไม่มีการขอ/เก็บตำแหน่ง",en:"Off — no location is requested or stored",ja:"オフ — 位置情報は要求も保存もしません"},
+  geoUpdatedBy:{th:"แก้ล่าสุดโดย {who} เมื่อ {when}",en:"Last changed by {who} on {when}",ja:"最終変更: {who} / {when}"},
   filters:{th:"ตัวกรอง",en:"Filters",ja:"フィルター"},
   dateFrom:{th:"ตั้งแต่วันที่",en:"From",ja:"開始日"},
   dateTo:{th:"ถึงวันที่",en:"To",ja:"終了日"},
   filterEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
-  allEngineers:{th:"— ทั้งหมด —",en:"— All —",ja:"— すべて —"},
+  filterDept:{th:"แผนก",en:"Department",ja:"部署"},
+  minN:{th:"ขั้นต่ำ (รายการ)",en:"Min responses",ja:"最小件数"},
+  thisMonth:{th:"เดือนนี้",en:"This month",ja:"今月"},
+  thisYear:{th:"ปีนี้",en:"This year",ja:"今年"},
+  allTime:{th:"ทั้งหมด",en:"All time",ja:"全期間"},
   apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
   exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
-  byEngineer:{th:"สรุปรายช่าง",en:"By engineer",ja:"エンジニア別集計"},
+  ranking:{th:"อันดับรายช่าง",en:"Engineer ranking",ja:"エンジニアランキング"},
+  rankNoteTxt:{th:"เรียงตามคะแนนเฉลี่ยรวมในช่วงที่เลือก (เฉพาะช่างที่มีรายการ ≥ ขั้นต่ำ)",en:"By overall average in the selected range (responses ≥ minimum)",ja:"選択期間の総合平均順（件数 ≥ 最小）"},
   detail:{th:"รายการทั้งหมด",en:"All responses",ja:"全回答"},
   noResults:{th:"ไม่มีข้อมูลในช่วงที่เลือก",en:"No results for this range",ja:"該当データなし"},
-  sumLine:{th:"ทั้งหมด {n} รายการ · คะแนนเฉลี่ยรวม {avg}",en:"{n} responses · overall average {avg}",ja:"{n}件 · 総合平均 {avg}"},
+  emptyHint:{th:"ลองขยายช่วงวันที่ หรือกดปุ่ม “ทั้งหมด”",en:"Try widening the date range or press “All time”",ja:"期間を広げるか「全期間」を押してください"},
+  kpiResponses:{th:"จำนวนแบบสอบถาม",en:"Responses",ja:"回答数"},
+  kpiAvg:{th:"คะแนนเฉลี่ยรวม",en:"Overall average",ja:"総合平均"},
+  kpiTop:{th:"อันดับ 1 ช่วงนี้",en:"Top this range",ja:"期間トップ"},
+  kpiEngineers:{th:"ช่างที่มีผล",en:"Engineers with data",ja:"データのあるエンジニア"},
+  rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
+  rateMid:{th:"ดี",en:"Good",ja:"良好"},
+  rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
+  colRank:{th:"อันดับ",en:"Rank",ja:"順位"},
   colEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
   colDept:{th:"แผนก",en:"Dept",ja:"部署"},
   colCount:{th:"จำนวน",en:"Responses",ja:"件数"},
-  colAvg:{th:"เฉลี่ย",en:"Avg",ja:"平均"},
+  colAvg:{th:"เฉลี่ยรวม",en:"Overall",ja:"総合平均"},
   colDate:{th:"วันที่ตอบ",en:"Submitted",ja:"回答日時"},
   colReport:{th:"Service Report No.",en:"Service Report No.",ja:"レポート番号"},
   colOrder:{th:"Service Order No.",en:"Service Order No.",ja:"オーダー番号"},
   colComment:{th:"ข้อเสนอแนะ",en:"Comment",ja:"コメント"},
+  colGeo:{th:"ตำแหน่ง",en:"Location",ja:"位置"},
   colSig:{th:"ลายเซ็น",en:"Sig",ja:"署名"},
+  wmShort:{th:"ห้ามเผยแพร่",en:"DO NOT DISTRIBUTE",ja:"複製・配布禁止"},
+  wmFull:{th:"สำเนาลายมือชื่อลูกค้า — ใช้เพื่อการตรวจสอบภายในของ FANUC Thai เท่านั้น ห้ามทำซ้ำ ดัดแปลง หรือเผยแพร่ต่อบุคคลภายนอก",en:"Customer signature copy — for FANUC Thai internal verification only. Do not reproduce, alter, or distribute.",ja:"お客様署名の複製 — FANUC Thai 社内確認用のみ。複製・改変・外部配布を禁じます。"},
+  popupBlocked:{th:"เบราว์เซอร์บล็อกป๊อปอัป — อนุญาตแล้วลองใหม่",en:"Pop-up blocked — allow pop-ups and retry",ja:"ポップアップがブロックされました"},
   q1:{th:"ตอบสนอง",en:"Response",ja:"対応速度"},
   q2:{th:"ทักษะ",en:"Skill",ja:"技術力"},
   q3:{th:"สื่อสาร/ค่าใช้จ่าย",en:"Comm/Cost",ja:"説明/費用"},
@@ -199,39 +228,47 @@ function fmtDateTime(iso){
 let toastTimer;
 function toast(msg, err){
   const el = $('toast'); el.textContent = msg;
-  el.className = 'toast show' + (err ? ' err' : '');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'toast', 3200);
+  el.className = 'fc-toast is-show' + (err ? ' fc-toast--err' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3200);
 }
-function show(id){ ['viewLogin','viewDash'].forEach(v => $(v).classList.toggle('hidden', v !== id)); }
+function show(id){ ['viewLogin','viewDash'].forEach(v => $(v).classList.toggle('fc-hidden', v !== id)); }
+
+/* ---------- theme ---------- */
+function setTheme(m){
+  document.documentElement.dataset.theme = m;
+  localStorage.setItem('dashTheme', m);
+  $('btnTheme').textContent = m === 'dark' ? '☀️' : '🌙';
+}
 
 /* ---------- boot ---------- */
 const CONFIGURED = !!(SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey);
 const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey) : null;
+let ME = '';
 
 async function boot(){
   $('appVer').textContent = 'v' + APP_VERSION;
   console.log('%cFTH Survey Dashboard ' + APP_VERSION, 'font-weight:bold');
+  setTheme(localStorage.getItem('dashTheme') || 'light');
+  $('btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   $('langSelect').value = lang;
   applyI18n();
   $('langSelect').onchange = e => {
     lang = e.target.value; localStorage.setItem('dashLang', lang);
     applyI18n();
-    if (!$('viewDash').classList.contains('hidden')) applyFilter();
+    if (!$('viewDash').classList.contains('fc-hidden')) render();
   };
   $('btnLogout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
-  if (!CONFIGURED) { $('cfgBanner').textContent = 'Supabase config missing'; $('cfgBanner').classList.remove('hidden'); show('viewLogin'); return; }
+  if (!CONFIGURED) { $('cfgBanner').textContent = 'Supabase config missing'; $('cfgBanner').classList.remove('fc-hidden'); show('viewLogin'); return; }
 
   const { data:{ session } } = await sb.auth.getSession();
-  if (session && isExecEmail(session.user.email)) return startDash();
+  if (session && isExecEmail(session.user.email)) { ME = (session.user.email||'').toLowerCase(); return startDash(); }
   if (session) await sb.auth.signOut();
   show('viewLogin');
   wireLogin();
 }
 
-function isExecEmail(email){
-  return EXEC_ALLOWLIST.includes((email || '').toLowerCase());
-}
+function isExecEmail(email){ return EXEC_ALLOWLIST.includes((email || '').toLowerCase()); }
 
 function wireLogin(){
   $('btnLogin').onclick = async () => {
@@ -242,11 +279,8 @@ function wireLogin(){
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (!isExecEmail(data.user.email)) {
-        await sb.auth.signOut();
-        return toast(t('notExec'), true);
-      }
-      show('viewDash');
+      if (!isExecEmail(data.user.email)) { await sb.auth.signOut(); return toast(t('notExec'), true); }
+      ME = (data.user.email || '').toLowerCase();
       startDash();
     } catch (e) {
       toast(t('loginFail', { err: e.message || e }), true);
@@ -261,45 +295,100 @@ let rows = [];
 
 async function startDash(){
   show('viewDash');
-  $('btnLogout').classList.remove('hidden');
-  $('fEngineer').options[0].text = t('allEngineers');
-  const { data: engs } = await sb.from('engineers').select('id,fname,lname').order('fname');
+  $('btnLogout').classList.remove('fc-hidden');
+  $('fEngineer').options[0].text = '— All —';
+  $('fDept').options[0].text = '— All —';
+  const { data: engs } = await sb.from('engineers').select('id,fname,lname,department').order('fname');
+  const depts = new Set();
   (engs || []).forEach(e => {
     const o = document.createElement('option');
     o.value = e.id; o.textContent = `${e.fname} ${e.lname}`;
     $('fEngineer').appendChild(o);
+    if (e.department) depts.add(e.department);
+  });
+  [...depts].sort().forEach(d => {
+    const o = document.createElement('option'); o.value = d; o.textContent = d;
+    $('fDept').appendChild(o);
   });
   $('btnApply').onclick = applyFilter;
   $('btnExport').onclick = exportXlsx;
+  $('qMonth').onclick = () => setRange('month');
+  $('qYear').onclick  = () => setRange('year');
+  $('qAll').onclick   = () => setRange('all');
+  $('fMinN').onchange = render;
+  loadGeoSetting();
+  $('setGeo').onchange = saveGeoSetting;
+  applyFilter();
+}
+
+async function loadGeoSetting(){
+  const { data } = await sb.from('app_settings').select('value,updated_at,updated_by').eq('key','geo_capture').maybeSingle();
+  const on = data && data.value === 'on';
+  $('setGeo').checked = on;
+  let info = on ? t('geoOnInfo') : t('geoOffInfo');
+  if (data && data.updated_by) info += ' · ' + t('geoUpdatedBy', { who: data.updated_by, when: fmtDateTime(data.updated_at) });
+  $('setGeoInfo').textContent = info;
+}
+async function saveGeoSetting(){
+  const on = $('setGeo').checked;
+  const { error } = await sb.from('app_settings').upsert(
+    { key:'geo_capture', value: on ? 'on' : 'off', updated_at: new Date().toISOString(), updated_by: ME },
+    { onConflict: 'key' }
+  );
+  if (error) { toast(error.message, true); $('setGeo').checked = !on; return; }
+  toast('OK');
+  loadGeoSetting();
+}
+
+function setRange(kind){
+  const now = new Date(), p = n => String(n).padStart(2,'0');
+  const iso = d => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  if (kind === 'all') { $('fFrom').value = ''; $('fTo').value = ''; }
+  else {
+    const start = kind === 'month' ? new Date(now.getFullYear(), now.getMonth(), 1)
+                                   : new Date(now.getFullYear(), 0, 1);
+    $('fFrom').value = iso(start); $('fTo').value = iso(now);
+  }
   applyFilter();
 }
 
 function qsum(r){ return r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall; }
+function skeleton(box){
+  box.innerHTML = Array.from({length:6}).map(() =>
+    `<div class="fc-skeleton" style="height:20px;margin:10px 12px"></div>`).join('');
+}
 
 async function applyFilter(){
   const from = $('fFrom').value ? new Date($('fFrom').value + 'T00:00:00').toISOString() : null;
   const to   = $('fTo').value   ? new Date($('fTo').value   + 'T23:59:59').toISOString() : null;
   const engId = $('fEngineer').value;
+  const dept  = $('fDept').value;
+
+  skeleton($('sumBox')); skeleton($('detBox'));
 
   let q = sb.from('v_survey_full').select('*').order('submitted_at', { ascending:false });
   if (from) q = q.gte('submitted_at', from);
   if (to)   q = q.lte('submitted_at', to);
   if (engId) q = q.eq('engineer_id', engId);
+  if (dept)  q = q.eq('department', dept);
 
   const { data, error } = await q;
-  if (error) { $('sumLine').textContent = error.message; $('sumTable').innerHTML = ''; $('detTable').innerHTML = ''; return; }
+  if (error) {
+    $('sumBox').innerHTML = `<div class="fc-empty">${esc(error.message)}</div>`;
+    $('detBox').innerHTML = ''; $('kpis').innerHTML = '';
+    return;
+  }
   rows = data || [];
-  renderSummary();
+  render();
+}
+
+function render(){
+  renderKpis();
+  renderRanking();
   renderDetail();
 }
 
-function renderSummary(){
-  const sumT = $('sumTable');
-  if (!rows.length) { $('sumLine').textContent = t('noResults'); sumT.innerHTML = ''; return; }
-
-  const overall = rows.reduce((s,r) => s + qsum(r)/5, 0) / rows.length;
-  $('sumLine').textContent = t('sumLine', { n: rows.length, avg: overall.toFixed(2) });
-
+function agg(){
   const g = {};
   rows.forEach(r => {
     const k = r.engineer_id;
@@ -308,94 +397,156 @@ function renderSummary(){
     g[k].q[0]+=r.q1_response_time; g[k].q[1]+=r.q2_technical_skill; g[k].q[2]+=r.q3_communication_cost;
     g[k].q[3]+=r.q4_professionalism; g[k].q[4]+=r.q5_overall;
   });
-  const list = Object.values(g).sort((a,b) => (b.q[4]/b.n) - (a.q[4]/a.n));
-  const cell = v => `<td class="num">${v.toFixed(2)}</td>`;
-  sumT.innerHTML = `
+  return Object.values(g).map(e => ({ ...e, avg: e.q.reduce((s,x)=>s+x,0)/5/e.n }));
+}
+
+function rateBadge(v){
+  if (v >= 4.5) return `<span class="fc-badge fc-badge--ok">${t('rateHigh')} ${v.toFixed(2)}</span>`;
+  if (v >= 3.5) return `<span class="fc-badge fc-badge--info">${t('rateMid')} ${v.toFixed(2)}</span>`;
+  return `<span class="fc-badge fc-badge--danger">${t('rateLow')} ${v.toFixed(2)}</span>`;
+}
+
+function renderKpis(){
+  const box = $('kpis');
+  if (!rows.length) { box.innerHTML = ''; return; }
+  const overall = rows.reduce((s,r) => s + qsum(r)/5, 0) / rows.length;
+  const list = agg().sort((a,b) => b.avg - a.avg);
+  const top = list[0];
+  box.innerHTML = `
+    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiResponses')}</div>
+      <div class="fc-kpi__value">${rows.length}</div></div>
+    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiAvg')}</div>
+      <div class="fc-kpi__value">${overall.toFixed(2)}</div>
+      <div class="fc-kpi__sub">${rateBadge(overall)}</div></div>
+    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiTop')}</div>
+      <div class="fc-kpi__value" style="font-size:20px">🥇 ${esc(top.name)}</div>
+      <div class="fc-kpi__sub">${esc(top.dept)} · ${top.avg.toFixed(2)} · ${top.n} ${t('colCount')}</div></div>
+    <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiEngineers')}</div>
+      <div class="fc-kpi__value">${list.length}</div></div>`;
+}
+
+function renderRanking(){
+  $('rankNote').textContent = t('rankNoteTxt');
+  const box = $('sumBox');
+  if (!rows.length) {
+    box.innerHTML = `<div class="fc-empty"><div class="fc-empty__title">${t('noResults')}</div><div>${t('emptyHint')}</div></div>`;
+    return;
+  }
+  const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
+  const list = agg().filter(e => e.n >= minN).sort((a,b) => b.avg - a.avg);
+  const c = v => `<td class="fc-n">${v.toFixed(2)}</td>`;
+  const medal = i => i === 0 ? '<span class="medal">🥇</span>' : i === 1 ? '<span class="medal">🥈</span>' : i === 2 ? '<span class="medal">🥉</span>' : (i + 1);
+  box.innerHTML = `<table class="fc-table fc-table--zebra">
     <thead><tr>
-      <th>${t('colEngineer')}</th><th>${t('colDept')}</th><th class="num">${t('colCount')}</th>
-      <th class="num">${t('q1')}</th><th class="num">${t('q2')}</th><th class="num">${t('q3')}</th>
-      <th class="num">${t('q4')}</th><th class="num">${t('q5')}</th><th class="num">${t('colAvg')}</th>
+      <th class="fc-rank">${t('colRank')}</th><th>${t('colEngineer')}</th><th>${t('colDept')}</th>
+      <th class="fc-n">${t('colCount')}</th>
+      <th class="fc-n">${t('q1')}</th><th class="fc-n">${t('q2')}</th><th class="fc-n">${t('q3')}</th>
+      <th class="fc-n">${t('q4')}</th><th class="fc-n">${t('q5')}</th><th class="fc-n">${t('colAvg')}</th>
     </tr></thead>
-    <tbody>${list.map(e => `
+    <tbody>${list.map((e,i) => `
       <tr>
-        <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="num">${e.n}</td>
-        ${cell(e.q[0]/e.n)}${cell(e.q[1]/e.n)}${cell(e.q[2]/e.n)}${cell(e.q[3]/e.n)}${cell(e.q[4]/e.n)}
-        <td class="num"><b>${(e.q.reduce((s,x)=>s+x,0)/5/e.n).toFixed(2)}</b></td>
-      </tr>`).join('')}</tbody>`;
+        <td class="fc-rank">${medal(i)}</td>
+        <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="fc-n">${e.n}</td>
+        ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
+        <td class="fc-n"><b>${e.avg.toFixed(2)}</b></td>
+      </tr>`).join('')}</tbody></table>`;
 }
 
 function renderDetail(){
-  const detT = $('detTable');
-  if (!rows.length) { detT.innerHTML = ''; return; }
-  detT.innerHTML = `
+  const box = $('detBox');
+  $('detCount').textContent = rows.length ? `${rows.length}` : '';
+  if (!rows.length) { box.innerHTML = `<div class="fc-empty">${t('noResults')}</div>`; return; }
+  box.innerHTML = `<table class="fc-table fc-table--zebra">
     <thead><tr>
-      <th>#</th><th>${t('colDate')}</th><th>${t('colEngineer')}</th>
+      <th class="fc-n">#</th><th>${t('colDate')}</th><th>${t('colEngineer')}</th>
       <th>${t('colReport')}</th><th>${t('colOrder')}</th>
-      <th class="num">${t('q1')}</th><th class="num">${t('q2')}</th><th class="num">${t('q3')}</th>
-      <th class="num">${t('q4')}</th><th class="num">${t('q5')}</th>
-      <th>${t('colComment')}</th><th>${t('colSig')}</th>
+      <th class="fc-n">${t('q1')}</th><th class="fc-n">${t('q2')}</th><th class="fc-n">${t('q3')}</th>
+      <th class="fc-n">${t('q4')}</th><th class="fc-n">${t('q5')}</th>
+      <th>${t('colComment')}</th><th>${t('colGeo')}</th><th>${t('colSig')}</th>
     </tr></thead>
     <tbody>${rows.map((r,i) => `
       <tr>
-        <td>${i+1}</td>
-        <td>${fmtDateTime(r.submitted_at)}</td>
+        <td class="fc-n">${i+1}</td>
+        <td class="fc-n">${fmtDateTime(r.submitted_at)}</td>
         <td>${esc(`${r.fname||''} ${r.lname||''}`.trim())}</td>
-        <td>${esc(r.service_report_no||'')}</td>
-        <td>${esc(r.service_order_no||'')}</td>
-        <td class="num">${r.q1_response_time}</td><td class="num">${r.q2_technical_skill}</td><td class="num">${r.q3_communication_cost}</td>
-        <td class="num">${r.q4_professionalism}</td><td class="num">${r.q5_overall}</td>
-        <td class="wrap" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
-        <td><a href="#" class="sig" data-sig="${esc(r.signature_path||'')}">👁</a></td>
-      </tr>`).join('')}</tbody>`;
+        <td class="fc-n">${esc(r.service_report_no||'')}</td>
+        <td class="fc-n">${esc(r.service_order_no||'')}</td>
+        <td class="fc-n">${r.q1_response_time}</td><td class="fc-n">${r.q2_technical_skill}</td><td class="fc-n">${r.q3_communication_cost}</td>
+        <td class="fc-n">${r.q4_professionalism}</td><td class="fc-n">${r.q5_overall}</td>
+        <td style="max-width:240px;white-space:normal;word-break:break-word" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
+        <td>${r.geo_lat != null
+          ? `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.geo_lat},${r.geo_lng}">📍${r.geo_accuracy != null ? ' ±'+Math.round(r.geo_accuracy)+'m' : ''}</a>`
+          : ''}</td>
+        <td><a href="#" class="sig-link" data-sig="${esc(r.signature_path||'')}">👁</a></td>
+      </tr>`).join('')}</tbody></table>`;
 
-  detT.querySelectorAll('a[data-sig]').forEach(a => {
-    a.onclick = async ev => {
-      ev.preventDefault();
-      const p = a.dataset.sig;
-      if (!p) return;
-      const { data, error } = await sb.storage.from('survey-signatures').createSignedUrl(p, 3600);
-      if (error) return toast(error.message, true);
-      window.open(data.signedUrl, '_blank');
-    };
+  box.querySelectorAll('a[data-sig]').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig); };
   });
+}
+
+// เปิดลายเซ็นพร้อมลายน้ำกันเอาไปเผยแพร่ (ฝัง อีเมลผู้เปิด + เวลา ไว้ตามรอยได้)
+async function viewSignature(path){
+  try {
+    const { data, error } = await sb.storage.from('survey-signatures').createSignedUrl(path, 3600);
+    if (error) throw error;
+    const blob = await (await fetch(data.signedUrl)).blob();
+    const src = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const pad = 40, foot = 44;
+      const cv = document.createElement('canvas');
+      cv.width = img.width + pad * 2;
+      cv.height = img.height + pad * 2 + foot;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
+      g.drawImage(img, pad, pad);
+      // ลายน้ำเฉียงปูทั้งภาพ
+      const stamp = `FANUC THAI · ${t('wmShort')} · ${ME} · ${fmtDateTime(new Date().toISOString())}`;
+      g.save();
+      g.translate(cv.width / 2, cv.height / 2);
+      g.rotate(-Math.PI / 9);
+      g.font = '15px Sarabun, Tahoma, sans-serif';
+      g.fillStyle = 'rgba(110,110,110,0.24)';
+      g.textAlign = 'center';
+      for (let y = -cv.height; y < cv.height; y += 58)
+        for (let x = -cv.width; x < cv.width; x += 360)
+          g.fillText(stamp, x, y);
+      g.restore();
+      // แถบข้อความท้ายภาพ
+      g.fillStyle = '#f1f1f1'; g.fillRect(0, cv.height - foot, cv.width, foot);
+      g.fillStyle = '#555555'; g.font = '12px Sarabun, Tahoma, sans-serif'; g.textAlign = 'center';
+      g.fillText(t('wmFull'), cv.width / 2, cv.height - foot / 2 + 4);
+      URL.revokeObjectURL(src);
+      const w = window.open();
+      if (w) w.document.write(`<title>signature</title><body style="margin:0;background:#333;text-align:center"><img src="${cv.toDataURL('image/png')}" style="max-width:100%">`);
+      else toast(t('popupBlocked'), true);
+    };
+    img.onerror = () => toast('load error', true);
+    img.src = src;
+  } catch (e) { toast(e.message || e, true); }
 }
 
 function exportXlsx(){
   if (!rows.length) return toast(t('noResults'), true);
-
   const detail = rows.map(r => ({
     submitted_at: fmtDateTime(r.submitted_at),
     engineer: `${r.fname||''} ${r.lname||''}`.trim(),
-    department: r.department || '',
-    title: r.title || '',
-    tel: r.tel || '',
-    service_report_no: r.service_report_no || '',
-    service_order_no: r.service_order_no || '',
-    q1_response_time: r.q1_response_time,
-    q2_technical_skill: r.q2_technical_skill,
-    q3_communication_cost: r.q3_communication_cost,
-    q4_professionalism: r.q4_professionalism,
-    q5_overall: r.q5_overall,
-    comment: r.comment || '',
+    department: r.department || '', title: r.title || '', tel: r.tel || '',
+    service_report_no: r.service_report_no || '', service_order_no: r.service_order_no || '',
+    geo_lat: r.geo_lat != null ? r.geo_lat : '', geo_lng: r.geo_lng != null ? r.geo_lng : '',
+    geo_accuracy_m: r.geo_accuracy != null ? Math.round(r.geo_accuracy) : '',
+    q1_response_time: r.q1_response_time, q2_technical_skill: r.q2_technical_skill,
+    q3_communication_cost: r.q3_communication_cost, q4_professionalism: r.q4_professionalism,
+    q5_overall: r.q5_overall, comment: r.comment || '',
   }));
-
-  const g = {};
-  rows.forEach(r => {
-    const k = r.engineer_id;
-    (g[k] = g[k] || { engineer:`${r.fname||''} ${r.lname||''}`.trim(), department:r.department||'', n:0, s:[0,0,0,0,0] });
-    g[k].n++;
-    g[k].s[0]+=r.q1_response_time; g[k].s[1]+=r.q2_technical_skill; g[k].s[2]+=r.q3_communication_cost;
-    g[k].s[3]+=r.q4_professionalism; g[k].s[4]+=r.q5_overall;
-  });
-  const summary = Object.values(g).map(e => ({
-    engineer: e.engineer, department: e.department, responses: e.n,
-    avg_q1:+(e.s[0]/e.n).toFixed(2), avg_q2:+(e.s[1]/e.n).toFixed(2), avg_q3:+(e.s[2]/e.n).toFixed(2),
-    avg_q4:+(e.s[3]/e.n).toFixed(2), avg_q5:+(e.s[4]/e.n).toFixed(2),
-    avg_overall:+(e.s.reduce((x,y)=>x+y,0)/5/e.n).toFixed(2),
-  })).sort((a,b) => b.avg_overall - a.avg_overall);
-
+  const summary = agg().sort((a,b) => b.avg - a.avg).map((e,i) => ({
+    rank: i + 1, engineer: e.name, department: e.dept, responses: e.n,
+    avg_q1:+(e.q[0]/e.n).toFixed(2), avg_q2:+(e.q[1]/e.n).toFixed(2), avg_q3:+(e.q[2]/e.n).toFixed(2),
+    avg_q4:+(e.q[3]/e.n).toFixed(2), avg_q5:+(e.q[4]/e.n).toFixed(2), avg_overall:+e.avg.toFixed(2),
+  }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'ranking');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'detail');
   const d = new Date(), p = n => String(n).padStart(2,'0');
   XLSX.writeFile(wb, `survey_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`);
