@@ -12,6 +12,9 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10f - เต็มจอ + โลโก้ FANUC มุมซ้าย; All responses: หน้าละ 10 (ปรับได้ 10/25/50/100) + Prev/Next,
+                     เพิ่มคอลัมน์แผนก, รวม Report/Order เป็นคอลัมน์เดียว 2 บรรทัด; filter เพิ่ม "เดือนก่อน";
+                     Location แสดงอำเภอ/จังหวัด (geo_area); watermark ลายเซ็นอ่านออก + ใส่ RP/SO  [ต้องรัน migrate_geo_area.sql]
        2026.09.10e - fix: Sign out ค้าง (signOut scope:'local' + try/catch) -> ไป survey.html?loggedout=1 ชัวร์
        2026.09.10d - กด Sign out -> กลับไป survey.html (ประตูทางเข้าเดียว)
        2026.09.10c - ตาราง All responses: หัวตาราง sticky (ล็อกไว้), ลากปรับกว้างคอลัมน์ได้ (จำค่า),
@@ -30,16 +33,22 @@
 <style>
   /* เฉพาะหน้านี้ — ประกอบจากโทเก้น .fc ไม่มี hex */
   #appVer{position:fixed;right:var(--fc-s2);bottom:var(--fc-s1);font-size:12px;color:var(--fc-text-mute);opacity:.7;pointer-events:none;user-select:none;z-index:5;}
+  .fc-container{max-width:none;padding:var(--fc-s4) var(--fc-s5);}   /* dashboard = เต็มจอ */
+  .appbar-logo{height:26px;width:auto;display:block;}
   .toggle-geo{display:flex;align-items:center;gap:var(--fc-s3);cursor:pointer;font-size:16px;}
   .toggle-geo input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--fc-primary);}
   .medal{font-size:16px;}
   .quick-row{display:flex;gap:var(--fc-s2);flex-wrap:wrap;margin-bottom:var(--fc-s4);}
   .login-wrap{max-width:380px;margin:var(--fc-s6) auto 0;}
-  a.geo-link,a.sig-link{color:var(--fc-primary);text-decoration:none;font-family:var(--fc-font-mono);font-size:12px;}
+  a.geo-link,a.sig-link{color:var(--fc-primary);text-decoration:none;font-size:12px;}
+  a.geo-link{font-family:var(--fc-font-body);}
+  .pager{display:flex;align-items:center;gap:var(--fc-s3);flex-wrap:wrap;margin-top:var(--fc-s3);font-size:14px;color:var(--fc-text-dim);}
+  .pager .fc-select{width:auto;min-height:32px;padding:4px 8px;font-size:13px;}
 </style>
 </head>
 <body class="fc">
 <header class="fc-appbar">
+  <img class="appbar-logo" src="fanuc-logo.png" alt="FANUC" onerror="this.style.display='none'">
   <div class="fc-appbar__brand">
     <h1 class="fc-appbar__title" data-i18n="appTitle">FANUC Thai — แดชบอร์ดผลสำรวจ</h1>
     <span class="fc-appbar__sub" data-i18n="appSub">ผลสำรวจความพึงพอใจลูกค้า — สำหรับผู้บริหาร</span>
@@ -92,6 +101,7 @@
       <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="filters">ตัวกรอง</h2></div>
       <div class="quick-row">
         <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
+        <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนก่อน</button>
         <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
         <button class="fc-btn fc-btn--sm" id="qAll" data-i18n="allTime">ทั้งหมด</button>
       </div>
@@ -127,6 +137,7 @@
         <span class="fc-mut" id="detCount"></span>
       </div>
       <div id="detBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
+      <div class="pager" id="pager"></div>
     </div>
   </section>
 </main>
@@ -138,7 +149,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10e";
+const APP_VERSION = "2026.09.10f";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -174,8 +185,14 @@ const I18N = {
   filterDept:{th:"แผนก",en:"Department",ja:"部署"},
   minN:{th:"ขั้นต่ำ (รายการ)",en:"Min responses",ja:"最小件数"},
   thisMonth:{th:"เดือนนี้",en:"This month",ja:"今月"},
+  lastMonth:{th:"เดือนก่อน",en:"Last month",ja:"先月"},
   thisYear:{th:"ปีนี้",en:"This year",ja:"今年"},
   allTime:{th:"ทั้งหมด",en:"All time",ja:"全期間"},
+  perPage:{th:"ต่อหน้า",en:"per page",ja:"件/ページ"},
+  pageInfo:{th:"{a}–{b} จาก {n}",en:"{a}–{b} of {n}",ja:"{a}–{b} / {n}"},
+  prev:{th:"ก่อนหน้า",en:"Prev",ja:"前へ"},
+  next:{th:"ถัดไป",en:"Next",ja:"次へ"},
+  colRepOrd:{th:"Report / Order No.",en:"Report / Order No.",ja:"レポート / オーダー番号"},
   apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
   exportXlsx:{th:"Export Excel",en:"Export Excel",ja:"Excel出力"},
   ranking:{th:"อันดับรายช่าง",en:"Engineer ranking",ja:"エンジニアランキング"},
@@ -327,6 +344,8 @@ function wireLogin(){
 
 /* ---------- dashboard ---------- */
 let rows = [];
+let page = 0;
+let pageSize = parseInt(localStorage.getItem('dashPageSize'), 10) || 10;
 
 async function startDash(){
   show('viewDash');
@@ -348,6 +367,7 @@ async function startDash(){
   $('btnApply').onclick = applyFilter;
   $('btnExport').onclick = exportXlsx;
   $('qMonth').onclick = () => setRange('month');
+  $('qLastMonth').onclick = () => setRange('lastmonth');
   $('qYear').onclick  = () => setRange('year');
   $('qAll').onclick   = () => setRange('all');
   $('fMinN').onchange = render;
@@ -379,7 +399,10 @@ function setRange(kind){
   const now = new Date(), p = n => String(n).padStart(2,'0');
   const iso = d => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
   if (kind === 'all') { $('fFrom').value = ''; $('fTo').value = ''; }
-  else {
+  else if (kind === 'lastmonth') {
+    $('fFrom').value = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    $('fTo').value   = iso(new Date(now.getFullYear(), now.getMonth(), 0));   // วันสุดท้ายเดือนก่อน
+  } else {
     const start = kind === 'month' ? new Date(now.getFullYear(), now.getMonth(), 1)
                                    : new Date(now.getFullYear(), 0, 1);
     $('fFrom').value = iso(start); $('fTo').value = iso(now);
@@ -414,6 +437,7 @@ async function applyFilter(){
     return;
   }
   rows = data || [];
+  page = 0;
   render();
 }
 
@@ -487,48 +511,80 @@ function renderRanking(){
       </tr>`).join('')}</tbody></table>`;
 }
 
+function geoCell(r){
+  if (r.geo_lat == null) return '';
+  const label = r.geo_area
+    ? esc(r.geo_area)
+    : '📍' + (r.geo_accuracy != null ? ' ±' + Math.round(r.geo_accuracy) + 'm' : '');
+  return `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.geo_lat},${r.geo_lng}" title="${r.geo_lat},${r.geo_lng}">${label}</a>`;
+}
+
 function renderDetail(){
   const box = $('detBox');
-  $('detCount').textContent = rows.length ? `${rows.length}` : '';
-  if (!rows.length) { box.innerHTML = `<div class="fc-empty">${t('noResults')}</div>`; return; }
+  const total = rows.length;
+  $('detCount').textContent = total ? `${total}` : '';
+  if (!total) { box.innerHTML = `<div class="fc-empty">${t('noResults')}</div>`; $('pager').innerHTML = ''; return; }
+
+  const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  if (page > maxPage) page = maxPage;
+  const start = page * pageSize;
+  const view = rows.slice(start, start + pageSize);
+
   box.innerHTML = `<table class="fc-table fc-table--zebra" id="detTable">
     <thead><tr>
-      <th class="fc-n" style="width:46px">#</th>
-      <th style="width:118px">${t('colDate')}</th>
+      <th class="fc-n" style="width:44px">#</th>
+      <th style="width:104px">${t('colDate')}</th>
       <th style="width:150px">${t('colEngineer')}</th>
-      <th style="width:132px">${t('colReport')}</th>
-      <th style="width:132px">${t('colOrder')}</th>
-      <th class="fc-n" style="width:58px">${t('q1')}</th><th class="fc-n" style="width:58px">${t('q2')}</th>
-      <th class="fc-n" style="width:58px">${t('q3')}</th><th class="fc-n" style="width:58px">${t('q4')}</th>
-      <th class="fc-n" style="width:58px">${t('q5')}</th>
-      <th style="width:360px">${t('colComment')}</th>
-      <th style="width:96px">${t('colGeo')}</th>
-      <th style="width:60px">${t('colSig')}</th>
+      <th style="width:150px">${t('colDept')}</th>
+      <th style="width:104px">${t('colRepOrd')}</th>
+      <th class="fc-n" style="width:52px">${t('q1')}</th><th class="fc-n" style="width:52px">${t('q2')}</th>
+      <th class="fc-n" style="width:52px">${t('q3')}</th><th class="fc-n" style="width:52px">${t('q4')}</th>
+      <th class="fc-n" style="width:52px">${t('q5')}</th>
+      <th style="width:380px">${t('colComment')}</th>
+      <th style="width:150px">${t('colGeo')}</th>
+      <th style="width:52px">${t('colSig')}</th>
     </tr></thead>
-    <tbody>${rows.map((r,i) => `
+    <tbody>${view.map((r,k) => `
       <tr>
-        <td class="fc-n">${i+1}</td>
+        <td class="fc-n">${start + k + 1}</td>
         <td class="fc-n"><div>${fmtD(r.submitted_at)}</div><div style="color:var(--fc-text-mute);font-size:12px">${fmtT(r.submitted_at)}</div></td>
         <td>${esc(`${r.fname||''} ${r.lname||''}`.trim())}</td>
-        <td class="fc-n">${esc(r.service_report_no||'')}</td>
-        <td class="fc-n">${esc(r.service_order_no||'')}</td>
+        <td>${esc(r.department||'')}</td>
+        <td class="fc-n"><div>${esc(r.service_report_no||'')}</div><div style="color:var(--fc-text-mute);font-size:12px">${esc(r.service_order_no||'')}</div></td>
         <td class="fc-n">${r.q1_response_time}</td><td class="fc-n">${r.q2_technical_skill}</td><td class="fc-n">${r.q3_communication_cost}</td>
         <td class="fc-n">${r.q4_professionalism}</td><td class="fc-n">${r.q5_overall}</td>
         <td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
-        <td>${r.geo_lat != null
-          ? `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.geo_lat},${r.geo_lng}">📍${r.geo_accuracy != null ? ' ±'+Math.round(r.geo_accuracy)+'m' : ''}</a>`
-          : ''}</td>
-        <td><a href="#" class="sig-link" data-sig="${esc(r.signature_path||'')}">👁</a></td>
+        <td style="white-space:normal;line-height:1.5">${geoCell(r)}</td>
+        <td><a href="#" class="sig-link" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}">👁</a></td>
       </tr>`).join('')}</tbody></table>`;
   makeResizable($('detTable'), 'dashDetCols');
-
   box.querySelectorAll('a[data-sig]').forEach(a => {
-    a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig); };
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig, a.dataset.rp, a.dataset.so); };
   });
+
+  renderPager(total, start, view.length, maxPage);
 }
 
-// เปิดลายเซ็นพร้อมลายน้ำกันเอาไปเผยแพร่ (ฝัง อีเมลผู้เปิด + เวลา ไว้ตามรอยได้)
-async function viewSignature(path){
+function renderPager(total, start, shown, maxPage){
+  const opts = [10, 25, 50, 100].map(n =>
+    `<option value="${n}"${n === pageSize ? ' selected' : ''}>${n}</option>`).join('');
+  $('pager').innerHTML = `
+    <select class="fc-select" id="pgSize">${opts}</select>
+    <span>${t('perPage')}</span>
+    <span class="fc-right">${t('pageInfo', { a: total ? start + 1 : 0, b: start + shown, n: total })}</span>
+    <button class="fc-btn fc-btn--sm" id="pgPrev"${page <= 0 ? ' disabled' : ''}>‹ ${t('prev')}</button>
+    <button class="fc-btn fc-btn--sm" id="pgNext"${page >= maxPage ? ' disabled' : ''}>${t('next')} ›</button>`;
+  $('pgSize').onchange = e => {
+    pageSize = parseInt(e.target.value, 10) || 10;
+    localStorage.setItem('dashPageSize', pageSize);
+    page = 0; renderDetail();
+  };
+  $('pgPrev').onclick = () => { if (page > 0) { page--; renderDetail(); } };
+  $('pgNext').onclick = () => { if (page < maxPage) { page++; renderDetail(); } };
+}
+
+// เปิดลายเซ็นพร้อมลายน้ำกันเอาไปเผยแพร่ (ฝัง Report/Order + อีเมลผู้เปิด + เวลา ไว้ตามรอยได้)
+async function viewSignature(path, rp, so){
   try {
     const { data, error } = await sb.storage.from('survey-signatures').createSignedUrl(path, 3600);
     if (error) throw error;
@@ -543,22 +599,26 @@ async function viewSignature(path){
       const g = cv.getContext('2d');
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
       g.drawImage(img, pad, pad);
-      // ลายน้ำเฉียงปูทั้งภาพ
-      const stamp = `FANUC THAI · ${t('wmShort')} · ${ME} · ${fmtDateTime(new Date().toISOString())}`;
+      // ลายน้ำเฉียง — เว้นระยะจากความกว้างข้อความจริง ไม่ให้ทับกัน
+      const stamp = `FANUC THAI · RP ${rp || '-'} · SO ${so || '-'} · ${ME} · ${fmtDateTime(new Date().toISOString())} · ${t('wmShort')}`;
       g.save();
       g.translate(cv.width / 2, cv.height / 2);
-      g.rotate(-Math.PI / 9);
+      g.rotate(-0.38);
       g.font = '15px Sarabun, Tahoma, sans-serif';
-      g.fillStyle = 'rgba(110,110,110,0.24)';
+      g.fillStyle = 'rgba(120,120,120,0.16)';
       g.textAlign = 'center';
-      for (let y = -cv.height; y < cv.height; y += 58)
-        for (let x = -cv.width; x < cv.width; x += 360)
-          g.fillText(stamp, x, y);
+      const stepX = Math.ceil(g.measureText(stamp).width + 130);
+      const stepY = 94;
+      let ri = 0;
+      for (let y = -cv.height; y < cv.height * 1.4; y += stepY, ri++) {
+        const off = (ri % 2) * (stepX / 2);
+        for (let x = -cv.width; x < cv.width * 1.4; x += stepX) g.fillText(stamp, x + off, y);
+      }
       g.restore();
       // แถบข้อความท้ายภาพ
       g.fillStyle = '#f1f1f1'; g.fillRect(0, cv.height - foot, cv.width, foot);
       g.fillStyle = '#555555'; g.font = '12px Sarabun, Tahoma, sans-serif'; g.textAlign = 'center';
-      g.fillText(t('wmFull'), cv.width / 2, cv.height - foot / 2 + 4);
+      g.fillText(`${t('wmFull')}  ·  RP ${rp || '-'} / SO ${so || '-'}`, cv.width / 2, cv.height - foot / 2 + 4);
       URL.revokeObjectURL(src);
       const w = window.open();
       if (w) w.document.write(`<title>signature</title><body style="margin:0;background:#333;text-align:center"><img src="${cv.toDataURL('image/png')}" style="max-width:100%">`);
@@ -576,6 +636,7 @@ function exportXlsx(){
     engineer: `${r.fname||''} ${r.lname||''}`.trim(),
     department: r.department || '', title: r.title || '', tel: r.tel || '',
     service_report_no: r.service_report_no || '', service_order_no: r.service_order_no || '',
+    location_area: r.geo_area || '',
     geo_lat: r.geo_lat != null ? r.geo_lat : '', geo_lng: r.geo_lng != null ? r.geo_lng : '',
     geo_accuracy_m: r.geo_accuracy != null ? Math.round(r.geo_accuracy) : '',
     q1_response_time: r.q1_response_time, q2_technical_skill: r.q2_technical_skill,
