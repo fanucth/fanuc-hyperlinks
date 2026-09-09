@@ -4,9 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>FTH Service Survey - v0.1</title>
-<!-- VERSION: v0.1 (scaffold) | Created: 2026-09-03
-     FTH Service Quality & CS Evaluation Survey
+<title>FTH Service Survey</title>
+<!-- FTH Service Quality & CS Evaluation Survey
+     VERSION: ดูค่า APP_VERSION ในสคริปต์ (โชว์มุมขวาล่างของหน้า + console)
+     *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
+
+     CHANGELOG:
+       2026.09.09b - เพิ่ม Contact(tel) บนหน้าลูกค้า + ป้ายเวอร์ชันมุมจอ
+       2026.09.09a - engineers: ใช้ title + hire_date (คำนวณอายุงานตอนแสดง) แทน years_experience;
+                     เพิ่มแผนก Robodrill & Robocut / Roboshot; import ช่างจริง 51 คน
+       2026.09.04  - หน้าลูกค้า: แผนก 3 ภาษา, บรรทัด label:value, ช่องคอมเมนต์, ปรับขนาดรูป
+       2026.09.03  - scaffold: 3 โหมด (customer/engineer/dashboard), i18n TH/EN/JP, เทสต์ end-to-end ผ่าน
+
      Design spec: V:\IT\Survey\SURVEY_SYSTEM_DESIGN.md
      DB / RLS / RPC setup: V:\IT\Survey\SUPABASE_SETUP.sql
 
@@ -237,12 +246,17 @@
   </section>
 </main>
 
+<div id="appVer" style="position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5"></div>
 <div id="toast" class="toast"></div>
 
 <script>
 /* =========================================================================
    0. CONFIG
    ========================================================================= */
+// เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
+// รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
+const APP_VERSION = "2026.09.09b";
+
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   // legacy anon key (JWT) — ปลอดภัยที่จะฝังในหน้าเว็บถ้าเปิด RLS ครบ (RLS เป็นตัวกันข้อมูล)
@@ -462,6 +476,8 @@ const params = new URLSearchParams(location.search);
 const jobToken = params.get('t');
 
 async function boot(){
+  $('appVer').textContent = 'v' + APP_VERSION;
+  console.log('%cFTH Service Survey ' + APP_VERSION, 'font-weight:bold');
   applyI18n();
   $('langSelect').value = lang;
   $('langSelect').onchange = e => {
