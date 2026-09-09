@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09n - หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login (ช่าง) มีปุ่ม "เปลี่ยนรหัสผ่าน" บน header
        2026.09.09m - ชื่อบริษัท = Fanuc Thai Limited.; สร้าง QR ไม่พังแม้ยังไม่ได้รัน migrate_geo_area.sql (retry ตัด geo_area)
        2026.09.09l - logout แจ้ง "ออกจากระบบเรียบร้อย"; เก็บ geo_area (อำเภอ/จังหวัด) ตอนสร้าง QR ด้วย reverse-geocode  [ต้องรัน migrate_geo_area.sql]
        2026.09.09k - รองรับ ?loggedout=1 จาก dashboard: เคลียร์ session + อยู่หน้า login (กัน loop เด้งกลับ dashboard); logout ใช้ scope:'local'
@@ -121,6 +122,8 @@
   .thanks{text-align:center;padding:40px 10px;}
   .thanks .big{font-size:52px;}
   .thanks h2{color:var(--ok);border:none;font-size:20px;margin:10px 0 6px;}
+  .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80;}
+  .pw-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;width:100%;max-width:360px;}
 </style>
 </head>
 <body>
@@ -137,6 +140,7 @@
         <option value="en">EN</option>
         <option value="ja">日本語</option>
       </select>
+      <button id="btnChgPw" class="btn-logout hidden" data-i18n="changePw">เปลี่ยนรหัสผ่าน</button>
       <button id="btnLogout" class="btn-logout hidden" data-i18n="logout">ออกจากระบบ</button>
     </div>
   </div>
@@ -158,6 +162,7 @@
       <label data-i18n="password">รหัสผ่าน</label>
       <input type="password" id="loginPass" autocomplete="current-password">
       <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
+      <p style="text-align:center;margin:8px 0 0"><a href="#" id="linkForgot" style="color:var(--accent);font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a></p>
       <p class="muted" data-i18n="loginNote">ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย</p>
     </div>
   </section>
@@ -270,13 +275,28 @@
 <div id="appVer" style="position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5"></div>
 <div id="toast" class="toast"></div>
 
+<div id="pwModal" class="pw-modal hidden">
+  <div class="pw-box">
+    <h2 style="margin:0 0 14px" data-i18n="changePw">เปลี่ยนรหัสผ่าน</h2>
+    <label data-i18n="pwNew">รหัสผ่านใหม่</label>
+    <input type="password" id="pwNew" autocomplete="new-password">
+    <label data-i18n="pwNew2">ยืนยันรหัสผ่านใหม่</label>
+    <input type="password" id="pwNew2" autocomplete="new-password">
+    <p id="pwErr" style="color:var(--accent2);font-size:12.5px;min-height:16px;margin:2px 0 10px"></p>
+    <div class="row2">
+      <button class="btn btn-secondary" id="pwCancel" data-i18n="cancel">ยกเลิก</button>
+      <button class="btn btn-primary" id="pwSave" data-i18n="save">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================================================================
    0. CONFIG
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09m";
+const APP_VERSION = "2026.09.09n";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -308,6 +328,18 @@ const I18N = {
   roleManager:{th:"ผู้บริหาร",en:"Management",ja:"マネジメント"},
   notExecMsg:{th:"บัญชีนี้ไม่มีสิทธิ์ผู้บริหาร",en:"This account has no manager access",ja:"このアカウントに管理者権限はありません"},
   loggedOutOk:{th:"ออกจากระบบเรียบร้อยแล้ว",en:"Signed out successfully",ja:"ログアウトしました"},
+  forgotPw:{th:"ลืมรหัสผ่าน?",en:"Forgot password?",ja:"パスワードをお忘れですか？"},
+  enterEmailFirst:{th:"กรอกอีเมลก่อน แล้วกด \"ลืมรหัสผ่าน?\" อีกครั้ง",en:"Enter your email first, then tap \"Forgot password?\"",ja:"先にメールを入力してください"},
+  resetSent:{th:"ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว (เช็กกล่อง spam ด้วย)",en:"A reset link was sent to your email (check spam too)",ja:"再設定リンクをメールに送りました"},
+  changePw:{th:"เปลี่ยนรหัสผ่าน",en:"Change password",ja:"パスワード変更"},
+  pwNew:{th:"รหัสผ่านใหม่",en:"New password",ja:"新しいパスワード"},
+  pwNew2:{th:"ยืนยันรหัสผ่านใหม่",en:"Confirm new password",ja:"新しいパスワード（確認）"},
+  pwTooShort:{th:"รหัสผ่านต้องยาวอย่างน้อย 6 ตัว",en:"Password must be at least 6 characters",ja:"パスワードは6文字以上"},
+  pwMismatch:{th:"รหัสผ่านสองช่องไม่ตรงกัน",en:"The two passwords do not match",ja:"パスワードが一致しません"},
+  pwChanged:{th:"เปลี่ยนรหัสผ่านแล้ว",en:"Password changed",ja:"パスワードを変更しました"},
+  pwSetNew:{th:"ตั้งรหัสผ่านใหม่",en:"Set a new password",ja:"新しいパスワードを設定"},
+  cancel:{th:"ยกเลิก",en:"Cancel",ja:"キャンセル"},
+  save:{th:"บันทึก",en:"Save",ja:"保存"},
   pickManager:{th:"บัญชีนี้เป็นผู้บริหาร — กรุณาเลือกแท็บ \"ผู้บริหาร\"",en:"This is a manager account — please pick the \"Manager\" tab",ja:"管理者アカウントです —「管理者」タブを選んでください"},
   email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
   password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
@@ -527,11 +559,19 @@ async function boot(){
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch {}
     location.href = location.pathname + '?loggedout=1';
   };
+  if (CONFIGURED) wirePwUi();
 
   if (jobToken) { return startCustomer(); }
 
   // staff flow
   if (!CONFIGURED) { show('viewLogin'); return; }
+
+  // มาจากลิงก์ "ลืมรหัสผ่าน" ในอีเมล -> ให้ตั้งรหัสใหม่ (ไม่ route เข้าระบบปกติ)
+  if (location.hash.includes('type=recovery')) {
+    show('viewLogin'); wireLogin();
+    return;   // onAuthStateChange('PASSWORD_RECOVERY') จะเปิด modal ให้เอง
+  }
+
   // เพิ่งกด logout (จาก dashboard หรือหน้านี้) -> เคลียร์ session + อยู่หน้า login + แจ้งสำเร็จ
   if (params.get('loggedout')) {
     try { await sb.auth.signOut({ scope: 'local' }); } catch {}
@@ -545,6 +585,48 @@ async function boot(){
   if (session) { return routeStaff(session); }
   show('viewLogin');
   wireLogin();
+}
+
+/* ---------- เปลี่ยน / ลืมรหัสผ่าน ---------- */
+let pwRecovery = false;
+function openPwModal(isRecovery){
+  pwRecovery = !!isRecovery;
+  $('pwNew').value = ''; $('pwNew2').value = ''; $('pwErr').textContent = '';
+  document.querySelector('#pwModal h2').textContent = isRecovery ? t('pwSetNew') : t('changePw');
+  $('pwModal').classList.remove('hidden');
+  $('pwNew').focus();
+}
+function closePwModal(){ $('pwModal').classList.add('hidden'); }
+
+function wirePwUi(){
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true); }
+  });
+  $('btnChgPw').onclick = () => openPwModal(false);
+  $('pwCancel').onclick = closePwModal;
+  $('linkForgot').onclick = async (e) => {
+    e.preventDefault();
+    const email = $('loginEmail').value.trim().toLowerCase();
+    if (!email) { toast(t('enterEmailFirst'), true); $('loginEmail').focus(); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) return toast(error.message, true);
+    toast(t('resetSent'));
+  };
+  $('pwSave').onclick = async () => {
+    const a = $('pwNew').value, b = $('pwNew2').value;
+    if (a.length < 6) { $('pwErr').textContent = t('pwTooShort'); return; }
+    if (a !== b)      { $('pwErr').textContent = t('pwMismatch'); return; }
+    $('pwSave').disabled = true;
+    const { error } = await sb.auth.updateUser({ password: a });
+    $('pwSave').disabled = false;
+    if (error) { $('pwErr').textContent = error.message; return; }
+    closePwModal();
+    toast(t('pwChanged'));
+    if (pwRecovery) {
+      try { await sb.auth.signOut({ scope: 'local' }); } catch {}
+      location.href = location.pathname + '?loggedout=1';
+    }
+  };
 }
 
 function rerenderDynamic(){
@@ -602,6 +684,7 @@ async function routeStaff(session){
   const email = (session.user.email || '').toLowerCase();
   if (isExecEmail(email)) { location.href = 'dashboard.html'; return; }
   $('btnLogout').classList.remove('hidden');
+  $('btnChgPw').classList.remove('hidden');
   // engineer: หา row ในตาราง engineers
   const { data: eng, error } = await sb.from('engineers').select('*').eq('email', email).maybeSingle();
   if (error) { toast(t('connFail',{err:error.message}), true); show('viewLogin'); return; }
