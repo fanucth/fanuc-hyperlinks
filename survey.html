@@ -652,8 +652,11 @@ async function loadMyJobs(){
     tr.onclick = () => {
       if (tr.dataset.state === 'used') return toast(t('jobDoneMsg'), true);
       if (tr.dataset.state === 'exp')  return toast(t('jobExpMsg'), true);
-      const s = data.find(x => x.id === tr.dataset.id);
-      if (s) renderQrCard(s.id, s.service_report_no, s.service_order_no);
+     const s = data.find(x => x.id === tr.dataset.id);
+     if (!s) return;
+     renderQrCard(s.id, s.service_report_no, s.service_order_no);
+     window.open(`${location.origin}${location.pathname}?t=${s.id}`, '_blank');
+         
     };
   });
 }
