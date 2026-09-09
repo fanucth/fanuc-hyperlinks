@@ -10,6 +10,9 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09j - ปรับข้อความ: Service Engineer / Management, placeholder อีเมล @fth.fanuc.com
+       2026.09.09i - หน้า login มีแท็บเลือก วิศวกร / ผู้บริหาร; ผู้บริหาร login -> เด้งไป dashboard.html
+       2026.09.09h - เก็บพิกัดตำแหน่งตอนช่างสร้าง QR (ถ้าผู้บริหารเปิดสวิตช์ใน dashboard) เก็บที่ survey_sessions.geo_*  [ต้องรัน migrate_geo.sql]
        2026.09.09g - เตือนเมื่อเลข Service Report/Order ซ้ำกับ QR ที่เคยสร้าง (ข้ามทุกช่าง) กดยืนยันสร้างต่อได้  [ต้องรัน migrate_dup_check.sql]
        2026.09.09f - แก้ EXEC_ALLOWLIST เป็นอีเมลผู้บริหารจริง @fth.fanuc.com 5 ท่าน  [ต้องรัน fix_exec_allowlist.sql]
        2026.09.09e - ตาราง "งานวันนี้" แยก Service Report No. / Service Order No. เป็นคนละคอลัมน์
@@ -105,6 +108,9 @@
   .pill-exp{background:rgba(255,90,60,.15);color:var(--accent2);}
   .row2{display:flex;gap:8px;}
   .row2>*{flex:1;}
+  .seg{display:flex;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:4px;margin-bottom:12px;}
+  .seg-btn{flex:1;background:transparent;border:none;color:var(--sub);padding:9px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;}
+  .seg-btn.active{background:var(--accent);color:#1a1500;}
   .muted{color:var(--sub);font-size:12px;text-align:center;padding:16px 0;}
   .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:92%;text-align:center;}
   .toast.show{opacity:1;}
@@ -140,8 +146,12 @@
   <section id="viewLogin" class="hidden">
     <div class="card">
       <h2 data-i18n="loginHead">เข้าสู่ระบบ (สำหรับพนักงาน)</h2>
+      <div class="seg">
+        <button type="button" class="seg-btn active" id="segEng" data-i18n="roleEngineer">วิศวกร</button>
+        <button type="button" class="seg-btn" id="segMgr" data-i18n="roleManager">ผู้บริหาร</button>
+      </div>
       <label data-i18n="email">อีเมล</label>
-      <input type="email" id="loginEmail" autocomplete="username" placeholder="name@fanucth.co.th">
+      <input type="email" id="loginEmail" autocomplete="username" placeholder="name@fth.fanuc.com">
       <label data-i18n="password">รหัสผ่าน</label>
       <input type="password" id="loginPass" autocomplete="current-password">
       <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
@@ -263,7 +273,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09g";
+const APP_VERSION = "2026.09.09j";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -291,6 +301,10 @@ const I18N = {
   appSub:{th:"ประเมินคุณภาพงานบริการภาคสนาม",en:"Field service quality evaluation",ja:"フィールドサービス品質評価"},
   logout:{th:"ออกจากระบบ",en:"Log out",ja:"ログアウト"},
   loginHead:{th:"เข้าสู่ระบบ (สำหรับพนักงาน)",en:"Sign in (staff only)",ja:"ログイン（社員専用）"},
+  roleEngineer:{th:"วิศวกรบริการ",en:"Service Engineer",ja:"サービスエンジニア"},
+  roleManager:{th:"ผู้บริหาร",en:"Management",ja:"マネジメント"},
+  notExecMsg:{th:"บัญชีนี้ไม่มีสิทธิ์ผู้บริหาร",en:"This account has no manager access",ja:"このアカウントに管理者権限はありません"},
+  pickManager:{th:"บัญชีนี้เป็นผู้บริหาร — กรุณาเลือกแท็บ \"ผู้บริหาร\"",en:"This is a manager account — please pick the \"Manager\" tab",ja:"管理者アカウントです —「管理者」タブを選んでください"},
   email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
   password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
   signIn:{th:"เข้าสู่ระบบ",en:"Sign in",ja:"ログイン"},
@@ -312,6 +326,7 @@ const I18N = {
   colOrder:{th:"Service Order No.",en:"Service Order No.",ja:"オーダー番号"},
   dupWarn:{th:"⚠️ เลขงานนี้เคยถูกใช้สร้าง QR มาแล้ว:",en:"⚠️ This job number was already used to create a QR:",ja:"⚠️ この番号は既にQR作成に使われています:"},
   dupProceed:{th:"ยืนยันสร้าง QR ใหม่ต่อไปหรือไม่?",en:"Create a new QR anyway?",ja:"それでも新しいQRを作成しますか？"},
+  geoLocating:{th:"กำลังระบุตำแหน่ง...",en:"Getting location...",ja:"位置情報を取得中..."},
   jobDoneMsg:{th:"งานนี้ลูกค้าตอบแล้ว",en:"This job is already answered",ja:"この作業は回答済みです"},
   jobExpMsg:{th:"งานนี้หมดอายุแล้ว — สร้าง QR ใหม่",en:"This job has expired — create a new QR",ja:"この作業は期限切れです"},
   myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
@@ -525,7 +540,20 @@ function rerenderDynamic(){
 /* =========================================================================
    5. LOGIN
    ========================================================================= */
+let loginMode = localStorage.getItem('loginMode') || 'engineer';   // 'engineer' | 'manager'
+function setLoginMode(m){
+  loginMode = m; localStorage.setItem('loginMode', m);
+  $('segEng').classList.toggle('active', m === 'engineer');
+  $('segMgr').classList.toggle('active', m === 'manager');
+}
+function isExecEmail(email){
+  return EXEC_ALLOWLIST.map(x => x.toLowerCase()).includes((email || '').toLowerCase());
+}
+
 function wireLogin(){
+  setLoginMode(loginMode);
+  $('segEng').onclick = () => setLoginMode('engineer');
+  $('segMgr').onclick = () => setLoginMode('manager');
   $('btnLogin').onclick = async () => {
     const email = $('loginEmail').value.trim().toLowerCase();
     const password = $('loginPass').value;
@@ -534,6 +562,16 @@ function wireLogin(){
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      const exec = isExecEmail(data.session.user.email);
+      if (loginMode === 'manager') {
+        if (exec) { location.href = 'dashboard.html'; return; }
+        await sb.auth.signOut();
+        return toast(t('notExecMsg'), true);
+      }
+      if (exec) {                       // exec เผลอเลือกแท็บวิศวกร
+        await sb.auth.signOut();
+        return toast(t('pickManager'), true);
+      }
       hide('viewLogin');
       await routeStaff(data.session);
     } catch (e) {
@@ -546,11 +584,8 @@ function wireLogin(){
 
 async function routeStaff(session){
   const email = (session.user.email || '').toLowerCase();
+  if (isExecEmail(email)) { location.href = 'dashboard.html'; return; }
   $('btnLogout').classList.remove('hidden');
-
-  if (EXEC_ALLOWLIST.map(x=>x.toLowerCase()).includes(email)) {
-    return startDashboard();
-  }
   // engineer: หา row ในตาราง engineers
   const { data: eng, error } = await sb.from('engineers').select('*').eq('email', email).maybeSingle();
   if (error) { toast(t('connFail',{err:error.message}), true); show('viewLogin'); return; }
@@ -599,6 +634,18 @@ function startEngineer(eng){
 
 let currentToken = null;
 
+// ขอพิกัดจากเบราว์เซอร์ — คืน {lat,lng,acc} หรือ null (ไม่รองรับ/ปฏิเสธ/ครบ timeout)
+function getGeo(){
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy) }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}
+
 // วาด QR + ลิงก์ของ token ที่ระบุ (ใช้ทั้งตอนสร้างใหม่ และตอนเปิดงานเดิมจากตาราง)
 function renderQrCard(id, sr, so){
   currentToken = id;
@@ -628,12 +675,23 @@ async function makeQr(){
       if (!confirm(`${t('dupWarn')}\n\n${lines}\n\n${t('dupProceed')}`)) return;
     }
 
+    // เก็บพิกัด ถ้าผู้บริหารเปิดสวิตช์ geo_capture ไว้
+    let geo = null;
+    try {
+      const { data: st } = await sb.from('app_settings').select('value').eq('key', 'geo_capture').maybeSingle();
+      if (st && st.value === 'on') { toast(t('geoLocating')); geo = await getGeo(); }
+    } catch {}
+
     const expires_at = new Date(Date.now() + TOKEN_TTL_HOURS*3600*1000).toISOString();
     const { data, error } = await sb.from('survey_sessions').insert({
       engineer_id: ENG.id,
       service_report_no: sr,
       service_order_no: so,
-      expires_at
+      expires_at,
+      geo_lat: geo ? geo.lat : null,
+      geo_lng: geo ? geo.lng : null,
+      geo_accuracy: geo ? geo.acc : null,
+      geo_at: geo ? new Date().toISOString() : null
     }).select('id').single();
     if (error) throw error;
 
