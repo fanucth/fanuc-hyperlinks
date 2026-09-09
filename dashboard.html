@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.10c - ตาราง All responses: หัวตาราง sticky (ล็อกไว้), ลากปรับกว้างคอลัมน์ได้ (จำค่า),
+                     ช่อง comment กว้างขึ้น, คอลัมน์วันที่แยกเป็น 2 บรรทัด (วันที่ / เวลา)
        2026.09.10b - ดูลายเซ็นลูกค้า: ใส่ลายน้ำ "ห้ามเผยแพร่" + อีเมลผู้เปิด + เวลา (กันเอาภาพไปใช้ต่อ)
        2026.09.10a - รื้อ UI ใหม่ตาม FANUC Web UI Kit (fanuc-ui.css): app bar, KPI, badge, ตารางมาตรฐาน,
                      light/dark toggle, skeleton, empty state
@@ -122,7 +124,7 @@
         <h2 class="fc-card__title" data-i18n="detail">รายการทั้งหมด</h2>
         <span class="fc-mut" id="detCount"></span>
       </div>
-      <div id="detBox" class="fc-table-wrap"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
+      <div id="detBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
     </div>
   </section>
 </main>
@@ -134,7 +136,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10b";
+const APP_VERSION = "2026.09.10c";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -224,6 +226,34 @@ function fmtDateTime(iso){
   if (!iso) return '';
   const d = new Date(iso), p = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtD(iso){ if (!iso) return ''; const d=new Date(iso),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function fmtT(iso){ if (!iso) return ''; const d=new Date(iso),p=n=>String(n).padStart(2,'0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+// ล็อกหัวตาราง + ให้ผู้ใช้ลากปรับความกว้างคอลัมน์ (จำค่าไว้ใน localStorage)
+function makeResizable(table, key){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch {}
+  table.classList.add('fc-table--fixed');
+  [...table.tHead.rows[0].cells].forEach((th, i) => {
+    if (saved[i]) th.style.width = saved[i] + 'px';
+    const grip = document.createElement('span');
+    grip.className = 'fc-col-resize';
+    th.appendChild(grip);
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const sx = e.clientX, sw = th.offsetWidth;
+      const move = ev => { th.style.width = Math.max(44, sw + ev.clientX - sx) + 'px'; };
+      const up = () => {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        saved[i] = th.offsetWidth;
+        try { localStorage.setItem(key, JSON.stringify(saved)); } catch {}
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+    });
+  });
 }
 let toastTimer;
 function toast(msg, err){
@@ -456,29 +486,36 @@ function renderDetail(){
   const box = $('detBox');
   $('detCount').textContent = rows.length ? `${rows.length}` : '';
   if (!rows.length) { box.innerHTML = `<div class="fc-empty">${t('noResults')}</div>`; return; }
-  box.innerHTML = `<table class="fc-table fc-table--zebra">
+  box.innerHTML = `<table class="fc-table fc-table--zebra" id="detTable">
     <thead><tr>
-      <th class="fc-n">#</th><th>${t('colDate')}</th><th>${t('colEngineer')}</th>
-      <th>${t('colReport')}</th><th>${t('colOrder')}</th>
-      <th class="fc-n">${t('q1')}</th><th class="fc-n">${t('q2')}</th><th class="fc-n">${t('q3')}</th>
-      <th class="fc-n">${t('q4')}</th><th class="fc-n">${t('q5')}</th>
-      <th>${t('colComment')}</th><th>${t('colGeo')}</th><th>${t('colSig')}</th>
+      <th class="fc-n" style="width:46px">#</th>
+      <th style="width:118px">${t('colDate')}</th>
+      <th style="width:150px">${t('colEngineer')}</th>
+      <th style="width:132px">${t('colReport')}</th>
+      <th style="width:132px">${t('colOrder')}</th>
+      <th class="fc-n" style="width:58px">${t('q1')}</th><th class="fc-n" style="width:58px">${t('q2')}</th>
+      <th class="fc-n" style="width:58px">${t('q3')}</th><th class="fc-n" style="width:58px">${t('q4')}</th>
+      <th class="fc-n" style="width:58px">${t('q5')}</th>
+      <th style="width:360px">${t('colComment')}</th>
+      <th style="width:96px">${t('colGeo')}</th>
+      <th style="width:60px">${t('colSig')}</th>
     </tr></thead>
     <tbody>${rows.map((r,i) => `
       <tr>
         <td class="fc-n">${i+1}</td>
-        <td class="fc-n">${fmtDateTime(r.submitted_at)}</td>
+        <td class="fc-n"><div>${fmtD(r.submitted_at)}</div><div style="color:var(--fc-text-mute);font-size:12px">${fmtT(r.submitted_at)}</div></td>
         <td>${esc(`${r.fname||''} ${r.lname||''}`.trim())}</td>
         <td class="fc-n">${esc(r.service_report_no||'')}</td>
         <td class="fc-n">${esc(r.service_order_no||'')}</td>
         <td class="fc-n">${r.q1_response_time}</td><td class="fc-n">${r.q2_technical_skill}</td><td class="fc-n">${r.q3_communication_cost}</td>
         <td class="fc-n">${r.q4_professionalism}</td><td class="fc-n">${r.q5_overall}</td>
-        <td style="max-width:240px;white-space:normal;word-break:break-word" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
+        <td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
         <td>${r.geo_lat != null
           ? `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.geo_lat},${r.geo_lng}">📍${r.geo_accuracy != null ? ' ±'+Math.round(r.geo_accuracy)+'m' : ''}</a>`
           : ''}</td>
         <td><a href="#" class="sig-link" data-sig="${esc(r.signature_path||'')}">👁</a></td>
       </tr>`).join('')}</tbody></table>`;
+  makeResizable($('detTable'), 'dashDetCols');
 
   box.querySelectorAll('a[data-sig]').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig); };
