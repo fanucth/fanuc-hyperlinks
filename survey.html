@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.09p - "งานของฉัน": เลือกช่วงเวลาได้ (วันนี้ / 7 วัน / 30 วัน / ทั้งหมด) ไม่จำกัดแค่วันนี้; เมลขอบคุณแจ้งชื่อ+เบอร์วิศวกรด้วย
        2026.09.09o - หน้าลูกค้า: ช่องอีเมล (ไม่บังคับ) -> ส่งเมลขอบคุณผ่าน Edge Function "thank-you" (SMTP บริษัท)  [ต้องรัน migrate_thankyou.sql + deploy function — ดู THANKYOU_SETUP.md]
        2026.09.09n - หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login (ช่าง) มีปุ่ม "เปลี่ยนรหัสผ่าน" บน header
        2026.09.09m - ชื่อบริษัท = Fanuc Thai Limited.; สร้าง QR ไม่พังแม้ยังไม่ได้รัน migrate_geo_area.sql (retry ตัด geo_area)
@@ -194,7 +195,13 @@
     </div>
 
     <div class="card">
-      <h2 data-i18n="myJobs">งานของฉันวันนี้</h2>
+      <h2 data-i18n="myJobs">งานของฉัน</h2>
+      <div class="seg" id="jobRangeSeg">
+        <button type="button" class="seg-btn active" data-range="today" data-i18n="jobRangeToday">วันนี้</button>
+        <button type="button" class="seg-btn" data-range="7" data-i18n="jobRange7">7 วัน</button>
+        <button type="button" class="seg-btn" data-range="30" data-i18n="jobRange30">30 วัน</button>
+        <button type="button" class="seg-btn" data-range="all" data-i18n="jobRangeAll">ทั้งหมด</button>
+      </div>
       <div id="engJobs"><p class="muted" data-i18n="loading">กำลังโหลด...</p></div>
     </div>
   </section>
@@ -303,7 +310,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.09o";
+const APP_VERSION = "2026.09.09p";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -372,7 +379,11 @@ const I18N = {
   geoLocating:{th:"กำลังระบุตำแหน่ง...",en:"Getting location...",ja:"位置情報を取得中..."},
   jobDoneMsg:{th:"งานนี้ลูกค้าตอบแล้ว",en:"This job is already answered",ja:"この作業は回答済みです"},
   jobExpMsg:{th:"งานนี้หมดอายุแล้ว — สร้าง QR ใหม่",en:"This job has expired — create a new QR",ja:"この作業は期限切れです"},
-  myJobs:{th:"งานของฉันวันนี้",en:"My jobs today",ja:"本日の自分の作業"},
+  myJobs:{th:"งานของฉัน",en:"My jobs",ja:"自分の作業"},
+  jobRangeToday:{th:"วันนี้",en:"Today",ja:"本日"},
+  jobRange7:{th:"7 วัน",en:"7 days",ja:"7日間"},
+  jobRange30:{th:"30 วัน",en:"30 days",ja:"30日間"},
+  jobRangeAll:{th:"ทั้งหมด",en:"All",ja:"すべて"},
   loading:{th:"กำลังโหลด...",en:"Loading...",ja:"読み込み中..."},
   checkingLink:{th:"กำลังตรวจสอบลิงก์...",en:"Checking the link...",ja:"リンクを確認中..."},
   rateHead:{th:"โปรดให้คะแนนการบริการครั้งนี้",en:"Please rate this service",ja:"今回のサービスを評価してください"},
@@ -738,6 +749,13 @@ function startEngineer(eng){
     $('srNo').focus(); loadMyJobs();
   };
   $('btnCopyLink').onclick = () => copyText($('qrLink').textContent);
+  $('jobRangeSeg').querySelectorAll('.seg-btn').forEach(b => {
+    b.onclick = () => {
+      jobRange = b.dataset.range;
+      $('jobRangeSeg').querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
+      loadMyJobs();
+    };
+  });
   loadMyJobs();
 }
 
@@ -838,12 +856,19 @@ async function makeQr(){
   }
 }
 
+let jobRange = 'today';   // today | 7 | 30 | all
+
 async function loadMyJobs(){
   if (!ENG) return;
-  const start = new Date(); start.setHours(0,0,0,0);
-  const { data, error } = await sb.from('survey_sessions')
-    .select('*').eq('engineer_id', ENG.id).gte('created_at', start.toISOString())
-    .order('created_at', { ascending:false });
+  let q = sb.from('survey_sessions').select('*').eq('engineer_id', ENG.id);
+  if (jobRange !== 'all') {
+    const start = new Date();
+    if (jobRange === 'today') start.setHours(0,0,0,0);
+    else start.setDate(start.getDate() - Number(jobRange));
+    q = q.gte('created_at', start.toISOString());
+  }
+  if (jobRange === 'all') q = q.limit(500);
+  const { data, error } = await q.order('created_at', { ascending:false });
   const box = $('engJobs');
   if (error) { box.innerHTML = `<p class="muted">${error.message}</p>`; return; }
   if (!data || !data.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
