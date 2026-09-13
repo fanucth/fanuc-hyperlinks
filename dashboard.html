@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.15d - หน้าแก้ไขวิศวกร: เพิ่มรูปภาพ (ถ้ามี) ให้ยืนยันตัวคนก่อน mark ลาออก
        2026.09.15c - เพิ่มหน้า "จัดการวิศวกร" (ปุ่มบน app bar): แก้ชื่อ/แผนก/ตำแหน่ง/เบอร์ + mark ลาออก/กลับเข้าทำงาน
                      ได้จาก dashboard โดยตรง (ต้องรัน migrate_engineer_status.sql); mark ลาออกจะบล็อก login
                      ของคนนั้นด้วย (เรียก Edge Function ใหม่ set-login-access ต้อง deploy แยก);
@@ -247,6 +248,10 @@
 <div id="engEditModal" class="fc-modal fc-hidden">
   <div class="fc-modal__box" style="max-width:480px">
     <h3 data-i18n="mgEditHead">แก้ไขข้อมูลวิศวกร</h3>
+    <div style="display:flex;justify-content:center;margin-bottom:var(--fc-s3)">
+      <img id="mgPhoto" class="ep-photo" style="width:100px;height:100px" alt="" hidden>
+      <div id="mgPhotoPlaceholder" class="ep-photo" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--fc-text-mute)"></div>
+    </div>
     <label class="fc-field"><span class="fc-field__label" data-i18n="email">อีเมล</span>
       <input type="text" id="mgEmail" class="fc-input" disabled></label>
     <div class="fc-row" style="gap:var(--fc-s2)">
@@ -299,7 +304,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.15c";
+const APP_VERSION = "2026.09.15d";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -445,6 +450,7 @@ const I18N = {
   colEdit:{th:"แก้ไข",en:"Edit",ja:"編集"},
   resignedBadge:{th:"ลาออกแล้ว",en:"Resigned",ja:"退職済"},
   mgFillNames:{th:"กรอกชื่อและนามสกุลให้ครบ",en:"Please fill in first and last name",ja:"名と姓を入力してください"},
+  noPhoto:{th:"ไม่มีรูป",en:"No photo",ja:"写真なし"},
 };
 let lang = localStorage.getItem('dashLang') || 'th';
 function t(key, vars){
@@ -1102,6 +1108,16 @@ function openEngEdit(id){
   const e = MG_LIST.find(x => x.id === id);
   if (!e) return;
   mgEditing = e;
+  if (e.photo_path) {
+    $('mgPhoto').src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${e.photo_path}`;
+    $('mgPhoto').hidden = false;
+    $('mgPhoto').onerror = () => { $('mgPhoto').hidden = true; $('mgPhotoPlaceholder').hidden = false; };
+    $('mgPhotoPlaceholder').hidden = true;
+  } else {
+    $('mgPhoto').hidden = true;
+    $('mgPhotoPlaceholder').hidden = false;
+    $('mgPhotoPlaceholder').textContent = t('noPhoto');
+  }
   $('mgEmail').value = e.email || '';
   $('mgFname').value = e.fname || '';
   $('mgLname').value = e.lname || '';
