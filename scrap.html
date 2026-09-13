@@ -66,7 +66,6 @@
   .btn-logout:active{background:var(--accent2);color:#fff;}
   main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
-  .card-wide{position:relative;left:50%;width:95vw;max-width:900px;transform:translateX(-50%);}
   .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
   input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
@@ -206,7 +205,7 @@
     <button class="btn btn-ok" id="btnSave" data-i18n="btnSaveLabel" style="margin-top:14px;">💾 บันทึกรายการนี้</button>
   </div>
 
-  <div class="card card-wide">
+  <div class="card">
     <h2><span data-i18n="sectionListTitle">3) รายการที่บันทึกแล้ว</span> (<span id="countTotal">0</span>)</h2>
     <div class="code-row" id="searchRow" style="display:none;">
       <input type="text" id="searchCode" data-i18n-placeholder="searchPlaceholder" placeholder="ค้นหาจากรหัสชิ้นงาน...">
