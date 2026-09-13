@@ -10,6 +10,8 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.13d - หน้าลูกค้า: บรรทัด "Team" ขึ้นชื่อเพื่อนร่วมทีมทีละบรรทัด (bullet) แทนการต่อด้วยจุลภาคบรรทัดเดียว
+       2026.09.13c - หน้าลูกค้า: บรรทัด "Team" ไม่โชว์ชื่อตัวเองซ้ำ (ชื่อขึ้นเป็นหัวข้อใหญ่ด้านบนอยู่แล้ว) โชว์แค่ชื่อเพื่อนร่วมทีมคนอื่น
        2026.09.13b - ทีมงานตอนสร้าง QR: โชว์ "เพื่อนร่วมแผนกเดียวกัน" เป็น checkbox ให้เลยไม่ต้องพิมพ์
                      (ถ้าไม่มีใครในแผนกเดียวกัน โชว์ทุกแผนกแทน) + มีช่องค้นหาแยกไว้เพิ่มวิศวกรแผนกอื่น
        2026.09.13a - แก้ทีมงานตอนสร้าง QR: เดิม RLS engineers ให้เห็นแค่แถวตัวเอง (ทีมงานเลยว่าง/โหลดไม่ขึ้น)
@@ -339,7 +341,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.13b";
+const APP_VERSION = "2026.09.13d";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -1044,8 +1046,12 @@ function renderEngInfo(){
     ? `${t('lblExperience')} : ${t('yrsValue', { n: yrs })}` : '';
   $('ciTel').textContent = CUST_INFO.tel
     ? `${t('lblTel')} : ${CUST_INFO.tel}` : '';
-  $('ciTeam').textContent = CUST_INFO.team_names
-    ? `${t('teamOnCust')} : ${CUST_INFO.fname} ${CUST_INFO.lname}, ${CUST_INFO.team_names}` : '';
+  if (CUST_INFO.team_names) {
+    const names = CUST_INFO.team_names.split(',').map(s => s.trim()).filter(Boolean);
+    $('ciTeam').innerHTML = `${esc(t('teamOnCust'))} :<br>` + names.map(n => `• ${esc(n)}`).join('<br>');
+  } else {
+    $('ciTeam').innerHTML = '';
+  }
   $('ciReport').textContent = CUST_INFO.service_report_no
     ? `${t('lblReportNo')} : ${CUST_INFO.service_report_no}` : '';
   const img = $('ciPhoto');
