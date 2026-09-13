@@ -135,6 +135,8 @@
   .thanks .big{font-size:52px;}
   .thanks h2{color:var(--ok);border:none;font-size:20px;margin:10px 0 6px;}
   .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80;}
+  .confirm-msg{white-space:pre-line;font-size:14px;line-height:1.65;margin-bottom:18px;max-height:50vh;overflow-y:auto;}
+  .confirm-msg .dup-line{background:var(--card2);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13px;}
   #teamPickBox,#teamSearchBox{max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:9px;background:var(--card2);padding:6px 4px;margin-bottom:12px;}
   #teamPickBox:empty,#teamSearchBox:empty{display:none;}
   .team-row{display:flex;align-items:center;gap:8px;padding:7px 8px;font-size:13.5px;cursor:pointer;border-radius:6px;}
@@ -320,6 +322,17 @@
 <div id="appVer" style="position:fixed;right:6px;bottom:4px;font-size:11px;color:var(--sub);opacity:.55;pointer-events:none;user-select:none;z-index:5"></div>
 <div id="toast" class="toast"></div>
 
+<div id="confirmModal" class="pw-modal hidden">
+  <div class="pw-box">
+    <div id="confirmIcon" style="font-size:30px;text-align:center;margin-bottom:6px">⚠️</div>
+    <div id="confirmMsg" class="confirm-msg"></div>
+    <div class="row2">
+      <button class="btn btn-secondary" id="confirmNo" data-i18n="cancel">ยกเลิก</button>
+      <button class="btn btn-primary" id="confirmYes" data-i18n="confirmYes">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
 <div id="pwModal" class="pw-modal hidden">
   <div class="pw-box">
     <h2 style="margin:0 0 14px" data-i18n="changePw">เปลี่ยนรหัสผ่าน</h2>
@@ -385,6 +398,7 @@ const I18N = {
   pwSetNew:{th:"ตั้งรหัสผ่านใหม่",en:"Set a new password",ja:"新しいパスワードを設定"},
   cancel:{th:"ยกเลิก",en:"Cancel",ja:"キャンセル"},
   save:{th:"บันทึก",en:"Save",ja:"保存"},
+  confirmYes:{th:"ยืนยัน",en:"Confirm",ja:"確認"},
   pickManager:{th:"บัญชีนี้เป็นผู้บริหาร — กรุณาเลือกแท็บ \"ผู้บริหาร\"",en:"This is a manager account — please pick the \"Manager\" tab",ja:"管理者アカウントです —「管理者」タブを選んでください"},
   email:{th:"อีเมล",en:"Email",ja:"メールアドレス"},
   password:{th:"รหัสผ่าน",en:"Password",ja:"パスワード"},
@@ -557,6 +571,21 @@ function toast(msg, isErr){
   el.classList.toggle('err', !!isErr);
   el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'), 2600);
+}
+// ป๊อปอัปยืนยันแบบสไตล์แอป (แทน confirm() ของเบราว์เซอร์ที่หน้าตาไม่ตรงธีม) — คืน Promise<boolean>
+function showConfirm(message, icon){
+  return new Promise(resolve => {
+    $('confirmIcon').textContent = icon || '⚠️';
+    $('confirmMsg').textContent = message;
+    $('confirmModal').classList.remove('hidden');
+    const cleanup = (result) => {
+      $('confirmModal').classList.add('hidden');
+      $('confirmYes').onclick = null; $('confirmNo').onclick = null;
+      resolve(result);
+    };
+    $('confirmYes').onclick = () => cleanup(true);
+    $('confirmNo').onclick = () => cleanup(false);
+  });
 }
 // copy ที่ทำงานได้ทั้ง https และ http (LAN) — navigator.clipboard มีเฉพาะ secure context
 async function copyText(text){
@@ -855,7 +884,7 @@ function startEngineer(eng){
   // ยกเลิก QR: ทำให้ token หมดอายุทันทีที่ server (ใช้ตอนพิมพ์เลขงานผิด) — เก็บเลขที่กรอกไว้ให้แก้แล้วสร้างใหม่
   $('btnCancelQr').onclick = async () => {
     if (!currentToken) { hide('qrCard'); return; }
-    if (!confirm(t('cancelConfirm'))) return;
+    if (!(await showConfirm(t('cancelConfirm'), '🗑️'))) return;
     const { data, error } = await sb.rpc('expire_session', { p_token: currentToken });
     if (error) return toast(error.message, true);
     if (!data) return toast(t('jobDoneMsg'), true);   // ลูกค้ากดส่งไปแล้ว ยกเลิกไม่ได้
