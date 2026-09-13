@@ -10,6 +10,11 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.13b - ทีมงานตอนสร้าง QR: โชว์ "เพื่อนร่วมแผนกเดียวกัน" เป็น checkbox ให้เลยไม่ต้องพิมพ์
+                     (ถ้าไม่มีใครในแผนกเดียวกัน โชว์ทุกแผนกแทน) + มีช่องค้นหาแยกไว้เพิ่มวิศวกรแผนกอื่น
+       2026.09.13a - แก้ทีมงานตอนสร้าง QR: เดิม RLS engineers ให้เห็นแค่แถวตัวเอง (ทีมงานเลยว่าง/โหลดไม่ขึ้น)
+                     เปลี่ยนไปดึงผ่าน RPC list_engineers_basic() แทน  [ต้องรัน migrate_team_picker.sql];
+                     เปลี่ยน UI จาก checkbox ยาวๆ เป็นช่องพิมพ์ค้นหาชื่อ + แสดงคนที่เลือกเป็น chip ลบออกได้
        2026.09.11a - เพิ่มช่อง "ชื่อลูกค้า" (บังคับ ให้ตรงกับ SAP BYD) ในหน้าสร้าง QR  [ต้องรัน migrate_batch2.sql];
                      รองรับงานที่มีหลายวิศวกร (เลือกทีมงานตอนสร้าง QR — ทุกคนได้คะแนนเท่ากัน คำถามชุดเดียว)  [ต้องรัน migrate_batch2.sql];
                      แก้คำถามข้อ 3: เอาเรื่องค่าใช้จ่าย/ใบเสนอราคาออก เปลี่ยนเป็นถามความชัดเจนของการอธิบายงาน (ตาม feedback ของหัวหน้า K.Yamamoto)
@@ -128,10 +133,15 @@
   .thanks .big{font-size:52px;}
   .thanks h2{color:var(--ok);border:none;font-size:20px;margin:10px 0 6px;}
   .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80;}
-  #teamPickBox{max-height:180px;overflow-y:auto;border:1px solid var(--line);border-radius:9px;background:var(--card2);padding:6px 4px;}
+  #teamPickBox,#teamSearchBox{max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:9px;background:var(--card2);padding:6px 4px;margin-bottom:12px;}
+  #teamPickBox:empty,#teamSearchBox:empty{display:none;}
   .team-row{display:flex;align-items:center;gap:8px;padding:7px 8px;font-size:13.5px;cursor:pointer;border-radius:6px;}
   .team-row:hover{background:rgba(255,255,255,.04);}
   .team-row input{width:17px;height:17px;flex:0 0 auto;accent-color:var(--accent);}
+  .team-selected{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .team-selected:empty{margin-bottom:0;}
+  .team-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,180,0,.14);border:1px solid var(--accent);color:var(--text);border-radius:20px;padding:4px 6px 4px 12px;font-size:12.5px;}
+  .team-chip button{background:none;border:none;color:var(--text);font-size:15px;line-height:1;cursor:pointer;padding:2px 4px;}
   .pw-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;width:100%;max-width:360px;}
 </style>
 </head>
@@ -189,7 +199,12 @@
       <input type="text" id="custNameIn">
       <p class="muted" style="text-align:left;padding:0 0 12px" data-i18n="custNameNote">ใช้ชื่อเดียวกับที่ระบุใน SAP BYD</p>
       <label data-i18n="teamPick">ทีมงานที่ร่วมทำงานนี้ (ถ้ามี)</label>
-      <div id="teamPickBox" class="muted" style="margin-bottom:4px" data-i18n="loading">กำลังโหลด...</div>
+      <div id="teamSelected" class="team-selected"></div>
+      <p class="muted" style="text-align:left;padding:0 0 4px" data-i18n="teamSameDept">เพื่อนร่วมแผนกเดียวกัน</p>
+      <div id="teamPickBox" class="muted" style="margin-bottom:10px"></div>
+      <label data-i18n="teamOtherDept">ค้นหาวิศวกรแผนกอื่น</label>
+      <input type="text" id="teamSearch" autocomplete="off" data-i18n-ph="teamSearchPh">
+      <div id="teamSearchBox" style="margin-bottom:4px"></div>
       <p class="muted" style="text-align:left;padding:4px 0 12px" data-i18n="teamNote">ไม่ต้องเลือกก็ได้ถ้าทำคนเดียว — ทุกคนที่เลือกจะได้คะแนนเท่ากันจากแบบสอบถามชุดเดียวกัน</p>
       <button class="btn btn-primary" id="btnMakeQr" data-i18n="makeQr">สร้าง QR Code</button>
     </div>
@@ -324,7 +339,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.11a";
+const APP_VERSION = "2026.09.13b";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -380,6 +395,10 @@ const I18N = {
   custNameNote:{th:"ใช้ชื่อเดียวกับที่ระบุใน SAP BYD",en:"Use the same name as in SAP BYD",ja:"SAP BYDと同じ名称を使用してください"},
   needCustName:{th:"กรุณากรอกชื่อลูกค้า",en:"Please enter the customer name",ja:"お客様名を入力してください"},
   teamPick:{th:"ทีมงานที่ร่วมทำงานนี้ (ถ้ามี)",en:"Teammates on this job (if any)",ja:"この作業を担当した他のエンジニア（複数選択可）"},
+  teamSameDept:{th:"เพื่อนร่วมแผนกเดียวกัน",en:"Colleagues in your department",ja:"同じ部署の同僚"},
+  teamOtherDept:{th:"ค้นหาวิศวกรแผนกอื่น",en:"Search engineers in other departments",ja:"他部署のエンジニアを検索"},
+  teamNoneInDept:{th:"ไม่มีเพื่อนร่วมแผนกในระบบ — แสดงวิศวกรทั้งหมดแทน",en:"No one else found in your department — showing everyone instead",ja:"同じ部署に他の人が見つかりません。全員を表示しています"},
+  teamSearchPh:{th:"พิมพ์ชื่อเพื่อค้นหา...",en:"Type a name to search...",ja:"名前を入力して検索..."},
   teamNote:{th:"ไม่ต้องเลือกก็ได้ถ้าทำคนเดียว — ทุกคนที่เลือกจะได้คะแนนเท่ากันจากแบบสอบถามชุดเดียวกัน",en:"Leave blank if you worked alone — everyone selected receives the same scores from one shared survey.",ja:"一人で対応した場合は選択不要です。選択した全員が同じ回答から同じ評価を受け取ります。"},
   teamOnCust:{th:"ทีมงาน",en:"Team",ja:"担当チーム"},
   makeQr:{th:"สร้าง QR Code",en:"Generate QR code",ja:"QRコードを作成"},
@@ -747,23 +766,75 @@ function renderEngWho(){
   $('engWho').textContent = bits.join(' · ');
 }
 let TEAM_CANDIDATES = [];
+let selectedTeam = new Map();   // engineer_id -> "Fname Lname"
+
+// รายชื่อเพื่อนร่วมงานทั้งหมด — ต้องผ่าน RPC (SECURITY DEFINER) เพราะ RLS ตาราง engineers
+// ปกติให้วิศวกรเห็นแค่แถวตัวเอง (ดู migrate_team_picker.sql)
 async function loadTeamCandidates(){
-  const box = $('teamPickBox');
-  const { data, error } = await sb.from('engineers').select('id,fname,lname,department').order('fname');
-  if (error) { box.innerHTML = `<p class="muted" style="margin:6px">${error.message}</p>`; return; }
+  const { data, error } = await sb.rpc('list_engineers_basic');
+  if (error) { $('teamPickBox').innerHTML = `<p class="muted" style="margin:6px">${esc(error.message)}</p>`; return; }
   TEAM_CANDIDATES = (data || []).filter(e => e.id !== ENG.id);
-  if (!TEAM_CANDIDATES.length) { box.innerHTML = `<p class="muted" style="margin:6px">—</p>`; return; }
-  box.innerHTML = TEAM_CANDIDATES.map(e => `
-    <label class="team-row">
-      <input type="checkbox" value="${e.id}">
-      <span>${esc(e.fname)} ${esc(e.lname)}${e.department ? ' · ' + esc(deptLabel(e.department)) : ''}</span>
-    </label>`).join('');
+  renderTeamDefault();
+  renderTeamSearch('');
+}
+function teamRowHtml(e){
+  return `<label class="team-row">
+    <input type="checkbox" value="${e.id}" ${selectedTeam.has(e.id) ? 'checked' : ''}>
+    <span>${esc(e.fname)} ${esc(e.lname)}${e.department ? ' · ' + esc(deptLabel(e.department)) : ''}</span>
+  </label>`;
+}
+function wireTeamRows(box){
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.onchange = () => {
+      const cand = TEAM_CANDIDATES.find(e => e.id === cb.value);
+      if (cb.checked) selectedTeam.set(cb.value, `${cand.fname} ${cand.lname}`);
+      else selectedTeam.delete(cb.value);
+      renderSelectedChips();
+    };
+  });
+}
+// เพื่อนร่วมแผนกเดียวกัน (โชว์ตรงๆ ไม่ต้องพิมพ์) — ถ้าไม่มีใครในแผนกเดียวกันเลย โชว์ทุกแผนกแทน
+function renderTeamDefault(){
+  const box = $('teamPickBox');
+  const sameDept = ENG.department ? TEAM_CANDIDATES.filter(e => e.department === ENG.department) : [];
+  const fallback = !sameDept.length;
+  const list = fallback ? TEAM_CANDIDATES : sameDept;
+  if (!list.length) { box.innerHTML = `<p class="muted" style="margin:6px">—</p>`; return; }
+  box.innerHTML = (fallback ? `<p class="muted" style="margin:2px 6px 8px">${t('teamNoneInDept')}</p>` : '')
+    + list.map(teamRowHtml).join('');
+  wireTeamRows(box);
+}
+function renderTeamSearch(qstr){
+  const box = $('teamSearchBox');
+  const q = qstr.trim().toLowerCase();
+  if (!q) { box.innerHTML = ''; return; }
+  const matches = TEAM_CANDIDATES.filter(e => `${e.fname} ${e.lname}`.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { box.innerHTML = `<p class="muted" style="margin:6px">—</p>`; return; }
+  box.innerHTML = matches.map(teamRowHtml).join('');
+  wireTeamRows(box);
+}
+function renderSelectedChips(){
+  const box = $('teamSelected');
+  box.innerHTML = [...selectedTeam.entries()].map(([id, name]) => `
+    <span class="team-chip">${esc(name)}<button type="button" data-id="${id}">&times;</button></span>`).join('');
+  box.querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      selectedTeam.delete(b.dataset.id);
+      renderSelectedChips();
+      renderTeamDefault();
+      renderTeamSearch($('teamSearch').value);
+    };
+  });
 }
 function selectedTeamIds(){
-  return [...document.querySelectorAll('#teamPickBox input[type=checkbox]:checked')].map(cb => cb.value);
+  return [...selectedTeam.keys()];
 }
 function clearTeamPicks(){
-  document.querySelectorAll('#teamPickBox input[type=checkbox]').forEach(cb => cb.checked = false);
+  selectedTeam.clear();
+  renderSelectedChips();
+  $('teamSearch').value = '';
+  renderTeamDefault();
+  renderTeamSearch('');
 }
 
 function startEngineer(eng){
@@ -771,6 +842,7 @@ function startEngineer(eng){
   show('viewEngineer');
   renderEngWho();
   loadTeamCandidates();
+  $('teamSearch').oninput = e => renderTeamSearch(e.target.value);
   $('btnMakeQr').onclick = makeQr;
   $('btnNewJob').onclick = () => {
     currentToken = null;
