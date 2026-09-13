@@ -12,7 +12,13 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
-       2026.09.10k - หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login มีปุ่ม "เปลี่ยนรหัสผ่าน" บน app bar
+       2026.09.11a - เพิ่มคอลัมน์ Customer / Email(+badge ส่งแล้ว) / Team ในตาราง All responses + Excel export  [ต้องรัน migrate_batch2.sql สำหรับ Customer/Team];
+                     หัวคอลัมน์ Q3 เปลี่ยนเป็น "Explanation" (เดิม Communication/Cost) ตาม feedback หัวหน้า + หมายเหตุใต้ตารางบอกวันที่เปลี่ยนคำถาม;
+                     คลิกชื่อวิศวกร (ตาราง All responses / อันดับ) เปิดโปรไฟล์: รูป/ตำแหน่ง/แผนก/เบอร์/อายุงาน/สถิติ;
+                     อันดับ + KPI ผู้นำ อ่านจาก v_survey_by_engineer (นับงานทีมให้ทุกคนเท่ากัน)  [ต้องรัน migrate_batch2.sql];
+                     ปุ่มกรองด่วน เพิ่ม วันนี้ / เมื่อวาน / สัปดาห์นี้
+       2026.09.10l - All responses: เลขหน้าแบบเต็ม (หน้าแรก/สุดท้าย + ปุ่มเลขหน้า 1..N + ช่องพิมพ์เลขไปหน้านั้น) แทน Prev/Next อย่างเดียว
+       2026.09.10k -หน้า login มี "ลืมรหัสผ่าน?" (ส่งลิงก์ตั้งรหัสใหม่ทางอีเมล); หลัง login มีปุ่ม "เปลี่ยนรหัสผ่าน" บน app bar
        2026.09.10j - หัวตารางเข้มขึ้น (ทุกตาราง); คลิกหัวคอลัมน์ = เรียง asc/desc (▲▼); ปุ่ม Export แยกที่การ์ด
                      "อันดับคะแนน" และ "รายการทั้งหมด" (นอกจาก Export ทั้งหมด); hover แถว = พื้นอุ่น + แถบซ้ายสีแบรนด์
        2026.09.10i - ตัวกรองแถวเดียวกระชับ; "อันดับคะแนนของวิศวกร"; Report/Order หัวคอลัมน์ 2 บรรทัด (Service / Report No.);
@@ -64,8 +70,32 @@
   .login-wrap{max-width:380px;margin:var(--fc-s6) auto 0;}
   a.geo-link,a.sig-link{color:var(--fc-primary);text-decoration:none;font-size:12px;}
   a.geo-link{font-family:var(--fc-font-body);}
-  .pager{display:flex;align-items:center;gap:var(--fc-s3);flex-wrap:wrap;margin-top:var(--fc-s3);font-size:14px;color:var(--fc-text-dim);}
+  .pager{display:flex;align-items:center;gap:var(--fc-s2);flex-wrap:wrap;margin-top:var(--fc-s3);font-size:14px;color:var(--fc-text-dim);}
   .pager .fc-select{width:auto;min-height:32px;padding:4px 8px;font-size:13px;}
+  .pager .pg-nums{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+  .pager .pg-num{min-width:32px;min-height:32px;padding:4px 8px;border:1px solid var(--fc-border);border-radius:var(--fc-radius);
+    background:var(--fc-surface);color:var(--fc-text);font:inherit;font-size:13px;cursor:pointer;text-align:center;}
+  .pager .pg-num:hover:not(.on){background:var(--fc-row-hover);}
+  .pager .pg-num.on{background:var(--fc-primary);border-color:var(--fc-primary);color:#fff;font-weight:700;cursor:default;}
+  .pager .pg-gap{padding:0 2px;color:var(--fc-text-mute);}
+  .pager .pg-jump{width:56px;min-height:32px;padding:4px 6px;font-size:13px;text-align:center;}
+  .eng-link{color:var(--fc-primary);text-decoration:none;cursor:pointer;}
+  .eng-link:hover{text-decoration:underline;}
+  .ep-head{display:flex;align-items:center;gap:var(--fc-s4);margin-bottom:var(--fc-s4);}
+  .ep-photo{width:76px;height:76px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:1px solid var(--fc-border);}
+  .ep-name{font-family:var(--fc-font-head);font-weight:600;font-size:18px;}
+  .ep-meta{font-size:13px;color:var(--fc-text-dim);line-height:1.7;}
+  .ep-meta a{color:var(--fc-primary);text-decoration:none;}
+  .ep-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--fc-s2);margin-bottom:var(--fc-s3);}
+  .ep-stat{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);}
+  .ep-stat .v{font-family:var(--fc-font-head);font-size:20px;font-weight:600;}
+  .ep-stat .l{font-size:12px;color:var(--fc-text-mute);}
+  .ep-bar-row{display:flex;align-items:center;gap:var(--fc-s2);font-size:12.5px;margin-bottom:6px;}
+  .ep-bar-row .lbl{width:72px;flex:0 0 auto;color:var(--fc-text-dim);}
+  .ep-bar-track{flex:1;height:8px;border-radius:4px;background:var(--fc-zebra);overflow:hidden;}
+  .ep-bar-fill{height:100%;background:var(--fc-primary);}
+  .ep-bar-val{width:30px;flex:0 0 auto;text-align:right;font-family:var(--fc-font-mono);}
+  .ep-comment{border-left:3px solid var(--fc-border-strong);padding:4px 0 4px var(--fc-s2);margin-bottom:var(--fc-s2);font-size:13px;color:var(--fc-text-dim);}
 </style>
 </head>
 <body class="fc">
@@ -119,6 +149,9 @@
     <div class="fc-card fc-card--tight">
       <div class="filters-bar">
         <div class="qbtns">
+          <button class="fc-btn fc-btn--sm" id="qToday" data-i18n="today">วันนี้</button>
+          <button class="fc-btn fc-btn--sm" id="qYesterday" data-i18n="yesterday">เมื่อวาน</button>
+          <button class="fc-btn fc-btn--sm" id="qThisWeek" data-i18n="thisWeek">สัปดาห์นี้</button>
           <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
           <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนก่อน</button>
           <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
@@ -156,12 +189,23 @@
       </div>
       <div id="detBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
       <div class="pager" id="pager"></div>
+      <p class="fc-note" style="margin-top:var(--fc-s2)" data-i18n="q3WordingNote"></p>
     </div>
   </section>
 </main>
 
 <div id="appVer"></div>
 <div id="toast" class="fc-toast"></div>
+
+<div id="engModal" class="fc-modal fc-hidden">
+  <div class="fc-modal__box" style="max-width:480px">
+    <h3 data-i18n="engProfile">ข้อมูลวิศวกร</h3>
+    <div id="engModalBody"></div>
+    <div class="fc-row" style="gap:var(--fc-s2);margin-top:var(--fc-s3)">
+      <button class="fc-btn" id="engModalClose" style="flex:1" data-i18n="close">ปิด</button>
+    </div>
+  </div>
+</div>
 
 <div id="pwModal" class="fc-modal fc-hidden">
   <div class="fc-modal__box">
@@ -182,7 +226,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.10k";
+const APP_VERSION = "2026.09.11a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -229,6 +273,9 @@ const I18N = {
   filterEngineer:{th:"วิศวกร",en:"Engineer",ja:"エンジニア"},
   filterDept:{th:"แผนก",en:"Department",ja:"部署"},
   minN:{th:"ขั้นต่ำ (รายการ)",en:"Min responses",ja:"最小件数"},
+  today:{th:"วันนี้",en:"Today",ja:"本日"},
+  yesterday:{th:"เมื่อวาน",en:"Yesterday",ja:"昨日"},
+  thisWeek:{th:"สัปดาห์นี้",en:"This week",ja:"今週"},
   thisMonth:{th:"เดือนนี้",en:"This month",ja:"今月"},
   lastMonth:{th:"เดือนก่อน",en:"Last month",ja:"先月"},
   thisYear:{th:"ปีนี้",en:"This year",ja:"今年"},
@@ -237,6 +284,10 @@ const I18N = {
   pageInfo:{th:"{a}–{b} จาก {n}",en:"{a}–{b} of {n}",ja:"{a}–{b} / {n}"},
   prev:{th:"ก่อนหน้า",en:"Prev",ja:"前へ"},
   next:{th:"ถัดไป",en:"Next",ja:"次へ"},
+  firstPg:{th:"หน้าแรก",en:"First",ja:"最初"},
+  lastPg:{th:"หน้าสุดท้าย",en:"Last",ja:"最後"},
+  goPg:{th:"ไป",en:"Go",ja:"移動"},
+  pageX:{th:"หน้า {p}",en:"Page {p}",ja:"{p} ページ"},
   colRepOrd:{th:"Report / Order No.",en:"Report / Order No.",ja:"レポート / オーダー番号"},
   apply:{th:"แสดงผล",en:"Apply",ja:"表示"},
   exportXlsx:{th:"Export ทั้งหมด",en:"Export all",ja:"すべて出力"},
@@ -275,9 +326,25 @@ const I18N = {
   popupBlocked:{th:"เบราว์เซอร์บล็อกป๊อปอัป — อนุญาตแล้วลองใหม่",en:"Pop-up blocked — allow pop-ups and retry",ja:"ポップアップがブロックされました"},
   q1:{th:"ตอบสนอง",en:"Response",ja:"対応速度"},
   q2:{th:"ทักษะ",en:"Skill",ja:"技術力"},
-  q3:{th:"การสื่อสาร/<br>ค่าใช้จ่าย",en:"Communication/<br>Cost",ja:"説明/<br>費用"},
+  q3:{th:"การอธิบายงาน",en:"Explanation",ja:"説明"},
   q4:{th:"มืออาชีพ",en:"Professional",ja:"プロ意識"},
   q5:{th:"ภาพรวม",en:"Overall",ja:"総合"},
+  q3Full:{th:"การอธิบายปัญหาและงานที่ทำ ชัดเจน เข้าใจง่าย",en:"Clear explanation of the problem and work performed",ja:"問題と作業内容の説明の分かりやすさ"},
+  q3WordingNote:{th:"⚠️ 11 ก.ย. 2026 เปลี่ยนคำถามข้อ 3 จาก \"ความชัดเจนเรื่องค่าใช้จ่าย/ใบเสนอราคา\" เป็น \"ความชัดเจนในการอธิบายงาน\" — คำตอบก่อนหน้านี้ตอบคำถามฉบับเดิม",en:"⚠️ 2026-09-11: Q3 wording changed from cost/quotation clarity to explanation clarity — responses before this date answered the old question",ja:"⚠️ 2026年9月11日 質問3の内容を「費用・見積りの説明」から「作業内容の説明」に変更 — それ以前の回答は旧質問への回答です"},
+  colCustomer:{th:"ลูกค้า",en:"Customer",ja:"顧客名"},
+  colTeam:{th:"ทีมงาน",en:"Team",ja:"担当チーム"},
+  colEmail:{th:"อีเมลลูกค้า",en:"Customer email",ja:"顧客メール"},
+  thanksSent:{th:"ส่งแล้ว",en:"Sent",ja:"送信済"},
+  thanksPending:{th:"รอส่ง",en:"Pending",ja:"未送信"},
+  engProfile:{th:"ข้อมูลวิศวกร",en:"Engineer profile",ja:"エンジニア情報"},
+  epTenure:{th:"อายุงาน",en:"Tenure",ja:"勤続年数"},
+  epHireDate:{th:"วันเริ่มงาน",en:"Hire date",ja:"入社日"},
+  epStats:{th:"สถิติในช่วงที่กรองอยู่",en:"Stats for the current filter",ja:"現在のフィルター範囲での統計"},
+  epRank:{th:"อันดับ",en:"Rank",ja:"順位"},
+  epRecentComments:{th:"ความเห็นล่าสุด",en:"Recent comments",ja:"最近のコメント"},
+  epNoComments:{th:"ยังไม่มีความเห็น",en:"No comments yet",ja:"コメントなし"},
+  epNoStats:{th:"ไม่มีข้อมูลในช่วงที่กรองอยู่",en:"No data in the current filter",ja:"現在のフィルターにデータなし"},
+  close:{th:"ปิด",en:"Close",ja:"閉じる"},
 };
 let lang = localStorage.getItem('dashLang') || 'th';
 function t(key, vars){
@@ -366,6 +433,7 @@ async function boot(){
 
   if (!CONFIGURED) { $('cfgBanner').textContent = 'Supabase config missing'; $('cfgBanner').classList.remove('fc-hidden'); show('viewLogin'); return; }
   wirePwUi();
+  $('engModalClose').onclick = () => $('engModal').classList.add('fc-hidden');
 
   // มาจากลิงก์ "ลืมรหัสผ่าน" ในอีเมล
   if (location.hash.includes('type=recovery')) { show('viewLogin'); wireLogin(); return; }
@@ -441,6 +509,7 @@ function wireLogin(){
 
 /* ---------- dashboard ---------- */
 let rows = [];
+let rankRows = [];
 let page = 0;
 let pageSize = parseInt(localStorage.getItem('dashPageSize'), 10) || 10;
 
@@ -466,6 +535,9 @@ async function startDash(){
   $('btnExport').onclick = exportXlsx;
   $('btnExportRank').onclick = exportRanking;
   $('btnExportDet').onclick = exportDetail;
+  $('qToday').onclick     = () => setRange('today');
+  $('qYesterday').onclick = () => setRange('yesterday');
+  $('qThisWeek').onclick  = () => setRange('thisweek');
   $('qMonth').onclick = () => setRange('month');
   $('qLastMonth').onclick = () => setRange('lastmonth');
   $('qYear').onclick  = () => setRange('year');
@@ -492,9 +564,15 @@ let leaders = null;
 async function loadLeaders(){
   const now = new Date();
   const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const { data } = await sb.from('v_survey_full')
+  let { data, error } = await sb.from('v_survey_by_engineer')
     .select('engineer_id,fname,lname,department,submitted_at,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall')
     .gte('submitted_at', lmStart.toISOString());
+  // ยังไม่ได้รัน migrate_batch2.sql -> view นี้ไม่มี: ใช้ v_survey_full แทน (นับแค่ lead engineer ต่องาน)
+  if (error) {
+    ({ data } = await sb.from('v_survey_full')
+      .select('engineer_id,fname,lname,department,submitted_at,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall')
+      .gte('submitted_at', lmStart.toISOString()));
+  }
   const mKey = d => { const x = new Date(d); return x.getFullYear() + '-' + x.getMonth(); };
   const curKey = now.getFullYear() + '-' + now.getMonth();
   const lastKey = lmStart.getFullYear() + '-' + lmStart.getMonth();
@@ -534,6 +612,16 @@ function setRange(kind){
   const now = new Date(), p = n => String(n).padStart(2,'0');
   const iso = d => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
   if (kind === 'all') { $('fFrom').value = ''; $('fTo').value = ''; }
+  else if (kind === 'today') { $('fFrom').value = iso(now); $('fTo').value = iso(now); }
+  else if (kind === 'yesterday') {
+    const y = new Date(now); y.setDate(y.getDate() - 1);
+    $('fFrom').value = iso(y); $('fTo').value = iso(y);
+  }
+  else if (kind === 'thisweek') {
+    const day = (now.getDay() + 6) % 7;   // จันทร์ = 0
+    const mon = new Date(now); mon.setDate(mon.getDate() - day);
+    $('fFrom').value = iso(mon); $('fTo').value = iso(now);
+  }
   else if (kind === 'lastmonth') {
     $('fFrom').value = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
     $('fTo').value   = iso(new Date(now.getFullYear(), now.getMonth(), 0));   // วันสุดท้ายเดือนก่อน
@@ -597,19 +685,34 @@ async function applyFilter(){
 
   skeleton($('sumBox')); skeleton($('detBox'));
 
+  // รายการทั้งหมด (1 แถวต่อ 1 คำตอบ) — ใช้แสดงตาราง All responses
   let q = sb.from('v_survey_full').select('*').order('submitted_at', { ascending:false });
   if (from) q = q.gte('submitted_at', from);
   if (to)   q = q.lte('submitted_at', to);
-  if (engId) q = q.eq('engineer_id', engId);
   if (dept)  q = q.eq('department', dept);
+  if (engId) {
+    // งานทีม: เห็นงานที่ engId เป็นสมาชิก ไม่ใช่แค่ lead — หา session ผ่าน v_survey_by_engineer ก่อน
+    const { data: sess } = await sb.from('v_survey_by_engineer').select('session_token').eq('engineer_id', engId);
+    if (sess) q = q.in('session_token', sess.map(s => s.session_token));
+    else      q = q.eq('engineer_id', engId);   // ยังไม่ได้รัน migrate_batch2.sql
+  }
 
-  const { data, error } = await q;
+  // รายบุคคล (1 แถวต่อ 1 คำตอบ ต่อ 1 วิศวกรในทีม) — ใช้คำนวณอันดับ/KPI ให้ทุกคนในทีมเท่ากัน
+  let qr = sb.from('v_survey_by_engineer').select('*');
+  if (from) qr = qr.gte('submitted_at', from);
+  if (to)   qr = qr.lte('submitted_at', to);
+  if (engId) qr = qr.eq('engineer_id', engId);
+  if (dept)  qr = qr.eq('department', dept);
+
+  const [{ data, error }, rankRes] = await Promise.all([q, qr]);
   if (error) {
     $('sumBox').innerHTML = `<div class="fc-empty">${esc(error.message)}</div>`;
     $('detBox').innerHTML = ''; $('kpis').innerHTML = '';
     return;
   }
   rows = data || [];
+  // ยังไม่ได้รัน migrate_batch2.sql -> v_survey_by_engineer ไม่มี: ใช้ rows เอง (นับแค่ lead engineer ต่องาน)
+  rankRows = rankRes.error ? rows : (rankRes.data || []);
   page = 0;
   render();
 }
@@ -622,9 +725,9 @@ function render(){
 
 function agg(){
   const g = {};
-  rows.forEach(r => {
+  rankRows.forEach(r => {
     const k = r.engineer_id;
-    (g[k] = g[k] || { name:`${r.fname||''} ${r.lname||''}`.trim(), dept:r.department||'', n:0, q:[0,0,0,0,0] });
+    (g[k] = g[k] || { engineer_id:k, name:`${r.fname||''} ${r.lname||''}`.trim(), dept:r.department||'', n:0, q:[0,0,0,0,0] });
     g[k].n++;
     g[k].q[0]+=r.q1_response_time; g[k].q[1]+=r.q2_technical_skill; g[k].q[2]+=r.q3_communication_cost;
     g[k].q[3]+=r.q4_professionalism; g[k].q[4]+=r.q5_overall;
@@ -681,17 +784,20 @@ function renderRanking(){
     <thead><tr>
       ${th(t('colRank'), 'avg', S, 'fc-c')}${th(t('colEngineer'), 'name', S)}${th(t('colDept'), 'dept', S)}
       ${th(t('colCount'), 'n', S, 'fc-c')}
-      ${th(t('q1'), 'q0', S, 'fc-c')}${th(t('q2'), 'q1', S, 'fc-c')}${th(t('q3'), 'q2', S, 'fc-c')}
+      ${th(t('q1'), 'q0', S, 'fc-c')}${th(t('q2'), 'q1', S, 'fc-c')}${th(`<span title="${esc(t('q3Full'))}">${t('q3')}</span>`, 'q2', S, 'fc-c')}
       ${th(t('q4'), 'q3', S, 'fc-c')}${th(t('q5'), 'q4', S, 'fc-c')}${th(t('colAvg'), 'avg', S, 'fc-c')}
     </tr></thead>
     <tbody>${list.map((e,i) => `
       <tr>
         <td class="fc-c fc-rank">${S.key === 'avg' && S.dir === 'desc' ? medal(i) : (i + 1)}</td>
-        <td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
+        <td><a href="#" class="eng-link" data-eid="${esc(e.engineer_id||'')}">${esc(e.name)}</a></td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
         ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
         <td class="fc-c"><b>${e.avg.toFixed(2)}</b></td>
       </tr>`).join('')}</tbody></table>`;
   wireSort($('sumTable'), rankSort, renderRanking);
+  box.querySelectorAll('a.eng-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
+  });
 }
 
 function geoCell(r){
@@ -700,6 +806,71 @@ function geoCell(r){
     ? esc(r.geo_area)
     : '📍' + (r.geo_accuracy != null ? ' ±' + Math.round(r.geo_accuracy) + 'm' : '');
   return `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.geo_lat},${r.geo_lng}" title="${r.geo_lat},${r.geo_lng}">${label}</a>`;
+}
+
+// อายุงาน (ปีเต็ม) จาก hire_date = 'YYYY-MM-DD' — อย่างน้อย 1
+function yearsFromHire(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return null;
+  const hire = new Date(+m[1], +m[2] - 1, +m[3]);
+  const now = new Date();
+  let y = now.getFullYear() - hire.getFullYear();
+  const anniv = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
+  if (now < anniv) y -= 1;
+  return Math.max(1, y);
+}
+
+async function openEngineerProfile(engineerId){
+  if (!engineerId) return;
+  const body = $('engModalBody');
+  body.innerHTML = `<div class="fc-skeleton" style="height:76px;margin-bottom:12px"></div><div class="fc-skeleton" style="height:120px"></div>`;
+  $('engModal').classList.remove('fc-hidden');
+
+  const { data: e, error } = await sb.from('engineers').select('*').eq('id', engineerId).maybeSingle();
+  if (error || !e) { body.innerHTML = `<div class="fc-empty">${esc(error ? error.message : 'not found')}</div>`; return; }
+
+  const photo = e.photo_path
+    ? `<img class="ep-photo" src="${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${e.photo_path}" alt="" onerror="this.style.visibility='hidden'">`
+    : `<div class="ep-photo"></div>`;
+  const yrs = yearsFromHire(e.hire_date);
+  const metaLines = [
+    e.title ? esc(e.title) : '',
+    e.department ? esc(e.department) : '',
+    e.tel ? `<a href="tel:${esc(e.tel)}">${esc(e.tel)}</a>` : '',
+    e.hire_date ? `${t('epHireDate')}: ${esc(e.hire_date)}${yrs != null ? ` (${t('epTenure')} ${yrs} ${lang==='th'?'ปี':lang==='ja'?'年':'yrs'})` : ''}` : '',
+  ].filter(Boolean).join('<br>');
+
+  // สถิติจากข้อมูลที่โหลดไว้แล้วในตัวกรองปัจจุบัน — ไม่ยิง query เพิ่ม
+  const list = agg();
+  const sorted = list.slice().sort((a,b) => b.avg - a.avg);
+  const mine = list.find(x => x.engineer_id === engineerId);
+  const rank = mine ? sorted.findIndex(x => x.engineer_id === engineerId) + 1 : null;
+
+  const qLabels = [t('q1'), t('q2'), t('q3'), t('q4'), t('q5')];
+  const bars = mine ? qLabels.map((lbl, i) => {
+    const v = mine.q[i] / mine.n;
+    return `<div class="ep-bar-row"><span class="lbl">${lbl}</span>
+      <span class="ep-bar-track"><span class="ep-bar-fill" style="width:${(v/5*100).toFixed(0)}%"></span></span>
+      <span class="ep-bar-val">${v.toFixed(2)}</span></div>`;
+  }).join('') : `<p class="fc-mut">${t('epNoStats')}</p>`;
+
+  const myResponseIds = new Set(rankRows.filter(r => r.engineer_id === engineerId).map(r => r.response_id));
+  const comments = rows
+    .filter(r => myResponseIds.has(r.id) && r.comment)
+    .sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+    .slice(0, 3);
+
+  body.innerHTML = `
+    <div class="ep-head">${photo}<div><div class="ep-name">${esc(e.fname)} ${esc(e.lname)}</div><div class="ep-meta">${metaLines}</div></div></div>
+    <div class="ep-stats-grid">
+      <div class="ep-stat"><div class="v">${mine ? mine.n : 0}</div><div class="l">${t('colCount')}</div></div>
+      <div class="ep-stat"><div class="v">${mine ? mine.avg.toFixed(2) : '—'}${rank ? ` <span style="font-size:12px;color:var(--fc-text-mute)">${t('epRank')} #${rank}</span>` : ''}</div><div class="l">${t('colAvg')}</div></div>
+    </div>
+    <p class="fc-mut" style="margin:0 0 6px">${t('epStats')}</p>
+    ${bars}
+    <p class="fc-mut" style="margin:var(--fc-s3) 0 6px">${t('epRecentComments')}</p>
+    ${comments.length ? comments.map(c => `<div class="ep-comment">${esc(c.comment)}<div style="font-size:11px;color:var(--fc-text-mute);margin-top:2px">${fmtDateTime(c.submitted_at)}</div></div>`).join('') : `<p class="fc-mut">${t('epNoComments')}</p>`}
+  `;
 }
 
 function renderDetail(){
@@ -720,13 +891,16 @@ function renderDetail(){
       <th class="fc-c" style="width:44px">#</th>
       ${th(t('colDate'), 'submitted_at', S, '', 'width:104px')}
       ${th(t('colEngineer'), 'engineer', S, '', 'width:150px')}
+      ${th(t('colTeam'), 'team_names', S, '', 'width:170px')}
       ${th(t('colDept'), 'department', S, '', 'width:150px')}
       ${th(t('colReport'), 'service_report_no', S, 'fc-c', 'width:88px')}
       ${th(t('colOrder'), 'service_order_no', S, 'fc-c', 'width:88px')}
+      ${th(t('colCustomer'), 'customer_name', S, '', 'width:140px')}
       ${th(t('q1'), 'q1_response_time', S, 'fc-c', 'width:54px')}${th(t('q2'), 'q2_technical_skill', S, 'fc-c', 'width:54px')}
-      ${th(t('q3'), 'q3_communication_cost', S, 'fc-c', 'width:96px')}${th(t('q4'), 'q4_professionalism', S, 'fc-c', 'width:54px')}
+      ${th(`<span title="${esc(t('q3Full'))}">${t('q3')}</span>`, 'q3_communication_cost', S, 'fc-c', 'width:96px')}${th(t('q4'), 'q4_professionalism', S, 'fc-c', 'width:54px')}
       ${th(t('q5'), 'q5_overall', S, 'fc-c', 'width:64px')}
       ${th(t('colComment'), 'comment', S, '', 'width:320px')}
+      ${th(t('colEmail'), 'customer_email', S, '', 'width:170px')}
       ${th(t('colGeo'), 'geo_area', S, '', 'width:150px')}
       ${th(t('colIP'), 'client_ip', S, '', 'width:118px')}
       <th class="fc-c" style="width:66px">${t('colSig')}</th>
@@ -735,13 +909,16 @@ function renderDetail(){
       <tr>
         <td class="fc-c">${start + k + 1}</td>
         <td class="fc-n"><div>${fmtD(r.submitted_at)}</div><div style="color:var(--fc-text-mute);font-size:12px">${fmtT(r.submitted_at)}</div></td>
-        <td>${esc(`${r.fname||''} ${r.lname||''}`.trim())}</td>
+        <td><a href="#" class="eng-link" data-eid="${esc(r.engineer_id||'')}">${esc(`${r.fname||''} ${r.lname||''}`.trim())}</a></td>
+        <td style="white-space:normal;word-break:break-word;color:var(--fc-text-dim);font-size:12.5px">${esc(r.team_names||'')}</td>
         <td>${esc(r.department||'')}</td>
         <td class="fc-c">${esc(r.service_report_no||'')}</td>
         <td class="fc-c">${esc(r.service_order_no||'')}</td>
+        <td>${esc(r.customer_name||'')}</td>
         <td class="fc-c">${r.q1_response_time}</td><td class="fc-c">${r.q2_technical_skill}</td><td class="fc-c">${r.q3_communication_cost}</td>
         <td class="fc-c">${r.q4_professionalism}</td><td class="fc-c">${r.q5_overall}</td>
         <td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>
+        <td>${r.customer_email ? `<div>${esc(r.customer_email)}</div><span class="fc-badge ${r.thanks_sent ? 'fc-badge--ok' : 'fc-badge--neutral'}">${r.thanks_sent ? t('thanksSent') : t('thanksPending')}</span>` : ''}</td>
         <td style="white-space:normal;line-height:1.5">${geoCell(r)}</td>
         <td style="font-family:var(--fc-font-mono);font-size:12px;color:var(--fc-text-dim)">${esc(r.client_ip||'')}</td>
         <td class="fc-c"><a href="#" class="sig-btn" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}" title="${t('colSig')}">👁</a></td>
@@ -751,26 +928,63 @@ function renderDetail(){
   box.querySelectorAll('a[data-sig]').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.sig) viewSignature(a.dataset.sig, a.dataset.rp, a.dataset.so); };
   });
+  box.querySelectorAll('a.eng-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
+  });
 
   renderPager(total, start, view.length, maxPage);
+}
+
+// สร้างเลขหน้าแบบมีช่องว่าง (...) เช่น 1 … 4 5 [6] 7 8 … 20
+function pageWindow(cur, max){
+  const span = 2, out = [];
+  const lo = Math.max(0, cur - span), hi = Math.min(max, cur + span);
+  if (lo > 0) { out.push(0); if (lo > 1) out.push('gap'); }
+  for (let i = lo; i <= hi; i++) out.push(i);
+  if (hi < max) { if (hi < max - 1) out.push('gap'); out.push(max); }
+  return out;
+}
+
+function goPage(n, maxPage){
+  const p = Math.min(maxPage, Math.max(0, n | 0));
+  if (p !== page) { page = p; renderDetail(); }
 }
 
 function renderPager(total, start, shown, maxPage){
   const opts = [10, 25, 50, 100].map(n =>
     `<option value="${n}"${n === pageSize ? ' selected' : ''}>${n}</option>`).join('');
+  const nums = pageWindow(page, maxPage).map(x => x === 'gap'
+    ? `<span class="pg-gap">…</span>`
+    : `<button class="pg-num${x === page ? ' on' : ''}" data-pg="${x}" title="${t('pageX', { p: x + 1 })}">${x + 1}</button>`
+  ).join('');
   $('pager').innerHTML = `
     <select class="fc-select" id="pgSize">${opts}</select>
     <span>${t('perPage')}</span>
     <span class="fc-right">${t('pageInfo', { a: total ? start + 1 : 0, b: start + shown, n: total })}</span>
+    <button class="fc-btn fc-btn--sm" id="pgFirst"${page <= 0 ? ' disabled' : ''}>« ${t('firstPg')}</button>
     <button class="fc-btn fc-btn--sm" id="pgPrev"${page <= 0 ? ' disabled' : ''}>‹ ${t('prev')}</button>
-    <button class="fc-btn fc-btn--sm" id="pgNext"${page >= maxPage ? ' disabled' : ''}>${t('next')} ›</button>`;
+    <span class="pg-nums" id="pgNums">${nums}</span>
+    <button class="fc-btn fc-btn--sm" id="pgNext"${page >= maxPage ? ' disabled' : ''}>${t('next')} ›</button>
+    <button class="fc-btn fc-btn--sm" id="pgLast"${page >= maxPage ? ' disabled' : ''}>${t('lastPg')} »</button>
+    ${maxPage > 4 ? `<input class="fc-input pg-jump" id="pgJump" type="number" min="1" max="${maxPage + 1}" placeholder="${page + 1}">
+      <button class="fc-btn fc-btn--sm" id="pgGo">${t('goPg')}</button>` : ''}`;
   $('pgSize').onchange = e => {
     pageSize = parseInt(e.target.value, 10) || 10;
     localStorage.setItem('dashPageSize', pageSize);
     page = 0; renderDetail();
   };
-  $('pgPrev').onclick = () => { if (page > 0) { page--; renderDetail(); } };
-  $('pgNext').onclick = () => { if (page < maxPage) { page++; renderDetail(); } };
+  $('pgFirst').onclick = () => goPage(0, maxPage);
+  $('pgPrev').onclick = () => goPage(page - 1, maxPage);
+  $('pgNext').onclick = () => goPage(page + 1, maxPage);
+  $('pgLast').onclick = () => goPage(maxPage, maxPage);
+  $('pgNums').querySelectorAll('.pg-num').forEach(b =>
+    b.onclick = () => goPage(parseInt(b.dataset.pg, 10), maxPage));
+  const jump = $('pgJump');
+  if (jump) {
+    const go = () => { const v = parseInt(jump.value, 10); if (v) goPage(v - 1, maxPage); };
+    $('pgGo').onclick = go;
+    jump.onkeydown = e => { if (e.key === 'Enter') go(); };
+  }
 }
 
 // เปิดลายเซ็นพร้อมลายน้ำกันเอาไปเผยแพร่ (ฝัง Report/Order + อีเมลผู้เปิด + เวลา ไว้ตามรอยได้)
@@ -823,8 +1037,10 @@ function detailRowsForXlsx(){
   return sortArr(rows, detSort, 'det').map(r => ({
     submitted_at: fmtDateTime(r.submitted_at),
     engineer: `${r.fname||''} ${r.lname||''}`.trim(),
+    team: r.team_names || '',
     department: r.department || '', title: r.title || '', tel: r.tel || '',
     service_report_no: r.service_report_no || '', service_order_no: r.service_order_no || '',
+    customer_name: r.customer_name || '',
     location_area: r.geo_area || '',
     geo_lat: r.geo_lat != null ? r.geo_lat : '', geo_lng: r.geo_lng != null ? r.geo_lng : '',
     geo_accuracy_m: r.geo_accuracy != null ? Math.round(r.geo_accuracy) : '',
@@ -832,6 +1048,7 @@ function detailRowsForXlsx(){
     q1_response_time: r.q1_response_time, q2_technical_skill: r.q2_technical_skill,
     q3_communication_cost: r.q3_communication_cost, q4_professionalism: r.q4_professionalism,
     q5_overall: r.q5_overall, comment: r.comment || '',
+    customer_email: r.customer_email || '', thanks_sent: r.customer_email ? (r.thanks_sent ? 'sent' : 'pending') : '',
   }));
 }
 function rankingRowsForXlsx(){
