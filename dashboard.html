@@ -12,6 +12,11 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.15b - popup โปรไฟล์วิศวกร: เพิ่มแสดงอีเมล คลิกแล้วเปิดส่งเมลได้เลย (mailto:);
+                     ตาราง All responses เพิ่มปุ่ม "ตอบกลับ" (✉️) ต่อแถว เปิดอีเมลถึงวิศวกรคนนั้นพร้อมแนบ
+                     รายละเอียดงาน (วันที่, ลูกค้า, Report/Order No., ทีมงาน, คะแนน Q1-Q5, ความเห็นลูกค้า) อัตโนมัติ
+       2026.09.15a - popup โปรไฟล์วิศวกร: รูปใหญ่ขึ้น (76px -> 140px); คะแนนเฉลี่ย (ตารางอันดับ, KPI ผู้นำ,
+                     KPI เฉลี่ยรวม, popup โปรไฟล์) โชว์เป็นดาว 5 ดวงเติมสีตามสัดส่วนจริงคู่กับตัวเลข
        2026.09.11a - เพิ่มคอลัมน์ Customer / Email(+badge ส่งแล้ว) / Team ในตาราง All responses + Excel export  [ต้องรัน migrate_batch2.sql สำหรับ Customer/Team];
                      หัวคอลัมน์ Q3 เปลี่ยนเป็น "Explanation" (เดิม Communication/Cost) ตาม feedback หัวหน้า + หมายเหตุใต้ตารางบอกวันที่เปลี่ยนคำถาม;
                      คลิกชื่อวิศวกร (ตาราง All responses / อันดับ) เปิดโปรไฟล์: รูป/ตำแหน่ง/แผนก/เบอร์/อายุงาน/สถิติ;
@@ -82,7 +87,8 @@
   .eng-link{color:var(--fc-primary);text-decoration:none;cursor:pointer;}
   .eng-link:hover{text-decoration:underline;}
   .ep-head{display:flex;align-items:center;gap:var(--fc-s4);margin-bottom:var(--fc-s4);}
-  .ep-photo{width:76px;height:76px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:1px solid var(--fc-border);}
+  .ep-photo{width:140px;height:140px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:2px solid var(--fc-border);}
+  .ep-head{flex-wrap:wrap;}
   .ep-name{font-family:var(--fc-font-head);font-weight:600;font-size:18px;}
   .ep-meta{font-size:13px;color:var(--fc-text-dim);line-height:1.7;}
   .ep-meta a{color:var(--fc-primary);text-decoration:none;}
@@ -96,6 +102,10 @@
   .ep-bar-fill{height:100%;background:var(--fc-primary);}
   .ep-bar-val{width:30px;flex:0 0 auto;text-align:right;font-family:var(--fc-font-mono);}
   .ep-comment{border-left:3px solid var(--fc-border-strong);padding:4px 0 4px var(--fc-s2);margin-bottom:var(--fc-s2);font-size:13px;color:var(--fc-text-dim);}
+  .stars{display:inline-flex;gap:1px;font-size:14px;line-height:1;vertical-align:middle;}
+  .star{position:relative;display:inline-block;color:var(--fc-border-strong);}
+  .star::before{content:"★";position:absolute;inset:0;width:var(--p);overflow:hidden;color:var(--fc-accent);white-space:nowrap;}
+  .ep-stat .stars{font-size:18px;}
 </style>
 </head>
 <body class="fc">
@@ -198,7 +208,7 @@
 <div id="toast" class="fc-toast"></div>
 
 <div id="engModal" class="fc-modal fc-hidden">
-  <div class="fc-modal__box" style="max-width:480px">
+  <div class="fc-modal__box" style="max-width:520px">
     <h3 data-i18n="engProfile">ข้อมูลวิศวกร</h3>
     <div id="engModalBody"></div>
     <div class="fc-row" style="gap:var(--fc-s2);margin-top:var(--fc-s3)">
@@ -226,7 +236,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.11a";
+const APP_VERSION = "2026.09.15b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -321,6 +331,12 @@ const I18N = {
   colGeo:{th:"ตำแหน่ง",en:"Location",ja:"位置"},
   colIP:{th:"IP ลูกค้า",en:"Client IP",ja:"顧客IP"},
   colSig:{th:"ลายเซ็น",en:"Signature",ja:"署名"},
+  colReply:{th:"ตอบกลับ",en:"Reply",ja:"返信"},
+  noEngEmail:{th:"ไม่พบอีเมลของวิศวกรคนนี้",en:"No email found for this engineer",ja:"このエンジニアのメールが見つかりません"},
+  replySubject:{th:"ขอรายละเอียดเพิ่มเติมเกี่ยวกับงานบริการนี้",en:"Follow-up on this service job",ja:"本サービス対応についての確認"},
+  replyGreeting:{th:"เรียน {name}",en:"Dear {name},",ja:"{name} 様"},
+  replyAsk:{th:"ฝ่ายบริหารขอสอบถามรายละเอียดเพิ่มเติมเกี่ยวกับงานบริการนี้ ช่วยชี้แจงว่าเกิดอะไรขึ้น (What happened?) พร้อมรายละเอียดของงานด้านล่าง",en:"Management would like more details on this service job — please explain what happened. Job details below.",ja:"本サービス対応について詳細を確認させてください。何があったかご説明をお願いします。以下、対象作業の詳細です。"},
+  replySign:{th:"ขอบคุณครับ/ค่ะ",en:"Thank you,",ja:"よろしくお願いいたします。"},
   wmShort:{th:"ห้ามเผยแพร่",en:"DO NOT DISTRIBUTE",ja:"複製・配布禁止"},
   wmFull:{th:"สำเนาลายมือชื่อลูกค้า — ใช้เพื่อการตรวจสอบภายในของ Fanuc Thai Limited. เท่านั้น ห้ามทำซ้ำ ดัดแปลง หรือเผยแพร่ต่อบุคคลภายนอก",en:"Customer signature copy — for Fanuc Thai Limited. internal verification only. Do not reproduce, alter, or distribute.",ja:"お客様署名の複製 — Fanuc Thai Limited. 社内確認用のみ。複製・改変・外部配布を禁じます。"},
   popupBlocked:{th:"เบราว์เซอร์บล็อกป๊อปอัป — อนุญาตแล้วลองใหม่",en:"Pop-up blocked — allow pop-ups and retry",ja:"ポップアップがブロックされました"},
@@ -735,6 +751,17 @@ function agg(){
   return Object.values(g).map(e => ({ ...e, avg: e.q.reduce((s,x)=>s+x,0)/5/e.n }));
 }
 
+// แสดงดาว 5 ดวงเติมสีตามสัดส่วนจริง (เช่น 4.3/5 = ดวงที่ 5 เติมเหลือง 30%) ไม่ปัดเป็นครึ่งดวง
+function starsHtml(value, max = 5){
+  const v = Math.max(0, Math.min(max, value || 0));
+  let out = `<span class="stars" title="${v.toFixed(2)}/${max}">`;
+  for (let i = 0; i < max; i++) {
+    const pct = Math.max(0, Math.min(100, (v - i) * 100));
+    out += `<span class="star" style="--p:${pct.toFixed(0)}%">★</span>`;
+  }
+  return out + `</span>`;
+}
+
 function rateBadge(v){
   if (v >= 4.5) return `<span class="fc-badge fc-badge--ok">${t('rateHigh')} ${v.toFixed(2)}</span>`;
   if (v >= 3.5) return `<span class="fc-badge fc-badge--info">${t('rateMid')} ${v.toFixed(2)}</span>`;
@@ -745,8 +772,8 @@ function leaderCard(labelKey, g, kind){
   const body = g
     ? `<div class="kpi-name">🥇 ${esc(g.name)}</div>
        <div class="fc-kpi__sub">${esc(g.dept)} · ${kind === 'rate'
-          ? (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' · ' + g.n + ' ' + t('unitResp')
-          : g.n + ' ' + t('unitResp') + ' · ' + (g.sum / g.n).toFixed(2) + ' ' + t('unitScore')}</div>`
+          ? (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsHtml(g.sum / g.n) + ' · ' + g.n + ' ' + t('unitResp')
+          : g.n + ' ' + t('unitResp') + ' · ' + (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsHtml(g.sum / g.n)}</div>`
     : `<div class="kpi-name" style="color:var(--fc-text-mute)">${t('kpiNoData')}</div>`;
   return `<div class="fc-kpi"><div class="fc-kpi__label">${t(labelKey)}</div>${body}</div>`;
 }
@@ -758,7 +785,7 @@ function renderKpis(){
     ? `<div class="fc-kpi"><div class="fc-kpi__label">${t('kpiResponses')}</div>
          <div class="fc-kpi__value">${rows.length}</div></div>
        <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiAvg')}</div>
-         <div class="fc-kpi__value">${(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length).toFixed(2)}</div>
+         <div class="fc-kpi__value">${(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length).toFixed(2)} ${starsHtml(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length)}</div>
          <div class="fc-kpi__sub">${rateBadge(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length)}</div></div>`
     : '';
   box.innerHTML = filtered
@@ -792,7 +819,7 @@ function renderRanking(){
         <td class="fc-c fc-rank">${S.key === 'avg' && S.dir === 'desc' ? medal(i) : (i + 1)}</td>
         <td><a href="#" class="eng-link" data-eid="${esc(e.engineer_id||'')}">${esc(e.name)}</a></td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
         ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
-        <td class="fc-c"><b>${e.avg.toFixed(2)}</b></td>
+        <td class="fc-c"><b>${e.avg.toFixed(2)}</b> ${starsHtml(e.avg)}</td>
       </tr>`).join('')}</tbody></table>`;
   wireSort($('sumTable'), rankSort, renderRanking);
   box.querySelectorAll('a.eng-link').forEach(a => {
@@ -820,6 +847,33 @@ function yearsFromHire(iso){
   return Math.max(1, y);
 }
 
+// เปิดอีเมล (mailto:) ถึงวิศวกร แนบรายละเอียดงาน/คะแนน/ความเห็นลูกค้าให้ครบ
+// ให้ผู้บริหารถามได้ทันทีว่า "เกิดอะไรขึ้น" โดยไม่ต้องไปเปิดหาข้อมูลเอง
+async function replyToEngineer(r){
+  const { data: eng, error } = await sb.from('engineers').select('email,fname,lname').eq('id', r.engineer_id).maybeSingle();
+  if (error || !eng || !eng.email) return toast(t('noEngEmail'), true);
+
+  const subject = `[FTH Survey] ${t('replySubject')} — RP ${r.service_report_no || '-'} / SO ${r.service_order_no || '-'}`;
+  const scoreLine = `Q1 ${r.q1_response_time} · Q2 ${r.q2_technical_skill} · Q3 ${r.q3_communication_cost} · Q4 ${r.q4_professionalism} · Q5 ${r.q5_overall}`;
+  const body = [
+    `${t('replyGreeting', { name: `${eng.fname} ${eng.lname}` })}`,
+    '',
+    t('replyAsk'),
+    '',
+    `${t('colDate')}: ${fmtDateTime(r.submitted_at)}`,
+    `${t('colCustomer')}: ${r.customer_name || '-'}`,
+    `${t('colReport')}: ${r.service_report_no || '-'}`,
+    `${t('colOrder')}: ${r.service_order_no || '-'}`,
+    `${t('colTeam')}: ${r.team_names || '-'}`,
+    `${t('epStats')}: ${scoreLine}`,
+    `${t('colComment')}: ${r.comment || '-'}`,
+    '',
+    t('replySign'),
+  ].join('\n');
+
+  window.location.href = `mailto:${encodeURIComponent(eng.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 async function openEngineerProfile(engineerId){
   if (!engineerId) return;
   const body = $('engModalBody');
@@ -837,6 +891,7 @@ async function openEngineerProfile(engineerId){
     e.title ? esc(e.title) : '',
     e.department ? esc(e.department) : '',
     e.tel ? `<a href="tel:${esc(e.tel)}">${esc(e.tel)}</a>` : '',
+    e.email ? `<a href="mailto:${esc(e.email)}">${esc(e.email)}</a>` : '',
     e.hire_date ? `${t('epHireDate')}: ${esc(e.hire_date)}${yrs != null ? ` (${t('epTenure')} ${yrs} ${lang==='th'?'ปี':lang==='ja'?'年':'yrs'})` : ''}` : '',
   ].filter(Boolean).join('<br>');
 
@@ -864,7 +919,7 @@ async function openEngineerProfile(engineerId){
     <div class="ep-head">${photo}<div><div class="ep-name">${esc(e.fname)} ${esc(e.lname)}</div><div class="ep-meta">${metaLines}</div></div></div>
     <div class="ep-stats-grid">
       <div class="ep-stat"><div class="v">${mine ? mine.n : 0}</div><div class="l">${t('colCount')}</div></div>
-      <div class="ep-stat"><div class="v">${mine ? mine.avg.toFixed(2) : '—'}${rank ? ` <span style="font-size:12px;color:var(--fc-text-mute)">${t('epRank')} #${rank}</span>` : ''}</div><div class="l">${t('colAvg')}</div></div>
+      <div class="ep-stat"><div class="v">${mine ? mine.avg.toFixed(2) : '—'}${mine ? ' ' + starsHtml(mine.avg) : ''}${rank ? ` <span style="font-size:12px;color:var(--fc-text-mute)">${t('epRank')} #${rank}</span>` : ''}</div><div class="l">${t('colAvg')}</div></div>
     </div>
     <p class="fc-mut" style="margin:0 0 6px">${t('epStats')}</p>
     ${bars}
@@ -904,6 +959,7 @@ function renderDetail(){
       ${th(t('colGeo'), 'geo_area', S, '', 'width:150px')}
       ${th(t('colIP'), 'client_ip', S, '', 'width:118px')}
       <th class="fc-c" style="width:66px">${t('colSig')}</th>
+      <th class="fc-c" style="width:56px">${t('colReply')}</th>
     </tr></thead>
     <tbody>${view.map((r,k) => `
       <tr>
@@ -922,6 +978,7 @@ function renderDetail(){
         <td style="white-space:normal;line-height:1.5">${geoCell(r)}</td>
         <td style="font-family:var(--fc-font-mono);font-size:12px;color:var(--fc-text-dim)">${esc(r.client_ip||'')}</td>
         <td class="fc-c"><a href="#" class="sig-btn" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}" title="${t('colSig')}">👁</a></td>
+        <td class="fc-c"><a href="#" class="reply-btn" data-rid="${esc(r.id||'')}" title="${t('colReply')}">✉️</a></td>
       </tr>`).join('')}</tbody></table>`;
   makeResizable($('detTable'), 'dashDetCols');
   wireSort($('detTable'), detSort, () => { page = 0; renderDetail(); });
@@ -930,6 +987,9 @@ function renderDetail(){
   });
   box.querySelectorAll('a.eng-link').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
+  });
+  box.querySelectorAll('a.reply-btn').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); const r = rows.find(x => x.id === a.dataset.rid); if (r) replyToEngineer(r); };
   });
 
   renderPager(total, start, view.length, maxPage);
