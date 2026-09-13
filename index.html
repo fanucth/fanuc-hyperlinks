@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FTH One Links</title>
+    <script>
+        // เปลี่ยน IP/domain ของเซิร์ฟเวอร์ภายในตรงนี้ที่เดียว — ลิงก์ทั้งหมดที่มี class "lan-link" จะอัปเดตตาม
+        const LAN_HOST = 'http://10.33.16.247';
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         /* --- ตั้งค่าพื้นฐาน --- */
@@ -538,10 +542,10 @@ a
                 <div class="link-box">
                     <span class="emoji-icon">🟡</span> <span class="link-name">Newsletter ▼</span>
                     <div class="dropdown-menu">
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol4.pdf" target="_blank" class="sub-link">Vol.4 Storage Media</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol3.pdf" target="_blank" class="sub-link">Vol.3 Password</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol2.pdf" target="_blank" class="sub-link">Vol.2 AI</a>
-                        <a href="http://10.33.16.238/fth/Newsletter/Vol1.pdf" target="_blank" class="sub-link">Vol.1 Social Eng</a>
+                        <a href="#" data-path="/fth/Newsletter/Vol4.pdf" target="_blank" class="sub-link lan-link">Vol.4 Storage Media</a>
+                        <a href="#" data-path="/fth/Newsletter/Vol3.pdf" target="_blank" class="sub-link lan-link">Vol.3 Password</a>
+                        <a href="#" data-path="/fth/Newsletter/Vol2.pdf" target="_blank" class="sub-link lan-link">Vol.2 AI</a>
+                        <a href="#" data-path="/fth/Newsletter/Vol1.pdf" target="_blank" class="sub-link lan-link">Vol.1 Social Eng</a>
                     </div>
                 </div>
 
@@ -603,7 +607,7 @@ a
                 <a href="http://10.36.1.12/PRBSSolution/prcm01p01/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Barcode System</span></a>
                 <a href="https://fanuc-inventory.syncroncloud.com/views/security/login/login.xhtml" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">Syncron</span></a>
 				<a href="https://portal.office.com/account" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">MS365 Portal</span></a>
-                <a href="http://10.33.16.238/gbdw/" target="_blank" class="link-box"><span class="emoji-icon">🟡</span><span class="link-name">GBDW Portal</span></a>
+                <a href="#" data-path="/gbdw/" target="_blank" class="link-box lan-link"><span class="emoji-icon">🟡</span><span class="link-name">GBDW Portal</span></a>
             </div>
         </div>
 
@@ -614,7 +618,7 @@ a
             </div>
             <div class="grid-links">
                 <a href="https://fanucth.github.io/fanuc-hyperlinks/" target="_blank" class="link-box"><span class="emoji-icon">🌐</span><span class="link-name">Outside Link</span></a>
-				<a href="http://10.33.16.238/IT" target="_blank" class="link-box"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
+				<a href="#" data-path="/IT" target="_blank" class="link-box lan-link"><span class="emoji-icon">🏘️</span><span class="link-name">Internal System</span></a>
 				<div class="link-box">
 					<img src="https://images.seeklogo.com/logo-png/37/1/tisco-logo-png_seeklogo-373898.png" alt="TISCO Logo" style="height: 40px; max-width: 45px; object-fit: contain; margin-bottom: 8px;">
 					<span class="link-name">TISCO ▼</span>
@@ -637,12 +641,12 @@ a
 
                 <a href="https://one.fanucth.co.th/survey.html" target="_blank" class="link-box"><span class="emoji-icon">📝</span><span class="link-name">Customer Survey</span></a>
                 <a href="https://one.fanucth.co.th/scrap.html" target="_blank" class="link-box"><span class="emoji-icon">♻️</span><span class="link-name">Scrapping</span></a>
-                <a href="http://10.33.16.238/IT/User/" target="_blank" class="link-box"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
+                <a href="#" data-path="/IT/User/" target="_blank" class="link-box lan-link"><span class="emoji-icon">📇</span><span class="link-name">Contact List</span></a>
 			    <a href="http://10.33.16.246/index.html" target="_blank" class="link-box"><span class="emoji-icon">📜</span><span class="link-name">License Delivery Manager</span></a>
-                <a href="http://10.33.16.238/fanucthai" target="_blank" class="link-box"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
-                <a href="http://10.33.16.238/fth/PC_Software_Delivery.html" target="_blank" class="link-box"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
+                <a href="#" data-path="/fanucthai" target="_blank" class="link-box lan-link"><span class="emoji-icon">🌏</span><span class="link-name">FTH Web (Beta)</span></a>
+                <a href="#" data-path="/fth/PC_Software_Delivery.html" target="_blank" class="link-box lan-link"><span class="emoji-icon">💽</span><span class="link-name">Software Delivery</span></a>
                 <a href="http://accountserver:8080/fanuc/authentication/" target="_blank" class="link-box"><span class="emoji-icon">📊</span><span class="link-name">Billing System</span></a>
-                <a href="https://10.33.16.238/fth/robot_dem.html" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">Robot System</span></a>
+                <a href="#" data-path="/fth/robot_dem.html" target="_blank" class="link-box lan-link"><span class="emoji-icon">🤖</span><span class="link-name">Robot System</span></a>
 				<a href="https://10.33.16.213/" target="_blank" class="link-box"><span class="emoji-icon">🤖</span><span class="link-name">ZDT</span></a>
                 <a href="https://aps1-vms.tplinkcloud.com/#/vms/video" target="_blank" class="link-box"><span class="emoji-icon">📹</span><span class="link-name">Robot CCTV</span></a>
 
@@ -668,7 +672,7 @@ a
                 <div class="link-box">
                     <span class="emoji-icon">👨‍💻</span> <span class="link-name">IT ▼</span>
                     <div class="dropdown-menu">
-                        <a href="http://10.33.16.238/fth/downloads/anyconnect-win-4.10.03104.msi" target="_blank" class="sub-link">📥 Download Cisco VPN</a>
+                        <a href="#" data-path="/fth/downloads/anyconnect-win-4.10.03104.msi" target="_blank" class="sub-link lan-link">📥 Download Cisco VPN</a>
                         
                         <div class="vpn-copy-container">
                             <div class="vpn-label">VPN Server Address:</div>
@@ -901,6 +905,11 @@ document.addEventListener('click', function(e) {
             box.classList.remove('active');
         });
     }
+});
+
+// เติม href ให้ลิงก์ที่ชี้เข้าเซิร์ฟเวอร์ภายใน (LAN_HOST) — แก้ IP แค่จุดเดียวด้านบนของไฟล์
+document.querySelectorAll('.lan-link').forEach(el => {
+    el.href = LAN_HOST + el.dataset.path;
 });
 
 </script>
