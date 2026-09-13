@@ -10,6 +10,8 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.13e - เปลี่ยน popup ยืนยัน (เลข Report/Order ซ้ำ, ยกเลิก QR) จาก confirm() ของเบราว์เซอร์
+                     เป็น modal สไตล์แอปเอง (showConfirm())
        2026.09.13d - หน้าลูกค้า: บรรทัด "Team" ขึ้นชื่อเพื่อนร่วมทีมทีละบรรทัด (bullet) แทนการต่อด้วยจุลภาคบรรทัดเดียว
        2026.09.13c - หน้าลูกค้า: บรรทัด "Team" ไม่โชว์ชื่อตัวเองซ้ำ (ชื่อขึ้นเป็นหัวข้อใหญ่ด้านบนอยู่แล้ว) โชว์แค่ชื่อเพื่อนร่วมทีมคนอื่น
        2026.09.13b - ทีมงานตอนสร้าง QR: โชว์ "เพื่อนร่วมแผนกเดียวกัน" เป็น checkbox ให้เลยไม่ต้องพิมพ์
@@ -354,7 +356,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.13d";
+const APP_VERSION = "2026.09.13e";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -959,7 +961,7 @@ async function makeQr(){
         const st = d.used ? t('stUsed') : t('stWait');
         return `• ${f} — ${d.engineer_name}, ${fmtDateTime(d.created_at)} (${st})`;
       }).join('\n');
-      if (!confirm(`${t('dupWarn')}\n\n${lines}\n\n${t('dupProceed')}`)) return;
+      if (!(await showConfirm(`${t('dupWarn')}\n\n${lines}\n\n${t('dupProceed')}`, '⚠️'))) return;
     }
 
     // เก็บพิกัด ถ้าผู้บริหารเปิดสวิตช์ geo_capture ไว้
