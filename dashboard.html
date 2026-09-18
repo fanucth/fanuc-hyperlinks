@@ -12,6 +12,18 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.18f - popup คลิกดาว (เดือนนี้/เดือนก่อน) เพิ่มรายการคำตอบแต่ละรายการ (วันที่/RP-SO/ลูกค้า/
+                     คะแนนเฉลี่ย/คอมเมนต์) ต่อจากกราฟแท่ง Q1-Q5 — เช่นมีคนตอบ 2 รายการ ก็โชว์รายละเอียด
+                     ทั้ง 2 รายการพร้อมคอมเมนต์ ไม่ใช่แค่ตัวเลขสรุป
+       2026.09.18e - การ์ด KPI ผู้นำ: คลิกดาวเปิด popup สรุปผลงานของวิศวกรคนนั้น "เฉพาะเดือนที่การ์ดพูดถึง"
+                     (เดือนนี้/เดือนก่อน แยกจากตัวกรองหลักของหน้า) — จำนวนงาน, คะแนนเฉลี่ยรวม+ดาว, กราฟแท่ง Q1-Q5
+       2026.09.18d - อันดับคะแนนวิศวกร: โชว์วิศวกรทุกคนที่ยังทำงานอยู่ รวมคนที่ยังไม่มีรายการแบบสอบถามด้วย
+                     (ต่อท้ายกลุ่มที่มีคะแนน) แบ่งหน้าละ 10 คน มีปุ่ม Prev/Next; รวม "จำนวนแบบสอบถาม" +
+                     "คะแนนเฉลี่ยรวม" (การ์ด KPI 2 อันบนซ้าย) เป็นการ์ดเดียวให้แคบลง; แก้ ALL_ENGINEERS จากหน้า
+                     จัดการวิศวกรที่ลืมพก photo_path มาด้วย (ทำให้รูปใน KPI การ์ดผู้นำหายไปหลังเปิดหน้านั้น)
+       2026.09.18c - KPI card ผู้นำ: รูปใหญ่ขึ้นอีก (64px -> 96px)
+       2026.09.18b - KPI card ผู้นำ: รูปใหญ่ขึ้น (40px -> 64px) + ชื่อย่อนามสกุลเหลือตัวอักษรแรก+จุด (เช่น "Chaisiri R.")
+       2026.09.18a - KPI card ผู้นำ (Top rating/Most responses เดือนนี้/เดือนก่อน) เพิ่มรูปวิศวกร + คลิกชื่อเปิด popup โปรไฟล์ได้
        2026.09.17a - ตาราง "All responses": ลากไอคอน ⠿ ที่หัวคอลัมน์เพื่อย้ายลำดับได้ + ปุ่ม "⚙️ คอลัมน์"
                      เลือกซ่อน/แสดงคอลัมน์ได้ (ยกเว้น #) จำลำดับ+การซ่อนไว้ใน localStorage
                      (dashDetColOrder / dashDetColHidden) มีปุ่ม "ค่าเริ่มต้น" รีเซ็ตกลับ
@@ -96,6 +108,11 @@
   .pager .pg-gap{padding:0 2px;color:var(--fc-text-mute);}
   .pager .pg-jump{width:56px;min-height:32px;padding:4px 6px;font-size:13px;text-align:center;}
   .eng-link{color:var(--fc-primary);text-decoration:none;cursor:pointer;}
+  .kpi-leader-row{display:flex;align-items:center;gap:var(--fc-s3);}
+  .kpi-combo-row{display:flex;gap:var(--fc-s3);}
+  .kpi-combo-item{flex:1;min-width:0;}
+  .kpi-combo-item + .kpi-combo-item{border-left:1px solid var(--fc-border);padding-left:var(--fc-s3);}
+  .kpi-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:2px solid var(--fc-border);}
   .fc-col-drag{cursor:grab;padding:0 5px;color:var(--fc-text-mute);user-select:none;}
   .fc-col-drag:hover{color:var(--fc-text);}
   #detTable th.drag-over{background:var(--fc-row-hover);outline:2px dashed var(--fc-primary);outline-offset:-2px;}
@@ -208,6 +225,7 @@
         <button class="fc-btn fc-btn--sm fc-right" id="btnExportRank" data-i18n="exportBtn">Export</button>
       </div>
       <div id="sumBox" class="fc-table-wrap"><table class="fc-table fc-table--zebra" id="sumTable"></table></div>
+      <div class="pager" id="rankPager"></div>
     </div>
 
     <div class="fc-card">
@@ -325,7 +343,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.17a";
+const APP_VERSION = "2026.09.18f";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -392,7 +410,7 @@ const I18N = {
   exportXlsx:{th:"Export ทั้งหมด",en:"Export all",ja:"すべて出力"},
   exportBtn:{th:"Export",en:"Export",ja:"出力"},
   ranking:{th:"อันดับคะแนนของวิศวกร",en:"Engineer score ranking",ja:"エンジニア評価ランキング"},
-  rankNoteTxt:{th:"เรียงตามคะแนนเฉลี่ยรวมในช่วงที่เลือก (เฉพาะช่างที่มีรายการ ≥ ขั้นต่ำ)",en:"By overall average in the selected range (responses ≥ minimum)",ja:"選択期間の総合平均順（件数 ≥ 最小）"},
+  rankNoteTxt:{th:"เรียงตามคะแนนเฉลี่ยรวมในช่วงที่เลือก — วิศวกรที่ยังไม่มีรายการ (< ขั้นต่ำ) จะแสดงต่อท้ายรายการที่มีคะแนน",en:"Sorted by overall average for the selected range — engineers with no responses yet (< minimum) are listed after the scored ones",ja:"選択期間の総合平均順 — まだ回答がない（最小未満の）エンジニアは、評価済みの一覧の後に表示されます"},
   detail:{th:"รายการทั้งหมด",en:"All responses",ja:"全回答"},
   noResults:{th:"ไม่มีข้อมูลในช่วงที่เลือก",en:"No results for this range",ja:"該当データなし"},
   emptyHint:{th:"ลองขยายช่วงวันที่ หรือกดปุ่ม “ทั้งหมด”",en:"Try widening the date range or press “All time”",ja:"期間を広げるか「全期間」を押してください"},
@@ -453,6 +471,8 @@ const I18N = {
   epRecentComments:{th:"ความเห็นล่าสุด",en:"Recent comments",ja:"最近のコメント"},
   epNoComments:{th:"ยังไม่มีความเห็น",en:"No comments yet",ja:"コメントなし"},
   epNoStats:{th:"ไม่มีข้อมูลในช่วงที่กรองอยู่",en:"No data in the current filter",ja:"現在のフィルターにデータなし"},
+  viewMonthDetail:{th:"ดูรายละเอียดผลงานเดือนนี้",en:"View this month's detail",ja:"今月の詳細を見る"},
+  monthResponses:{th:"รายการที่ตอบในเดือนนี้",en:"Responses this period",ja:"この期間の回答一覧"},
   close:{th:"ปิด",en:"Close",ja:"閉じる"},
   manageEng:{th:"จัดการวิศวกร",en:"Manage engineers",ja:"エンジニア管理"},
   backToDash:{th:"กลับไปแดชบอร์ด",en:"Back to dashboard",ja:"ダッシュボードに戻る"},
@@ -760,6 +780,8 @@ let rows = [];
 let rankRows = [];
 let page = 0;
 let pageSize = parseInt(localStorage.getItem('dashPageSize'), 10) || 10;
+let rankPage = 0;
+const RANK_PAGE_SIZE = 10;
 let ALL_ENGINEERS = [];   // แคชไว้ใช้ทั้งตัวกรองวิศวกร และหน้าจัดการวิศวกร (id,fname,lname,department,active)
 const DEPT_OPTIONS = ['Service - FA', 'Service - Robot', 'Service - Robomachine', 'Service - Robodrill & Robocut', 'Service - Roboshot'];
 
@@ -784,7 +806,7 @@ async function startDash(){
   $('btnChgPw').classList.remove('fc-hidden');
   $('fEngineer').options[0].text = '— All —';
   $('fDept').options[0].text = '— All —';
-  const { data: engs } = await sb.from('engineers').select('id,fname,lname,department,active,email').order('fname');
+  const { data: engs } = await sb.from('engineers').select('id,fname,lname,department,active,email,photo_path').order('fname');
   ALL_ENGINEERS = engs || [];
   const depts = new Set();
   ALL_ENGINEERS.forEach(e => { if (e.department) depts.add(e.department); });
@@ -808,7 +830,7 @@ async function startDash(){
   $('qLastMonth').onclick = () => setRange('lastmonth');
   $('qYear').onclick  = () => setRange('year');
   $('qAll').onclick   = () => setRange('all');
-  $('fMinN').onchange = render;
+  $('fMinN').onchange = () => { rankPage = 0; render(); };
   $('geoSwitch').classList.remove('fc-hidden');
   $('setGeo').onchange = saveGeoSetting;
   loadGeoSetting();
@@ -846,7 +868,7 @@ async function loadLeaders(){
   (data || []).forEach(r => {
     const k = mKey(r.submitted_at); if (!bucket[k]) return;
     const g = bucket[k][r.engineer_id] || (bucket[k][r.engineer_id] =
-      { name:`${r.fname||''} ${r.lname||''}`.trim(), dept:r.department||'', n:0, sum:0 });
+      { engineer_id:r.engineer_id, fname:r.fname||'', lname:r.lname||'', dept:r.department||'', n:0, sum:0 });
     g.n++;
     g.sum += (r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall) / 5;
   });
@@ -980,6 +1002,7 @@ async function applyFilter(){
   // ยังไม่ได้รัน migrate_batch2.sql -> v_survey_by_engineer ไม่มี: ใช้ rows เอง (นับแค่ lead engineer ต่องาน)
   rankRows = rankRes.error ? rows : (rankRes.data || []);
   page = 0;
+  rankPage = 0;
   render();
 }
 
@@ -1018,31 +1041,53 @@ function rateBadge(v){
   return `<span class="fc-badge fc-badge--danger">${t('rateLow')} ${v.toFixed(2)}</span>`;
 }
 
-function leaderCard(labelKey, g, kind){
-  const body = g
-    ? `<div class="kpi-name">🥇 ${esc(g.name)}</div>
-       <div class="fc-kpi__sub">${esc(g.dept)} · ${kind === 'rate'
-          ? (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsHtml(g.sum / g.n) + ' · ' + g.n + ' ' + t('unitResp')
-          : g.n + ' ' + t('unitResp') + ' · ' + (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsHtml(g.sum / g.n)}</div>`
-    : `<div class="kpi-name" style="color:var(--fc-text-mute)">${t('kpiNoData')}</div>`;
-  return `<div class="fc-kpi"><div class="fc-kpi__label">${t(labelKey)}</div>${body}</div>`;
+function leaderCard(labelKey, g, kind, monthFlag){
+  if (!g) return `<div class="fc-kpi"><div class="fc-kpi__label">${t(labelKey)}</div><div class="kpi-name" style="color:var(--fc-text-mute)">${t('kpiNoData')}</div></div>`;
+  const eng = ALL_ENGINEERS.find(e => e.id === g.engineer_id);
+  const photo = eng && eng.photo_path
+    ? `<img class="kpi-photo" src="${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${eng.photo_path}" alt="" onerror="this.style.visibility='hidden'">`
+    : `<div class="kpi-photo"></div>`;
+  // ดาวคลิกได้ -> เปิดสรุปผลงานของวิศวกรคนนี้เฉพาะเดือนที่การ์ดนี้พูดถึง (ไม่ใช่ตัวกรองหลักของหน้า ซึ่งอาจเป็นช่วงอื่น)
+  const starsLink = `<a href="#" class="month-stat-link" data-eid="${esc(g.engineer_id||'')}" data-month="${monthFlag}" title="${esc(t('viewMonthDetail'))}">${starsHtml(g.sum / g.n)}</a>`;
+  const statLine = kind === 'rate'
+    ? (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsLink + ' · ' + g.n + ' ' + t('unitResp')
+    : g.n + ' ' + t('unitResp') + ' · ' + (g.sum / g.n).toFixed(2) + ' ' + t('unitScore') + ' ' + starsLink;
+  const shortName = `${g.fname}${g.lname ? ' ' + g.lname.charAt(0) + '.' : ''}`.trim();
+  return `<div class="fc-kpi">
+    <div class="fc-kpi__label">${t(labelKey)}</div>
+    <div class="kpi-leader-row">
+      ${photo}
+      <div>
+        <div class="kpi-name"><a href="#" class="eng-link" data-eid="${esc(g.engineer_id||'')}">🥇 ${esc(shortName)}</a></div>
+        <div class="fc-kpi__sub">${esc(g.dept)} · ${statLine}</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderKpis(){
   const box = $('kpis');
   const L = leaders || {};
+  const avgVal = rows.length ? rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length : 0;
   const filtered = rows.length
-    ? `<div class="fc-kpi"><div class="fc-kpi__label">${t('kpiResponses')}</div>
-         <div class="fc-kpi__value">${rows.length}</div></div>
-       <div class="fc-kpi"><div class="fc-kpi__label">${t('kpiAvg')}</div>
-         <div class="fc-kpi__value">${(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length).toFixed(2)} ${starsHtml(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length)}</div>
-         <div class="fc-kpi__sub">${rateBadge(rows.reduce((s,r)=>s+qsum(r)/5,0)/rows.length)}</div></div>`
+    ? `<div class="fc-kpi">
+         <div class="kpi-combo-row">
+           <div class="kpi-combo-item"><div class="fc-kpi__value" style="font-size:22px">${rows.length}</div><div class="fc-kpi__label">${t('kpiResponses')}</div></div>
+           <div class="kpi-combo-item"><div class="fc-kpi__value" style="font-size:22px">${avgVal.toFixed(2)} ${starsHtml(avgVal)}</div><div class="fc-kpi__label">${t('kpiAvg')}</div><div class="fc-kpi__sub">${rateBadge(avgVal)}</div></div>
+         </div>
+       </div>`
     : '';
   box.innerHTML = filtered
-    + leaderCard('kpiTopRateM', L.rateM, 'rate')
-    + leaderCard('kpiTopRespM', L.respM, 'resp')
-    + leaderCard('kpiTopRateL', L.rateL, 'rate')
-    + leaderCard('kpiTopRespL', L.respL, 'resp');
+    + leaderCard('kpiTopRateM', L.rateM, 'rate', 'this')
+    + leaderCard('kpiTopRespM', L.respM, 'resp', 'this')
+    + leaderCard('kpiTopRateL', L.rateL, 'rate', 'last')
+    + leaderCard('kpiTopRespL', L.respL, 'resp', 'last');
+  box.querySelectorAll('a.eng-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
+  });
+  box.querySelectorAll('a.month-stat-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openMonthlyProfile(a.dataset.eid, a.dataset.month); };
+  });
 }
 
 function renderRanking(){
@@ -1050,11 +1095,27 @@ function renderRanking(){
   const box = $('sumBox');
   if (!rows.length) {
     box.innerHTML = `<div class="fc-empty"><div class="fc-empty__title">${t('noResults')}</div><div>${t('emptyHint')}</div></div>`;
+    $('rankPager').innerHTML = '';
     return;
   }
   const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
-  const list = sortArr(agg().filter(e => e.n >= minN), rankSort, 'rank');
-  const c = v => `<td class="fc-c">${v.toFixed(2)}</td>`;
+  const scored = agg().filter(e => e.n >= minN);
+  const scoredIds = new Set(scored.map(e => e.engineer_id));
+  // วิศวกรที่ยังทำงานอยู่แต่ยังไม่มีรายการถึงขั้นต่ำ — โชว์ไว้ต่อท้าย ไม่ให้หายไปจากตาราง
+  const noData = ALL_ENGINEERS
+    .filter(e => e.active !== false && !scoredIds.has(e.id))
+    .map(e => ({ engineer_id: e.id, name: `${e.fname||''} ${e.lname||''}`.trim(), dept: e.department || '', active: true, n: 0, q: [0,0,0,0,0], avg: null }))
+    .sort((a,b) => a.name.localeCompare(b.name, 'th'));
+  const sortedScored = sortArr(scored, rankSort, 'rank');
+  const list = [...sortedScored, ...noData];
+
+  const total = list.length;
+  const maxPage = Math.max(0, Math.ceil(total / RANK_PAGE_SIZE) - 1);
+  if (rankPage > maxPage) rankPage = maxPage;
+  const start = rankPage * RANK_PAGE_SIZE;
+  const view = list.slice(start, start + RANK_PAGE_SIZE);
+
+  const c = v => v == null || isNaN(v) ? `<td class="fc-c">—</td>` : `<td class="fc-c">${v.toFixed(2)}</td>`;
   const medal = i => i === 0 ? '<span class="medal">🥇</span>' : i === 1 ? '<span class="medal">🥈</span>' : i === 2 ? '<span class="medal">🥉</span>' : (i + 1);
   const S = rankSort;
   box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover" id="sumTable">
@@ -1064,17 +1125,27 @@ function renderRanking(){
       ${th(t('q1'), 'q0', S, 'fc-c')}${th(t('q2'), 'q1', S, 'fc-c')}${th(`<span title="${esc(t('q3Full'))}">${t('q3')}</span>`, 'q2', S, 'fc-c')}
       ${th(t('q4'), 'q3', S, 'fc-c')}${th(t('q5'), 'q4', S, 'fc-c')}${th(t('colAvg'), 'avg', S, 'fc-c')}
     </tr></thead>
-    <tbody>${list.map((e,i) => `
+    <tbody>${view.map((e,i) => {
+      const rank = start + i;
+      return `
       <tr>
-        <td class="fc-c fc-rank">${S.key === 'avg' && S.dir === 'desc' ? medal(i) : (i + 1)}</td>
+        <td class="fc-c fc-rank">${e.n > 0 && S.key === 'avg' && S.dir === 'desc' ? medal(rank) : (rank + 1)}</td>
         <td><a href="#" class="eng-link" data-eid="${esc(e.engineer_id||'')}">${esc(e.name)}</a>${!e.active ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}</td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
-        ${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}
-        <td class="fc-c"><b>${e.avg.toFixed(2)}</b> ${starsHtml(e.avg)}</td>
-      </tr>`).join('')}</tbody></table>`;
-  wireSort($('sumTable'), rankSort, renderRanking);
+        ${e.n > 0 ? `${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}` : `${c(null)}${c(null)}${c(null)}${c(null)}${c(null)}`}
+        <td class="fc-c">${e.avg != null ? `<b>${e.avg.toFixed(2)}</b> ${starsHtml(e.avg)}` : '—'}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  wireSort($('sumTable'), rankSort, () => { rankPage = 0; renderRanking(); });
   box.querySelectorAll('a.eng-link').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
   });
+
+  const pager = $('rankPager');
+  pager.innerHTML = `<span class="fc-right">${t('pageInfo', { a: total ? start + 1 : 0, b: start + view.length, n: total })}</span>
+    <button class="fc-btn fc-btn--sm" id="rankPgPrev"${rankPage <= 0 ? ' disabled' : ''}>‹ ${t('prev')}</button>
+    <button class="fc-btn fc-btn--sm" id="rankPgNext"${rankPage >= maxPage ? ' disabled' : ''}>${t('next')} ›</button>`;
+  $('rankPgPrev').onclick = () => { if (rankPage > 0) { rankPage--; renderRanking(); } };
+  $('rankPgNext').onclick = () => { if (rankPage < maxPage) { rankPage++; renderRanking(); } };
 }
 
 function geoCell(r){
@@ -1134,6 +1205,81 @@ async function replyToEngineer(r){
   ].join('\n');
 
   window.location.href = `mailto:${encodeURIComponent(eng.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// สรุปผลงานของวิศวกรคนนี้ "เฉพาะเดือนที่การ์ด KPI พูดถึง" (เดือนนี้/เดือนก่อน) — คนละชุดข้อมูลกับ
+// openEngineerProfile() ที่ใช้ตัวกรองหลักของหน้า (อาจเป็นช่วงอื่น) เพื่อให้ตัวเลขตรงกับที่การ์ดโชว์จริง
+async function openMonthlyProfile(engineerId, monthFlag){
+  if (!engineerId) return;
+  const body = $('engModalBody');
+  body.innerHTML = `<div class="fc-skeleton" style="height:76px;margin-bottom:12px"></div><div class="fc-skeleton" style="height:120px"></div>`;
+  $('engModal').classList.remove('fc-hidden');
+
+  const now = new Date();
+  let from, to, label;
+  if (monthFlag === 'this') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    to = now;
+    label = t('thisMonth');
+  } else {
+    from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    label = t('lastMonth');
+  }
+
+  const [{ data: e, error }, { data: list }] = await Promise.all([
+    sb.from('engineers').select('*').eq('id', engineerId).maybeSingle(),
+    sb.from('v_survey_by_engineer').select('*').eq('engineer_id', engineerId)
+      .gte('submitted_at', from.toISOString()).lte('submitted_at', to.toISOString()),
+  ]);
+  if (error || !e) { body.innerHTML = `<div class="fc-empty">${esc(error ? error.message : 'not found')}</div>`; return; }
+
+  const photo = e.photo_path
+    ? `<img class="ep-photo" src="${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${e.photo_path}" alt="" onerror="this.style.visibility='hidden'">`
+    : `<div class="ep-photo"></div>`;
+  const metaLines = [e.title ? esc(e.title) : '', e.department ? esc(e.department) : ''].filter(Boolean).join('<br>');
+
+  const rows2 = list || [];
+  const n = rows2.length;
+  const qCols = ['q1_response_time','q2_technical_skill','q3_communication_cost','q4_professionalism','q5_overall'];
+  const qAvg = qCols.map(k => n ? rows2.reduce((s,r)=>s+r[k],0)/n : 0);
+  const avg = n ? qAvg.reduce((s,x)=>s+x,0)/5 : null;
+  const qLabels = [t('q1'), t('q2'), t('q3'), t('q4'), t('q5')];
+  const bars = n ? qLabels.map((lbl,i) => `<div class="ep-bar-row"><span class="lbl">${lbl}</span>
+      <span class="ep-bar-track"><span class="ep-bar-fill" style="width:${(qAvg[i]/5*100).toFixed(0)}%"></span></span>
+      <span class="ep-bar-val">${qAvg[i].toFixed(2)}</span></div>`).join('') : `<p class="fc-mut">${t('epNoStats')}</p>`;
+
+  // ดึงรายละเอียดของแต่ละคำตอบ (วันที่/Report-Order/ลูกค้า/คอมเมนต์) — v_survey_by_engineer ไม่มีคอลัมน์เหล่านี้
+  // ต้องไป join กับ v_survey_full แยกอีกครั้งด้วย response id (ทำงานได้แม้ engineer นี้เป็นแค่ทีมงาน ไม่ใช่ lead
+  // เพราะ v_survey_full ถูก filter ด้วย id ของคำตอบตรงๆ ไม่ใช่ engineer_id)
+  let detailRows = [];
+  if (n) {
+    const { data: full } = await sb.from('v_survey_full').select('id,submitted_at,comment,service_report_no,service_order_no,customer_name,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall').in('id', rows2.map(r => r.response_id));
+    detailRows = (full || []).slice().sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+  }
+  const respListHtml = detailRows.length ? detailRows.map(r => {
+    const rAvg = (r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall) / 5;
+    return `<div class="ep-comment">
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--fc-text)">
+        <span>${fmtDateTime(r.submitted_at)} · RP ${esc(r.service_report_no||'-')} / SO ${esc(r.service_order_no||'-')}${r.customer_name ? ' · ' + esc(r.customer_name) : ''}</span>
+        <span><b>${rAvg.toFixed(2)}</b></span>
+      </div>
+      <div style="margin-top:4px">${r.comment ? esc(r.comment) : `<span class="fc-mut">${t('epNoComments')}</span>`}</div>
+    </div>`;
+  }).join('') : '';
+
+  body.innerHTML = `
+    <div class="ep-head">${photo}<div><div class="ep-name">${esc(e.fname)} ${esc(e.lname)}</div><div class="ep-meta">${metaLines}</div></div></div>
+    <p class="fc-mut" style="margin:0 0 6px">${esc(label)}</p>
+    <div class="ep-stats-grid">
+      <div class="ep-stat"><div class="v">${n}</div><div class="l">${t('colCount')}</div></div>
+      <div class="ep-stat"><div class="v">${avg != null ? avg.toFixed(2) + ' ' + starsHtml(avg) : '—'}</div><div class="l">${t('colAvg')}</div></div>
+    </div>
+    <p class="fc-mut" style="margin:0 0 6px">${t('epStats')}</p>
+    ${bars}
+    ${n ? `<p class="fc-mut" style="margin:var(--fc-s3) 0 6px">${t('monthResponses')}</p>
+    <div style="max-height:220px;overflow-y:auto">${respListHtml}</div>` : ''}
+  `;
 }
 
 async function openEngineerProfile(engineerId){
@@ -1200,7 +1346,7 @@ async function loadManageEngList(){
   const { data, error } = await sb.from('engineers').select('*').order('fname');
   if (error) { box.innerHTML = `<div class="fc-empty">${esc(error.message)}</div>`; return; }
   MG_LIST = data || [];
-  ALL_ENGINEERS = MG_LIST.map(e => ({ id: e.id, fname: e.fname, lname: e.lname, department: e.department, active: e.active, email: e.email }));
+  ALL_ENGINEERS = MG_LIST.map(e => ({ id: e.id, fname: e.fname, lname: e.lname, department: e.department, active: e.active, email: e.email, photo_path: e.photo_path }));
   rebuildEngFilterOptions();
   renderManageEngList();
 }
