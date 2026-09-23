@@ -654,6 +654,36 @@ function compressImage(file){
   });
 }
 
+// บันทึกภาพลงมือถือด้วย (Android: Downloads, iPhone: Files app)
+// เป็นสำเนาสำรองกันระบบมีปัญหา
+function savePhotoToDevice(dataUrl, phase, itemCode){
+  try {
+    const ts = new Date().toISOString().slice(0,10);
+    const filename = `scrap_${phase}_${itemCode}_${ts}.jpg`;
+
+    // แปลง dataUrl (base64) กลับมาเป็น Blob
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for(let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+    const blob = new Blob([u8arr], { type: mime });
+
+    // Trigger download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.warn('Failed to save photo locally:', err.message);
+  }
+}
+
 const fileInput = document.getElementById('fileInput');
 // หมายเหตุ: ปุ่ม "+" ในแกลเลอรี่ถูก re-render บ่อย (ทุกครั้งที่เพิ่ม/ลบรูป)
 // จึงผูก event ให้ปุ่ม "+" ไว้ในฟังก์ชัน renderGallery() แทนการผูกครั้งเดียวตรงนี้
@@ -666,6 +696,11 @@ fileInput.onchange = async (e) => {
     const dataUrl = await compressImage(file);
     const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
     arr.push(dataUrl);
+
+    // บันทึกลงมือถือด้วย (สำเนาสำรอง ป้องกันระบบมีปัญหา)
+    const itemCode = itemCodeInput.value.trim();
+    if (itemCode) savePhotoToDevice(dataUrl, capturingMode, itemCode);
+
     renderGallery(capturingMode);
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
     toast(t('photoAdded', {
