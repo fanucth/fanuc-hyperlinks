@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.4 | Updated: 2026-09-23
+<!-- VERSION: v3.5 | Updated: 2026-09-23
+     Changes (v3.5):
+       - เพิ่มโหมด "เพิ่มรูป" ให้รายการที่บันทึกแล้ว กรณีลืมถ่ายรูปก่อน/หลังทำลาย
+       - รูปใหม่ถูกผูกกับ record เดิม ไม่สร้างรายการซ้ำ และอัปเดตสถานะ complete/partial ตามจำนวนรูปจริง
+       - ล็อกรหัสชิ้นงานระหว่างแก้ไข และแสดงจำนวนรูปเดิมก่อนเริ่มถ่ายเพิ่ม
      Changes (v3.4):
        - Export PDF: เพิ่มเส้นคั่นแนวนอนเต็มความกว้างหลังจบแต่ละ item
          เพื่อให้เห็นขอบเขตของแต่ละรายการชัดเจนขึ้น
@@ -108,6 +112,7 @@
   .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
   .badge-done{background:rgba(61,220,132,.15);color:var(--ok);}
   .badge-partial{background:rgba(255,180,0,.15);color:var(--accent);}
+  #tableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
   th{color:var(--sub);font-weight:600;font-size:11px;}
@@ -122,9 +127,16 @@
   .code-row input{flex:1;margin-bottom:10px;}
   .btn-clear{flex:0 0 auto;width:44px;height:44px;margin-top:0;margin-bottom:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--sub);font-size:16px;font-weight:700;cursor:pointer;}
   .btn-clear:active{background:var(--accent2);color:#fff;}
+  .btn-clear:disabled{opacity:.4;cursor:not-allowed;}
   .tag{font-size:10.5px;background:var(--card2);color:var(--sub);padding:2px 8px;border-radius:20px;}
   .mode{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);display:inline-block;margin-top:6px;}
   .btn-view{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;font-size:12px;}
+  .table-actions{display:flex;gap:8px;flex-wrap:wrap;min-width:110px;}
+  .edit-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--accent);border-radius:6px;padding:12px;margin-bottom:12px;background:rgba(255,180,0,.08);}
+  .edit-banner b{display:block;color:var(--accent);font-size:14px;margin-bottom:4px;}
+  .edit-banner span{display:block;color:var(--sub);font-size:12px;line-height:1.5;}
+  .edit-banner button{flex:0 0 auto;min-height:44px;padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;}
+  input[readonly]{opacity:.7;cursor:not-allowed;}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
   .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column;}
   .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line);}
@@ -196,9 +208,16 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="photoCard">
     <h2 data-i18n="sectionPhotoTitle">2) ถ่ายภาพหลักฐาน</h2>
     <p class="note" data-i18n="sectionPhotoNote">ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ</p>
+    <div class="edit-banner" id="editBanner" style="display:none;">
+      <div>
+        <b id="editBannerTitle"></b>
+        <span id="editBannerSummary"></span>
+      </div>
+      <button id="btnCancelEdit" data-i18n="cancelEditButton">ยกเลิกแก้ไข</button>
+    </div>
 
     <div class="gallery-group">
       <div class="gallery-label"><span data-i18n="beforeLabel">📷 ก่อนทำลาย</span> <b id="countBefore">(0)</b></div>
@@ -266,7 +285,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.4';
+const APP_VERSION = 'v3.5';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -299,6 +318,11 @@ const TRANSLATIONS = {
   beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  editPhotosBtn:     { th:'✏️ เพิ่มรูป', en:'✏️ Add photos', ja:'✏️ 写真を追加' },
+  editModeTitle:     { th:'กำลังเพิ่มรูปให้: {code}', en:'Adding photos to: {code}', ja:'写真を追加中：{code}' },
+  editModeSummary:   { th:'รูปเดิม: ก่อน {before} / หลัง {after} • รูปที่ถ่ายเพิ่มจะแสดงด้านล่าง', en:'Existing photos: {before} before / {after} after • Newly captured photos appear below', ja:'既存写真：廃棄前{before}枚 / 廃棄後{after}枚 • 追加写真は下に表示されます' },
+  cancelEditButton:  { th:'ยกเลิกแก้ไข', en:'Cancel edit', ja:'編集をキャンセル' },
+  saveAddedPhotosButton:{ th:'💾 บันทึกรูปที่เพิ่ม', en:'💾 Save added photos', ja:'💾 追加写真を保存' },
   sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
   searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
   refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
@@ -345,6 +369,10 @@ const TRANSLATIONS = {
   photoDeleted:      { th:'ลบรูปแล้ว', en:'Photo deleted', ja:'写真を削除しました' },
   needItemCode:      { th:'กรุณาระบุรหัสชิ้นงาน', en:'Please enter an item code', ja:'品番を入力してください' },
   needAtLeastOnePhoto:{ th:'กรุณาถ่ายภาพอย่างน้อย 1 รูป', en:'Please take at least 1 photo', ja:'最低1枚は撮影してください' },
+  editStarted:       { th:'เลือกแล้ว: {code} — ถ่ายเฉพาะรูปที่ต้องการเพิ่ม', en:'Selected: {code} — capture only the missing photos', ja:'{code}を選択しました — 不足している写真のみ撮影してください' },
+  editNeedPhoto:     { th:'กรุณาถ่ายรูปที่ต้องการเพิ่มอย่างน้อย 1 รูป', en:'Please capture at least one photo to add', ja:'追加する写真を最低1枚撮影してください' },
+  editSuccess:       { th:'เพิ่มรูปสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Photos added successfully ✅ ({before} before / {after} after)', ja:'写真を追加しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
+  confirmDiscardDraft:{ th:'มีรูปที่ยังไม่ได้บันทึก ต้องการทิ้งรูปเหล่านี้และเปลี่ยนรายการหรือไม่?', en:'There are unsaved photos. Discard them and switch records?', ja:'未保存の写真があります。破棄して別の記録に切り替えますか？' },
   saveSuccess:       { th:'บันทึกรายการสำเร็จ ✅ ({before} ก่อน / {after} หลัง)', en:'Record saved successfully ✅ ({before} before / {after} after)', ja:'保存に成功しました ✅（廃棄前{before}枚 / 廃棄後{after}枚）' },
   cloudUploadFail:   { th:'อัปโหลดขึ้น Cloud ไม่สำเร็จ: {err}', en:'Cloud upload failed: {err}', ja:'クラウドへのアップロードに失敗しました: {err}' },
   cloudLoadFail:     { th:'โหลดรายการจาก Cloud ไม่สำเร็จ: {err}', en:'Failed to load records from the cloud: {err}', ja:'クラウドからの記録読み込みに失敗しました: {err}' },
@@ -382,7 +410,10 @@ function setLanguage(lang){
 }
 
 document.getElementById('langSelect').value = currentLang;
-document.getElementById('langSelect').onchange = (e) => setLanguage(e.target.value);
+document.getElementById('langSelect').onchange = (e) => {
+  setLanguage(e.target.value);
+  updateEditUi();
+};
 applyStaticI18n(); // เซ็ตข้อความเริ่มต้นก่อน DOM อื่นๆ ทำงาน
 </script>
 
@@ -397,6 +428,7 @@ let currentBefore = [], currentAfter = [], capturingMode = null;   // เก็�
 const PHOTO_SOFT_LIMIT = 10; // เตือนกันมือลั่นถ้าถ่ายเกินจำนวนนี้ ไม่ได้บล็อก
 let records = JSON.parse(localStorage.getItem('scrapRecords') || '[]'); // ใช้เฉพาะโหมดเก็บในเครื่อง (ไม่มี Supabase config)
 let cloudRecords = []; // แคชรายการล่าสุดที่ดึงจาก Supabase มาแสดง (โหมด Cloud)
+let editingRecord = null; // record เดิมที่กำลังเพิ่มรูปให้ (ไม่สร้าง record ใหม่)
 
 const itemCodeInput = document.getElementById('itemCode');
 const scanControls  = document.getElementById('scanControls');
@@ -779,6 +811,64 @@ function renderGallery(phase){
   });
 }
 
+// อัปเดต UI ระหว่างโหมดเพิ่มรูปให้ record เดิม
+function updateEditUi(){
+  const banner = document.getElementById('editBanner');
+  const btnClearCode = document.getElementById('btnClearCode');
+  const isEditing = !!editingRecord;
+
+  banner.style.display = isEditing ? 'flex' : 'none';
+  itemCodeInput.readOnly = isEditing;
+  btnClearCode.disabled = isEditing;
+  btnStartScan.disabled = isEditing;
+  btnSave.textContent = isEditing ? t('saveAddedPhotosButton') : t('btnSaveLabel');
+
+  if (isEditing) {
+    const photos = editingRecord.scrap_photos || [];
+    const nBefore = photos.filter(p => p.phase === 'before').length;
+    const nAfter  = photos.filter(p => p.phase === 'after').length;
+    document.getElementById('editBannerTitle').textContent =
+      t('editModeTitle', { code: editingRecord.item_code });
+    document.getElementById('editBannerSummary').textContent =
+      t('editModeSummary', { before: nBefore, after: nAfter });
+  }
+}
+
+function resetCaptureForm(){
+  editingRecord = null;
+  currentBefore = [];
+  currentAfter = [];
+  capturingMode = null;
+  itemCodeInput.value = '';
+  renderGallery('before');
+  renderGallery('after');
+  updateEditUi();
+}
+
+async function startEditRecord(record){
+  if (!record || !CLOUD_MODE) return;
+  const hasDraft = currentBefore.length > 0 || currentAfter.length > 0;
+  if (hasDraft && !window.confirm(t('confirmDiscardDraft'))) return;
+  if (scanning) await stopScan();
+
+  editingRecord = record;
+  currentBefore = [];
+  currentAfter = [];
+  capturingMode = null;
+  itemCodeInput.value = record.item_code;
+  renderGallery('before');
+  renderGallery('after');
+  updateEditUi();
+  document.getElementById('photoCard').scrollIntoView({ behavior:'smooth', block:'start' });
+  toast(t('editStarted', { code: record.item_code }));
+}
+
+document.getElementById('btnCancelEdit').onclick = () => {
+  const hasDraft = currentBefore.length > 0 || currentAfter.length > 0;
+  if (hasDraft && !window.confirm(t('confirmDiscardDraft'))) return;
+  resetCaptureForm();
+};
+
 /* ============================================================
    ส่วนที่ 5: บันทึกรายการ
    ============================================================ */
@@ -788,9 +878,10 @@ btnSave.onclick = async () => {
   const code = itemCodeInput.value.trim();
   if(!code){ toast(t('needItemCode'), true); return; }
   if(currentBefore.length === 0 && currentAfter.length === 0){
-    toast(t('needAtLeastOnePhoto'), true); return;
+    toast(t(editingRecord ? 'editNeedPhoto' : 'needAtLeastOnePhoto'), true); return;
   }
 
+  const editTarget = editingRecord;
   const now = new Date();
   const record = {
     code,
@@ -801,12 +892,15 @@ btnSave.onclick = async () => {
 
   // ล็อกปุ่มระหว่างบันทึก กันกดซ้ำ (ซ้ำแล้วจะได้ record/รูปซ้ำขึ้น Cloud)
   btnSave.disabled = true;
-  const originalLabel = btnSave.textContent;
   btnSave.textContent = t('savingLabel');
 
   try {
     if (CLOUD_MODE) {
-      await uploadToCloud(record);
+      if (editTarget) {
+        await appendPhotosToCloud(editTarget, record.before, record.after);
+      } else {
+        await uploadToCloud(record);
+      }
       await refreshCloudRecords();
     } else {
       records.push(record);
@@ -819,16 +913,16 @@ btnSave.onclick = async () => {
       renderTable();
     }
 
-    currentBefore = []; currentAfter = [];
-    renderGallery('before');
-    renderGallery('after');
-    itemCodeInput.value = '';
-    toast(t('saveSuccess', { before: record.before.length, after: record.after.length }));
+    resetCaptureForm();
+    toast(t(editTarget ? 'editSuccess' : 'saveSuccess', {
+      before: record.before.length,
+      after: record.after.length
+    }));
   } catch (e) {
     toast(t('cloudUploadFail', { err: e.message }), true);
   } finally {
     btnSave.disabled = false;
-    btnSave.textContent = originalLabel;
+    updateEditUi();
   }
 };
 
@@ -850,6 +944,7 @@ function renderTable(){
 if (!CLOUD_MODE) renderTable();
 renderGallery('before');
 renderGallery('after');
+updateEditUi();
 
 /* ============================================================
    ส่วนที่ 5.5: แสดงรายการจาก Supabase (โหมด Cloud) + ดูรูปรายตัว
@@ -881,25 +976,33 @@ function renderCloudTable(){
   document.getElementById('countTotal').textContent = cloudRecords.length;
   const wrap = document.getElementById('tableWrap');
   if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th></th></tr>`;
+  let html = `<table><tr><th>${t('colCode')}</th><th></th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th></tr>`;
   cloudRecords.forEach(r => {
     const photos  = r.scrap_photos || [];
     const nBefore = photos.filter(p => p.phase === 'before').length;
     const nAfter  = photos.filter(p => p.phase === 'after').length;
-    const done    = r.status === 'complete';
+    const done    = nBefore > 0 && nAfter > 0;
     const dt      = new Date(r.created_at).toLocaleString('th-TH');
     html += `<tr>
-      <td>${r.item_code}</td><td>${nBefore}</td><td>${nAfter}</td>
+      <td>${r.item_code}</td>
+      <td><div class="table-actions">
+        <button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button>
+        <button class="btn-view btn-edit" data-id="${r.id}">${t('editPhotosBtn')}</button>
+      </div></td>
+      <td>${nBefore}</td><td>${nAfter}</td>
       <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
       <td>${r.created_by_email || '-'}</td><td>${dt}</td>
-      <td><button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button></td>
     </tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
 
   wrap.querySelectorAll('.btn-view').forEach(btn => {
+    if (btn.classList.contains('btn-edit')) return;
     btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+  wrap.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.onclick = () => startEditRecord(cloudRecords.find(r => r.id === btn.dataset.id));
   });
 }
 
@@ -1001,7 +1104,7 @@ document.getElementById('btnExportExcel').onclick = async () => {
         'รหัสชิ้นงาน': r.item_code,
         'จำนวนภาพก่อนทำลาย': nBefore,
         'จำนวนภาพหลังทำลาย': nAfter,
-        'สถานะ': r.status === 'complete' ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
+        'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
         'บันทึกโดย': r.created_by_email || '-',
         'เวลาบันทึก': new Date(r.created_at).toLocaleString('th-TH')
       };
@@ -1320,6 +1423,39 @@ async function uploadToCloud(record){
     const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
     if (photoErr) throw photoErr;
   }
+}
+
+// เพิ่มรูปเข้า record เดิม กรณีบันทึกไปแล้วแต่ถ่ายรูปไม่ครบ
+// ไม่สร้าง scrap_records แถวใหม่ เพื่อให้ประวัติและ Export ยังเป็น item เดิมเพียงรายการเดียว
+async function appendPhotosToCloud(existingRecord, beforePhotos, afterPhotos){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) throw new Error('Please sign in first');
+
+  const [beforeUrls, afterUrls] = await Promise.all([
+    uploadPhaseAll(existingRecord.item_code, beforePhotos, 'before'),
+    uploadPhaseAll(existingRecord.item_code, afterPhotos,  'after')
+  ]);
+
+  const photoRows = [
+    ...beforeUrls.map(url => ({ record_id: existingRecord.id, phase: 'before', photo_url: url })),
+    ...afterUrls.map(url  => ({ record_id: existingRecord.id, phase: 'after',  photo_url: url }))
+  ];
+  if (photoRows.length > 0) {
+    const { error: photoErr } = await sb.from(TABLE_PHOTOS).insert(photoRows);
+    if (photoErr) throw photoErr;
+  }
+
+  const existingPhotos = existingRecord.scrap_photos || [];
+  const totalBefore = existingPhotos.filter(p => p.phase === 'before').length + beforeUrls.length;
+  const totalAfter  = existingPhotos.filter(p => p.phase === 'after').length + afterUrls.length;
+  const status = (totalBefore > 0 && totalAfter > 0) ? 'complete' : 'partial';
+  const { error: statusErr } = await sb.from(TABLE_RECORDS)
+    .update({ status })
+    .eq('id', existingRecord.id);
+
+  // รูปถูกบันทึกแล้ว จึงไม่ควรให้ผู้ใช้กดซ้ำจนเกิดรูปซ้ำเพียงเพราะ update status ล้มเหลว
+  // หน้าจอและ Export คำนวณสถานะจากจำนวนรูปจริงอยู่แล้ว
+  if (statusErr) console.warn('Photos saved but record status update failed:', statusErr.message);
 }
 
 initSupabase().catch(e => {
