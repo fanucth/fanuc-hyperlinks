@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.3 | Updated: 2026-09-23
+<!-- VERSION: v3.4 | Updated: 2026-09-23
+     Changes (v3.4):
+       - Export PDF: เพิ่มเส้นคั่นแนวนอนเต็มความกว้างหลังจบแต่ละ item
+         เพื่อให้เห็นขอบเขตของแต่ละรายการชัดเจนขึ้น
      Changes (v3.3):
        - iPhone/iPad: หลังถ่ายรูปจะเปิด Share Sheet เพื่อให้เลือก "Save Image" ลงแอป Photos
          แทนการดาวน์โหลดลง Files โดยตรง (Safari ไม่อนุญาตให้เว็บเขียนเข้า Photos แบบอัตโนมัติ)
@@ -263,7 +266,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.3';
+const APP_VERSION = 'v3.4';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -1133,7 +1136,14 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
       y = await drawPhotoGrid('Before', beforePhotos, y);
       y = await drawPhotoGrid('After',  afterPhotos,  y);
-      y += 16; // เว้นช่องว่างก่อนรายการถัดไป
+
+      // เส้นคั่นเต็มความกว้าง แสดงจุดสิ้นสุดของแต่ละ item ให้เห็นชัดเจน
+      const separatorY = Math.min(y + 8, pdf.internal.pageSize.getHeight() - 28);
+      pdf.setDrawColor(109, 110, 113); // เทากลางตามสีสนับสนุนของ FANUC
+      pdf.setLineWidth(0.8);
+      pdf.line(40, separatorY, pdf.internal.pageSize.getWidth() - 40, separatorY);
+      pdf.setDrawColor(0);
+      y = separatorY + 16; // เว้นช่องว่างก่อนรายการถัดไป
     }
     pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
   } finally {
