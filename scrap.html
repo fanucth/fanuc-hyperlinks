@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.2 | Updated: 2026-09-13
+<!-- VERSION: v3.3 | Updated: 2026-09-23
+     Changes (v3.3):
+       - iPhone/iPad: หลังถ่ายรูปจะเปิด Share Sheet เพื่อให้เลือก "Save Image" ลงแอป Photos
+         แทนการดาวน์โหลดลง Files โดยตรง (Safari ไม่อนุญาตให้เว็บเขียนเข้า Photos แบบอัตโนมัติ)
+       - อุปกรณ์/เบราว์เซอร์ที่ไม่รองรับการแชร์ไฟล์จะใช้วิธีดาวน์โหลดเดิมเป็น fallback
      Changes (v3.2):
        - เพิ่ม APP_VERSION เป็นตัวแปรเดียว (single source of truth) แทนการพิมพ์เลขเวอร์ชันซ้ำหลายจุด
          (title, badge หัวเว็บ, comment) กันหลุด sync กันเอง — badge หัวเว็บ + console.log ตอนโหลดหน้า
@@ -259,7 +263,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.2';
+const APP_VERSION = 'v3.3';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -288,7 +292,7 @@ const TRANSLATIONS = {
   itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
   btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
   sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
-  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除' },
+  sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ • iPhone/iPad: เลือก “Save Image” ในเมนูแชร์เพื่อเก็บลง Photos', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it • iPhone/iPad: choose “Save Image” in the share menu to store it in Photos', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除 • iPhone/iPad：共有メニューで「画像を保存」を選ぶと写真アプリに保存されます' },
   beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
@@ -654,9 +658,10 @@ function compressImage(file){
   });
 }
 
-// บันทึกภาพลงมือถือด้วย (Android: Downloads, iPhone: Files app)
-// เป็นสำเนาสำรองกันระบบมีปัญหา
-function savePhotoToDevice(dataUrl, phase, itemCode){
+// บันทึกภาพสำรองลงมือถือด้วย
+// iPhone/iPad: เปิด Share Sheet ให้ผู้ใช้เลือก "Save Image" เพื่อเก็บลง Photos
+// อุปกรณ์ที่ไม่รองรับ Web Share แบบไฟล์: ดาวน์โหลดลง Downloads/Files เหมือนเดิม
+async function savePhotoToDevice(dataUrl, phase, itemCode){
   try {
     const ts = new Date().toISOString().slice(0,10);
     const filename = `scrap_${phase}_${itemCode}_${ts}.jpg`;
@@ -670,7 +675,26 @@ function savePhotoToDevice(dataUrl, phase, itemCode){
     for(let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
     const blob = new Blob([u8arr], { type: mime });
 
-    // Trigger download
+    // Safari บน iPhone/iPad ไม่มี API สำหรับเขียนเข้า Photos โดยตรง
+    // Web Share จะเปิดเมนูของ iOS ซึ่งมีคำสั่ง "Save Image" ให้ผู้ใช้ยืนยันเอง
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const file = new File([blob], filename, { type: 'image/jpeg', lastModified: Date.now() });
+    const canShareFile = typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+
+    if (isIOS && canShareFile) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (err) {
+        // ผู้ใช้ปิด Share Sheet เอง ไม่ต้องสร้างไฟล์ซ้ำใน Files
+        if (err && err.name === 'AbortError') return;
+        console.warn('Could not open iOS share sheet, using file download:', err.message);
+      }
+    }
+
+    // Fallback: Android/desktop หรือเบราว์เซอร์ที่แชร์ไฟล์ไม่ได้
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -697,7 +721,7 @@ fileInput.onchange = async (e) => {
     const arr = (capturingMode === 'before') ? currentBefore : currentAfter;
     arr.push(dataUrl);
 
-    // บันทึกลงมือถือด้วย (สำเนาสำรอง ป้องกันระบบมีปัญหา)
+    // บันทึกสำเนาลงมือถือ: iPhone/iPad เปิด Share Sheet, เครื่องอื่นดาวน์โหลดไฟล์
     const itemCode = itemCodeInput.value.trim();
     if (itemCode) savePhotoToDevice(dataUrl, capturingMode, itemCode);
 
