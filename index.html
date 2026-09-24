@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FTH One Portal</title>
+    <title>FTH One Links</title>
     <script>
         // เปลี่ยน IP/domain ของเซิร์ฟเวอร์ภายในตรงนี้ที่เดียว — ลิงก์ทั้งหมดที่มี class "lan-link" จะอัปเดตตาม
         const LAN_HOST = 'http://10.33.16.247';
@@ -421,95 +421,9 @@
             }
         }
 
-        /* --- External Access Announcement Banner --- */
-        body.has-ext-banner { padding-top: 56px; box-sizing: border-box; }
-        @media (max-width: 576px) { body.has-ext-banner { padding-top: 88px; } }
-
-        @keyframes extBannerGradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        @keyframes extBannerPop {
-            0% { transform: translateY(-100%); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes extBannerPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.18); }
-        }
-        .ext-banner {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
-            background: linear-gradient(270deg, #FFD702, #ffe45c, #FFD702, #C32C30);
-            background-size: 400% 400%;
-            animation: extBannerGradient 8s ease infinite, extBannerPop 0.5s ease;
-            color: #000; box-shadow: 0 3px 14px rgba(0,0,0,0.25);
-            padding: 9px 44px 9px 16px;
-        }
-        .ext-banner .eb-inner {
-            max-width: 780px; margin: 0 auto;
-            display: flex; align-items: center; justify-content: center;
-            gap: 10px; flex-wrap: wrap; text-align: center;
-        }
-        .ext-banner .eb-icon {
-            font-size: 1.25rem; display: inline-block;
-            animation: extBannerPulse 1.6s ease-in-out infinite;
-        }
-        .ext-banner .eb-text { font-size: 0.83rem; line-height: 1.35; font-weight: 600; }
-        .ext-banner .eb-text .eb-jp { display: block; font-weight: 500; opacity: 0.85; font-size: 0.76rem; margin-top: 1px; }
-        .ext-banner .eb-text .eb-url { color: #C32C30; font-weight: 800; }
-        .ext-banner a.eb-btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: #000; color: #fff !important;
-            padding: 6px 15px; border-radius: 20px; font-size: 0.78rem;
-            font-weight: 700; text-decoration: none; white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transition: transform 0.15s ease;
-        }
-        .ext-banner a.eb-btn:hover { transform: scale(1.06); color: #fff; }
-        .ext-banner .eb-close {
-            position: absolute; top: 50%; right: 12px; transform: translateY(-50%);
-            cursor: pointer; background: rgba(0,0,0,0.12); border: none;
-            width: 22px; height: 22px; border-radius: 50%;
-            font-size: 0.78rem; color: #000; line-height: 1;
-        }
-        .ext-banner .eb-close:hover { background: rgba(0,0,0,0.25); }
-        @media (max-width: 576px) {
-            .ext-banner .eb-inner { flex-direction: column; gap: 5px; }
-        }
     </style>
 </head>
 <body>
-
-<div class="ext-banner" id="extAccessBanner">
-    <button class="eb-close" onclick="dismissExtBanner()" title="ปิด / 閉じる">✕</button>
-    <div class="eb-inner">
-        <span class="eb-icon">🌐</span>
-        <div class="eb-text">
-            <span class="eb-th">ตอนนี้เข้าใช้งานจากภายนอกบริษัทได้แล้ว ผ่าน <span class="eb-url">one.fanucth.co.th</span></span>
-            <span class="eb-jp">社外からもアクセス可能になりました：<span class="eb-url">one.fanucth.co.th</span></span>
-        </div>
-        <a href="https://one.fanucth.co.th/" target="_blank" class="eb-btn">เปิดลิงก์ / 開く <span>↗</span></a>
-    </div>
-</div>
-<script>
-    (function() {
-        try {
-            if (localStorage.getItem('ext_access_banner_dismissed') === 'true') {
-                document.getElementById('extAccessBanner').style.display = 'none';
-            } else {
-                document.body.classList.add('has-ext-banner');
-            }
-        } catch (e) {
-            document.body.classList.add('has-ext-banner');
-        }
-    })();
-    function dismissExtBanner() {
-        try { localStorage.setItem('ext_access_banner_dismissed', 'true'); } catch (e) {}
-        document.getElementById('extAccessBanner').style.display = 'none';
-        document.body.classList.remove('has-ext-banner');
-    }
-</script>
 
 <main>
     <div class="top-bar">
@@ -523,7 +437,7 @@
             </button>
             <div class="search-wrapper">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="พิมพ์ชื่อเมนู หรือระบบที่ต้องการเพื่อค้นหาแบบเรียลไทม์ได้ทันที... (Search everything)" />
+                <input type="text" id="searchInput" class="search-input" placeholder="Type a menu or system name to search instantly... (Search everything)" />
                 <div class="search-shortcut-badge">
                     <span>LIVE SEARCH</span>
                 </div>
@@ -677,9 +591,10 @@
                             <button class="copy-btn" onclick="copyVPNAddress(this, 'vpn4.fanuc.co.jp/common/')">
                                 <span>vpn4.fanuc.co.jp/common/</span>
                                 <span>📋</span>
-                            </button>
+                            </button> 
                         </div>
 
+                        <a href="https://security.microsoft.com/" target="_blank" class="sub-link">MDE Admin Console</a>
                         <a href="https://corp4.ais-idc.com/cacti/index.php" target="_blank" class="sub-link">Bandwidth Monitor</a>
 						<a href="https://10.33.16.245/era/" target="_blank" class="sub-link">Eset Web Console</a>
                         <a href="http://10.33.16.200" target="_blank" class="sub-link">AP Controller</a>
