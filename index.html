@@ -382,6 +382,15 @@
         }
         mark { background: yellow; color: black; border-radius: 2px; }
 
+        /* --- Logo protection (deterrent only: no drag / long-press save / selection) --- */
+        .section-title img, .brand-logo {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
+            -webkit-touch-callout: none;
+        }
+
         /* --- Responsive Styles for Mobile Layout --- */
         @media (max-width: 768px) {
             .brand-logo { display: none; }
@@ -646,7 +655,7 @@
             </div>
         </div>
         
-        <footer>One Links v1.3 | All Links Restored</footer>
+        <footer>One Links v1.4 | Updated 2026-09-24</footer>
     </div>
 </main>
 
@@ -828,6 +837,10 @@ document.querySelectorAll('.lan-link').forEach(el => {
     el.href = LAN_HOST + el.dataset.path;
 });
 
+
+// ป้องกันการลากหรือคลิกขวาเซฟรูปโลโก้ (ช่วยกันได้เฉพาะการก๊อปแบบทั่วไป)
+document.addEventListener('contextmenu', e => { if (e.target.closest('.section-title, .brand-logo') || e.target.tagName === 'IMG') e.preventDefault(); });
+document.addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
 </script>
 </body>
 </html>
