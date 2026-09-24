@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.10 | Updated: 2026-09-24
+<!-- VERSION: v3.11 | Updated: 2026-09-24
+     Changes (v3.11):
+       - Export PDF: เลือกได้ว่าจะแสดง ทั้งหมด / Before อย่างเดียว / After อย่างเดียว (Excel ไม่มีตัวเลือกนี้)
      Changes (v3.10):
        - PDF: เพิ่มแถบหัวข้อ BEFORE (เทา) / AFTER (เหลือง) คั่นแต่ละกลุ่ม และป้าย 'Before 1/3' ใต้รูปทุกใบ (ไม่ทับภาพ) ยังคง 1 part = 1 หน้า
      Changes (v3.9):
@@ -303,6 +305,14 @@
         <button type="button" class="chip" data-preset="month" data-i18n="presetMonth">เดือนนี้</button>
         <button type="button" class="chip" data-preset="all" data-i18n="presetAll">ทั้งหมด</button>
       </div>
+      <div id="phaseBox" style="display:none;margin-bottom:14px;">
+        <label data-i18n="phaseSelectLabel">รูปที่จะแสดงใน PDF</label>
+        <div class="chips" id="phaseChips" style="margin:6px 0 0;">
+          <button type="button" class="chip active" data-phase="all" data-i18n="phaseAll">ทั้งหมด</button>
+          <button type="button" class="chip" data-phase="before" data-i18n="phaseOnlyBefore">Before อย่างเดียว</button>
+          <button type="button" class="chip" data-phase="after" data-i18n="phaseOnlyAfter">After อย่างเดียว</button>
+        </div>
+      </div>
       <div class="date-grid">
         <div>
           <label for="dateFrom" data-i18n="dateFromLabel">ตั้งแต่วันที่</label>
@@ -349,7 +359,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.10';
+const APP_VERSION = 'v3.11';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -446,6 +456,10 @@ const TRANSLATIONS = {
   dateRangeTitle:    { th:'เลือกช่วงวันที่', en:'Select date range', ja:'期間を選択' },
   dateFromLabel:     { th:'ตั้งแต่วันที่', en:'From date', ja:'開始日' },
   dateToLabel:       { th:'ถึงวันที่', en:'To date', ja:'終了日' },
+  phaseSelectLabel:  { th:'รูปที่จะแสดงใน PDF', en:'Photos to include in PDF', ja:'PDFに含める写真' },
+  phaseAll:          { th:'ทั้งหมด (Before + After)', en:'All (Before + After)', ja:'すべて (Before + After)' },
+  phaseOnlyBefore:   { th:'Before อย่างเดียว', en:'Before only', ja:'Beforeのみ' },
+  phaseOnlyAfter:    { th:'After อย่างเดียว', en:'After only', ja:'Afterのみ' },
   presetToday:       { th:'วันนี้', en:'Today', ja:'今日' },
   preset7:           { th:'7 วันล่าสุด', en:'Last 7 days', ja:'直近7日' },
   preset30:          { th:'30 วันล่าสุด', en:'Last 30 days', ja:'直近30日' },
@@ -1187,12 +1201,19 @@ async function fetchAllCloudRecords(range){
 }
 
 // เปิดหน้าต่างเลือกช่วงวันที่ คืนค่า {from: Date|null, to: Date|null} หรือ null ถ้ายกเลิก
-function askDateRange(){
+function askDateRange(showPhase){
   return new Promise((resolve) => {
     const modal = document.getElementById('dateModal');
     const fromEl = document.getElementById('dateFrom');
     const toEl = document.getElementById('dateTo');
-    const chips = modal.querySelectorAll('.chip');
+    const chips = modal.querySelectorAll('#dateChips .chip');
+    const phaseChips = modal.querySelectorAll('#phaseChips .chip');
+    let phase = 'all';
+    document.getElementById('phaseBox').style.display = showPhase ? 'block' : 'none';
+    phaseChips.forEach(c => {
+      c.classList.toggle('active', c.dataset.phase === 'all');
+      c.onclick = () => { phase = c.dataset.phase; phaseChips.forEach(x => x.classList.toggle('active', x === c)); };
+    });
     const fmt = (d) => { const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
     const updateSummary = () => {
       const f = fromEl.value, tv = toEl.value;
@@ -1228,7 +1249,7 @@ function askDateRange(){
       const from = fromEl.value ? new Date(fromEl.value + 'T00:00:00') : null;
       const to   = toEl.value   ? new Date(toEl.value   + 'T23:59:59.999') : null;
       if (from && to && from > to){ toast(t('dateRangeInvalid'), true); return; }
-      done({ from, to });
+      done({ from, to, phase });
     };
     document.getElementById('dateModalClose').onclick = () => done(null);
     modal.onclick = (e) => { if (e.target === modal) done(null); };
@@ -1330,7 +1351,7 @@ document.getElementById('btnExportPdf').onclick = async () => {
   const btnPdf = document.getElementById('btnExportPdf');
   let sourceRows;
 
-  const range = await askDateRange();
+  const range = await askDateRange(true);
   if (!range) return;
 
   if (CLOUD_MODE) {
@@ -1433,13 +1454,19 @@ document.getElementById('btnExportPdf').onclick = async () => {
         beforePhotos = r.before || []; afterPhotos = r.after || [];
       }
 
+      const showBefore = range.phase !== 'after';
+      const showAfter  = range.phase !== 'before';
+      if (!showBefore) beforePhotos = [];
+      if (!showAfter)  afterPhotos = [];
+      const nPhases = (showBefore ? 1 : 0) + (showAfter ? 1 : 0);
+
       // 2 รูป/แถวเสมอ (กว้าง 250pt); ถ้าฝั่งใดเกิน 2 รูป จะมี 2 แถวต่อฝั่ง จึงลดความสูงกรอบให้พอดี 1 หน้า (งานหนึ่งไม่เกิน 4 รูป/ฝั่ง)
       THUMB_W = 250; COLS = 2;
       const maxRows = Math.max(1, Math.ceil(beforePhotos.length / COLS), Math.ceil(afterPhotos.length / COLS));
       if (maxRows === 1){ THUMB_H = 240; }
       else {
         const headerBottom = y + 28; // เผื่อบรรทัด Item Code + Saved
-        const perPhase = (PAGE_BOTTOM - headerBottom - 8) / 2;   // พื้นที่ต่อ 1 ฝั่ง (before/after)
+        const perPhase = (PAGE_BOTTOM - headerBottom - 8) / nPhases;   // พื้นที่ต่อ 1 ฝั่ง (before/after)
         const perRow = Math.floor((perPhase - 22) / maxRows) - CAPTION_H - GAP; // หักแถบหัวข้อ 22pt, ป้ายใต้รูป, ช่องว่าง
         THUMB_H = Math.max(90, Math.min(250, perRow));
       }
@@ -1447,8 +1474,8 @@ document.getElementById('btnExportPdf').onclick = async () => {
       pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
       pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
 
-      y = await drawPhotoGrid('Before', beforePhotos, y);
-      y = await drawPhotoGrid('After',  afterPhotos,  y);
+      if (showBefore) y = await drawPhotoGrid('Before', beforePhotos, y);
+      if (showAfter)  y = await drawPhotoGrid('After',  afterPhotos,  y);
     }
     pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
   } finally {
