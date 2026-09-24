@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.24a - เนื้ออีเมลปุ่มตอบกลับ: "Management would like..." -> "I would like..." (TH ตัดคำว่า "ฝ่ายบริหาร" ออกเช่นกัน)
        2026.09.18f - popup คลิกดาว (เดือนนี้/เดือนก่อน) เพิ่มรายการคำตอบแต่ละรายการ (วันที่/RP-SO/ลูกค้า/
                      คะแนนเฉลี่ย/คอมเมนต์) ต่อจากกราฟแท่ง Q1-Q5 — เช่นมีคนตอบ 2 รายการ ก็โชว์รายละเอียด
                      ทั้ง 2 รายการพร้อมคอมเมนต์ ไม่ใช่แค่ตัวเลขสรุป
@@ -343,7 +344,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.18f";
+const APP_VERSION = "2026.09.24a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -446,7 +447,7 @@ const I18N = {
   noEngEmail:{th:"ไม่พบอีเมลของวิศวกรคนนี้",en:"No email found for this engineer",ja:"このエンジニアのメールが見つかりません"},
   replySubject:{th:"ขอรายละเอียดเพิ่มเติมเกี่ยวกับงานบริการนี้",en:"Follow-up on this service job",ja:"本サービス対応についての確認"},
   replyGreeting:{th:"เรียน {name}",en:"Dear {name},",ja:"{name} 様"},
-  replyAsk:{th:"ฝ่ายบริหารขอสอบถามรายละเอียดเพิ่มเติมเกี่ยวกับงานบริการนี้ ช่วยชี้แจงว่าเกิดอะไรขึ้น (What happened?) พร้อมรายละเอียดของงานด้านล่าง",en:"Management would like more details on this service job — please explain what happened. Job details below.",ja:"本サービス対応について詳細を確認させてください。何があったかご説明をお願いします。以下、対象作業の詳細です。"},
+  replyAsk:{th:"ขอสอบถามรายละเอียดเพิ่มเติมเกี่ยวกับงานบริการนี้ ช่วยชี้แจงว่าเกิดอะไรขึ้น (What happened?) พร้อมรายละเอียดของงานด้านล่าง",en:"I would like more details on this service job — please explain what happened. Job details below.",ja:"本サービス対応について詳細を確認させてください。何があったかご説明をお願いします。以下、対象作業の詳細です。"},
   replySign:{th:"ขอบคุณครับ/ค่ะ",en:"Thank you,",ja:"よろしくお願いいたします。"},
   wmShort:{th:"ห้ามเผยแพร่",en:"DO NOT DISTRIBUTE",ja:"複製・配布禁止"},
   wmFull:{th:"สำเนาลายมือชื่อลูกค้า — ใช้เพื่อการตรวจสอบภายในของ Fanuc Thai Limited. เท่านั้น ห้ามทำซ้ำ ดัดแปลง หรือเผยแพร่ต่อบุคคลภายนอก",en:"Customer signature copy — for Fanuc Thai Limited. internal verification only. Do not reproduce, alter, or distribute.",ja:"お客様署名の複製 — Fanuc Thai Limited. 社内確認用のみ。複製・改変・外部配布を禁じます。"},
