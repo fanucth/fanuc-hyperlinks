@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.7 | Updated: 2026-09-24
+<!-- VERSION: v3.8 | Updated: 2026-09-24
+     Changes (v3.8):
+       - PDF: 1 หน้า = 1 part; ถ้า before/after ไม่เกิน 2 รูป ใช้รูปใหญ่ 2/แถว, ถ้ามีฝั่งใดเกิน 2 ใช้รูปเล็ก 4/แถว
+       - หน้าต่างเลือกช่วงวันที่: ปุ่มลัด (วันนี้/7 วัน/30 วัน/เดือนนี้/ทั้งหมด) + ช่องวันที่ใหญ่ขึ้น + สรุปช่วงที่จะ export
      Changes (v3.7):
        - Export Excel/PDF: กดแล้วมีหน้าต่างเลือกช่วงวันที่ (เว้นว่าง = ทั้งหมด)
        - รายการที่บันทึกแล้ว: แสดงหน้าละ 10 รายการ มีปุ่ม ก่อนหน้า/ถัดไป (server-side pagination)
@@ -142,6 +145,17 @@
   .edit-banner span{display:block;color:var(--sub);font-size:12px;line-height:1.5;}
   .edit-banner button{flex:0 0 auto;min-height:44px;padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--card2);color:var(--text);cursor:pointer;}
   input[readonly]{opacity:.7;cursor:not-allowed;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .chip{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:13px;cursor:pointer;transition:background .15s,border-color .15s;}
+  .chip:hover{border-color:var(--sub);}
+  .chip.active{background:#f7c600;border-color:#f7c600;color:#111;font-weight:600;}
+  .date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .date-input{width:100%;padding:11px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;color-scheme:dark light;box-sizing:border-box;}
+  .date-input:focus{outline:2px solid #f7c600;outline-offset:1px;}
+  .date-summary{margin:12px 0 0;font-size:13px;color:var(--sub);min-height:18px;}
+  .date-actions{display:flex;gap:10px;margin-top:16px;}
+  .date-actions .btn{flex:1;margin-top:0;}
+  @media (max-width:420px){.date-grid{grid-template-columns:1fr;}}
   .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;font-size:13px;color:var(--sub);}
   .pager .btn-view:disabled{opacity:.4;cursor:default;}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
@@ -278,12 +292,28 @@
       <button id="dateModalClose" class="modal-close">✕</button>
     </div>
     <div class="modal-body">
-      <label for="dateFrom" data-i18n="dateFromLabel">ตั้งแต่วันที่</label>
-      <input type="date" id="dateFrom">
-      <label for="dateTo" data-i18n="dateToLabel">ถึงวันที่</label>
-      <input type="date" id="dateTo">
-      <p class="note" data-i18n="dateRangeHint">เว้นว่างทั้งสองช่อง = Export ทุกรายการ</p>
-      <button class="btn btn-primary" id="dateModalOk" data-i18n="dateExportBtn" style="margin-top:6px;">Export</button>
+      <div class="chips" id="dateChips">
+        <button type="button" class="chip" data-preset="today" data-i18n="presetToday">วันนี้</button>
+        <button type="button" class="chip" data-preset="7" data-i18n="preset7">7 วันล่าสุด</button>
+        <button type="button" class="chip" data-preset="30" data-i18n="preset30">30 วันล่าสุด</button>
+        <button type="button" class="chip" data-preset="month" data-i18n="presetMonth">เดือนนี้</button>
+        <button type="button" class="chip" data-preset="all" data-i18n="presetAll">ทั้งหมด</button>
+      </div>
+      <div class="date-grid">
+        <div>
+          <label for="dateFrom" data-i18n="dateFromLabel">ตั้งแต่วันที่</label>
+          <input type="date" id="dateFrom" class="date-input">
+        </div>
+        <div>
+          <label for="dateTo" data-i18n="dateToLabel">ถึงวันที่</label>
+          <input type="date" id="dateTo" class="date-input">
+        </div>
+      </div>
+      <p class="date-summary" id="dateSummary"></p>
+      <div class="date-actions">
+        <button class="btn btn-secondary" id="dateModalCancel" data-i18n="dateCancelBtn">ยกเลิก</button>
+        <button class="btn btn-primary" id="dateModalOk" data-i18n="dateExportBtn">Export</button>
+      </div>
     </div>
   </div>
 </div>
@@ -315,7 +345,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.7';
+const APP_VERSION = 'v3.8';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -412,7 +442,16 @@ const TRANSLATIONS = {
   dateRangeTitle:    { th:'เลือกช่วงวันที่', en:'Select date range', ja:'期間を選択' },
   dateFromLabel:     { th:'ตั้งแต่วันที่', en:'From date', ja:'開始日' },
   dateToLabel:       { th:'ถึงวันที่', en:'To date', ja:'終了日' },
-  dateRangeHint:     { th:'เว้นว่างทั้งสองช่อง = Export ทุกรายการ', en:'Leave both empty = export everything', ja:'両方空欄 = すべてエクスポート' },
+  presetToday:       { th:'วันนี้', en:'Today', ja:'今日' },
+  preset7:           { th:'7 วันล่าสุด', en:'Last 7 days', ja:'直近7日' },
+  preset30:          { th:'30 วันล่าสุด', en:'Last 30 days', ja:'直近30日' },
+  presetMonth:       { th:'เดือนนี้', en:'This month', ja:'今月' },
+  presetAll:         { th:'ทั้งหมด', en:'All', ja:'すべて' },
+  dateCancelBtn:     { th:'ยกเลิก', en:'Cancel', ja:'キャンセル' },
+  dateSummaryAll:    { th:'จะ Export ทุกรายการ', en:'Will export all records', ja:'すべての記録をエクスポートします' },
+  dateSummaryRange:  { th:'จะ Export: {from} – {to}', en:'Will export: {from} – {to}', ja:'エクスポート範囲: {from} – {to}' },
+  dateOpenEnd:       { th:'ล่าสุด', en:'latest', ja:'最新' },
+  dateOpenStart:     { th:'เริ่มต้น', en:'start', ja:'最初' },
   dateExportBtn:     { th:'Export', en:'Export', ja:'エクスポート' },
   dateRangeInvalid:  { th:'วันที่เริ่มต้องไม่มากกว่าวันที่สิ้นสุด', en:'Start date must not be after end date', ja:'開始日は終了日以前にしてください' },
   exportNoData:      { th:'ยังไม่มีข้อมูลให้ export', en:'No data available to export', ja:'エクスポートするデータがありません' },
@@ -1149,14 +1188,38 @@ function askDateRange(){
     const modal = document.getElementById('dateModal');
     const fromEl = document.getElementById('dateFrom');
     const toEl = document.getElementById('dateTo');
+    const chips = modal.querySelectorAll('.chip');
+    const fmt = (d) => { const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+    const updateSummary = () => {
+      const f = fromEl.value, tv = toEl.value;
+      document.getElementById('dateSummary').textContent = (!f && !tv)
+        ? t('dateSummaryAll')
+        : t('dateSummaryRange', { from: f || t('dateOpenStart'), to: tv || t('dateOpenEnd') });
+    };
+    const applyPreset = (key) => {
+      const today = new Date();
+      let f = '', tv = '';
+      if (key === 'today'){ f = tv = fmt(today); }
+      else if (key === '7' || key === '30'){ const s = new Date(today); s.setDate(s.getDate() - (parseInt(key,10) - 1)); f = fmt(s); tv = fmt(today); }
+      else if (key === 'month'){ f = fmt(new Date(today.getFullYear(), today.getMonth(), 1)); tv = fmt(today); }
+      fromEl.value = f; toEl.value = tv;
+      chips.forEach(c => c.classList.toggle('active', c.dataset.preset === key));
+      updateSummary();
+    };
+    chips.forEach(c => { c.onclick = () => applyPreset(c.dataset.preset); });
+    fromEl.oninput = toEl.oninput = () => { chips.forEach(c => c.classList.remove('active')); updateSummary(); };
+    applyPreset('all');
+
     modal.style.display = 'flex';
     const done = (val) => {
       modal.style.display = 'none';
       document.getElementById('dateModalOk').onclick = null;
+      document.getElementById('dateModalCancel').onclick = null;
       document.getElementById('dateModalClose').onclick = null;
       modal.onclick = null;
       resolve(val);
     };
+    document.getElementById('dateModalCancel').onclick = () => done(null);
     document.getElementById('dateModalOk').onclick = () => {
       const from = fromEl.value ? new Date(fromEl.value + 'T00:00:00') : null;
       const to   = toEl.value   ? new Date(toEl.value   + 'T23:59:59.999') : null;
@@ -1283,7 +1346,9 @@ document.getElementById('btnExportPdf').onclick = async () => {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({unit:'pt', format:'a4'});
     const PAGE_BOTTOM = 780;
-    const THUMB = 250, GAP = 10, COLS = 2; // 2 รูป/แถว เต็มความกว้างหน้า A4 (515pt)
+    const GAP = 10;
+    // ขนาดรูปกำหนดต่อ 1 part: ทั้ง before และ after ไม่เกิน 2 รูป = รูปใหญ่ 2/แถว, ถ้ามีฝั่งใดเกิน 2 = รูปเล็กลง 4/แถว
+    let THUMB = 250, COLS = 2;
     let y = 40;
 
     pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
@@ -1321,8 +1386,11 @@ document.getElementById('btnExportPdf').onclick = async () => {
       return yy;
     }
 
+    let firstItem = true;
     for (const r of sourceRows){
-      if (y > PAGE_BOTTOM - 60){ pdf.addPage(); y = 40; }
+      // 1 หน้า = 1 part (รายการแรกใช้หน้าเดียวกับหัวรายงาน)
+      if (!firstItem){ pdf.addPage(); y = 40; }
+      firstItem = false;
 
       let itemCode, savedAt, beforePhotos, afterPhotos;
       if (CLOUD_MODE) {
@@ -1345,19 +1413,14 @@ document.getElementById('btnExportPdf').onclick = async () => {
         beforePhotos = r.before || []; afterPhotos = r.after || [];
       }
 
+      if (beforePhotos.length <= 2 && afterPhotos.length <= 2){ THUMB = 250; COLS = 2; }
+      else { THUMB = 120; COLS = 4; } // 4*120 + 3*10 = 510pt พอดีความกว้างหน้า A4
+
       pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
       pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
 
       y = await drawPhotoGrid('Before', beforePhotos, y);
       y = await drawPhotoGrid('After',  afterPhotos,  y);
-
-      // เส้นคั่นเต็มความกว้าง แสดงจุดสิ้นสุดของแต่ละ item ให้เห็นชัดเจน
-      const separatorY = Math.min(y + 8, pdf.internal.pageSize.getHeight() - 28);
-      pdf.setDrawColor(109, 110, 113); // เทากลางตามสีสนับสนุนของ FANUC
-      pdf.setLineWidth(0.8);
-      pdf.line(40, separatorY, pdf.internal.pageSize.getWidth() - 40, separatorY);
-      pdf.setDrawColor(0);
-      y = separatorY + 16; // เว้นช่องว่างก่อนรายการถัดไป
     }
     pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
   } finally {
