@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.8 | Updated: 2026-09-24
+<!-- VERSION: v3.9 | Updated: 2026-09-24
+     Changes (v3.9):
+       - PDF: ถ้าฝั่งใดเกิน 2 รูป จัด 2 รูป/แถว 2 แถวต่อฝั่ง ขยายความสูงรูปให้เต็มพื้นที่ 1 หน้า (แทน 4 รูป/แถวที่เล็กเกินไป)
      Changes (v3.8):
        - PDF: 1 หน้า = 1 part; ถ้า before/after ไม่เกิน 2 รูป ใช้รูปใหญ่ 2/แถว, ถ้ามีฝั่งใดเกิน 2 ใช้รูปเล็ก 4/แถว
        - หน้าต่างเลือกช่วงวันที่: ปุ่มลัด (วันนี้/7 วัน/30 วัน/เดือนนี้/ทั้งหมด) + ช่องวันที่ใหญ่ขึ้น + สรุปช่วงที่จะ export
@@ -345,7 +347,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.8';
+const APP_VERSION = 'v3.9';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -1348,7 +1350,7 @@ document.getElementById('btnExportPdf').onclick = async () => {
     const PAGE_BOTTOM = 780;
     const GAP = 10;
     // ขนาดรูปกำหนดต่อ 1 part: ทั้ง before และ after ไม่เกิน 2 รูป = รูปใหญ่ 2/แถว, ถ้ามีฝั่งใดเกิน 2 = รูปเล็กลง 4/แถว
-    let THUMB = 250, COLS = 2;
+    let THUMB_W = 250, THUMB_H = 250, COLS = 2;
     let y = 40;
 
     pdf.setFontSize(16); pdf.text('Scrap Photo Evidence Report', 40, y); y += 26;
@@ -1369,13 +1371,13 @@ document.getElementById('btnExportPdf').onclick = async () => {
       let rowMaxH = 0; // ความสูงจริงของรูปที่สูงสุดในแถวปัจจุบัน
       for (const dataUrl of photoDataUrls){
         if (col === 0) { yy += 4; rowMaxH = 0; }
-        if (yy + THUMB > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; rowMaxH = 0; }
-        const x = 40 + col * (THUMB + GAP);
+        if (yy + THUMB_H > PAGE_BOTTOM){ pdf.addPage(); yy = 40; col = 0; rowMaxH = 0; }
+        const x = 40 + col * (THUMB_W + GAP);
         try {
           const { w, h } = await getImageSize(dataUrl);
-          const scale = Math.min(THUMB / w, THUMB / h);
+          const scale = Math.min(THUMB_W / w, THUMB_H / h);
           const dw = w * scale, dh = h * scale;
-          const dx = x + (THUMB - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง (กันรูป wide ลอยห่างจาก label)
+          const dx = x + (THUMB_W - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง (กันรูป wide ลอยห่างจาก label)
           pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
           rowMaxH = Math.max(rowMaxH, dh);
         } catch(e){}
@@ -1413,8 +1415,15 @@ document.getElementById('btnExportPdf').onclick = async () => {
         beforePhotos = r.before || []; afterPhotos = r.after || [];
       }
 
-      if (beforePhotos.length <= 2 && afterPhotos.length <= 2){ THUMB = 250; COLS = 2; }
-      else { THUMB = 120; COLS = 4; } // 4*120 + 3*10 = 510pt พอดีความกว้างหน้า A4
+      // 2 รูป/แถวเสมอ (กว้าง 250pt); ถ้าฝั่งใดเกิน 2 รูป จะมี 2 แถวต่อฝั่ง จึงลดความสูงกรอบให้พอดี 1 หน้า (งานหนึ่งไม่เกิน 4 รูป/ฝั่ง)
+      THUMB_W = 250; COLS = 2;
+      const maxRows = Math.max(1, Math.ceil(beforePhotos.length / COLS), Math.ceil(afterPhotos.length / COLS));
+      if (maxRows === 1){ THUMB_H = 250; }
+      else {
+        const headerBottom = y + 28; // เผื่อบรรทัด Item Code + Saved
+        const perRow = Math.floor((PAGE_BOTTOM - headerBottom - 50) / (2 * maxRows)) - GAP;
+        THUMB_H = Math.max(100, Math.min(250, perRow));
+      }
 
       pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
       pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
