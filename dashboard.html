@@ -12,6 +12,9 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.25b - แปลคอมเมนต์ลูกค้าตามภาษาที่เลือกบน app bar (ไทย/EN/日本語) ด้วย Chrome Translator API
+                     (แปลในเครื่อง ไม่ส่งข้อความออกนอกเบราว์เซอร์) ในตาราง All responses + popup โปรไฟล์/ผลงานรายเดือน;
+                     ไอคอน 🌐 ข้างคำแปลคลิกดูต้นฉบับ; ครั้งแรกที่ต้องโหลดโมเดลภาษาจะมีปุ่ม "🌐 แปลคอมเมนต์" ให้กด
        2026.09.25a - อันดับคะแนนวิศวกร: โชว์วิศวกรทุกคนที่ยังทำงานอยู่แม้ช่วงที่เลือกจะไม่มีข้อมูลเลย (เดิมขึ้นหน้าว่าง
                      "ไม่มีข้อมูล") คนที่ยังไม่มีคะแนนเว้นว่างไว้ (เดิมขึ้น "—"); ยังเคารพตัวกรองแผนก/วิศวกร
        2026.09.24a - เนื้ออีเมลปุ่มตอบกลับ: "Management would like..." -> "I would like..." (TH ตัดคำว่า "ฝ่ายบริหาร" ออกเช่นกัน)
@@ -116,6 +119,8 @@
   .kpi-combo-item{flex:1;min-width:0;}
   .kpi-combo-item + .kpi-combo-item{border-left:1px solid var(--fc-border);padding-left:var(--fc-s3);}
   .kpi-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:2px solid var(--fc-border);}
+  .cmt-orig{text-decoration:none;font-size:12px;opacity:.6;cursor:pointer;}
+  .cmt-orig:hover{opacity:1;}
   .fc-col-drag{cursor:grab;padding:0 5px;color:var(--fc-text-mute);user-select:none;}
   .fc-col-drag:hover{color:var(--fc-text);}
   #detTable th.drag-over{background:var(--fc-row-hover);outline:2px dashed var(--fc-primary);outline-offset:-2px;}
@@ -236,6 +241,7 @@
         <h2 class="fc-card__title" data-i18n="detail">รายการทั้งหมด</h2>
         <span class="fc-mut" id="detCount"></span>
         <button class="fc-btn fc-btn--sm fc-right" id="btnDetCols" data-i18n="columnsBtn">⚙️ คอลัมน์</button>
+        <button class="fc-btn fc-btn--sm fc-hidden" id="btnTranslate" data-i18n="translateBtn">🌐 แปลคอมเมนต์</button>
         <button class="fc-btn fc-btn--sm" id="btnExportDet" data-i18n="exportBtn">Export</button>
       </div>
       <p class="fc-mut" style="margin:0 0 var(--fc-s2)" data-i18n="dragColHint">ลากไอคอน ⠿ ที่หัวคอลัมน์เพื่อย้ายลำดับ — ระบบจำลำดับไว้ให้อัตโนมัติ</p>
@@ -346,7 +352,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.25a";
+const APP_VERSION = "2026.09.25b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -443,6 +449,8 @@ const I18N = {
   colSig:{th:"ลายเซ็น",en:"Signature",ja:"署名"},
   colReply:{th:"ตอบกลับ",en:"Reply",ja:"返信"},
   columnsBtn:{th:"⚙️ คอลัมน์",en:"⚙️ Columns",ja:"⚙️ 列"},
+  translateBtn:{th:"🌐 แปลคอมเมนต์",en:"🌐 Translate comments",ja:"🌐 コメントを翻訳"},
+  showOriginal:{th:"ต้นฉบับ",en:"Original",ja:"原文"},
   columnsModalHead:{th:"แสดง/ซ่อนคอลัมน์",en:"Show/hide columns",ja:"列の表示/非表示"},
   colsResetBtn:{th:"ค่าเริ่มต้น",en:"Reset",ja:"初期設定に戻す"},
   dragColHint:{th:"ลากไอคอน ⠿ ที่หัวคอลัมน์เพื่อย้ายลำดับ — ระบบจำลำดับไว้ให้อัตโนมัติ",en:"Drag the ⠿ icon on a column header to reorder — the order is remembered automatically",ja:"列見出しの⠿アイコンをドラッグして並び替え — 順序は自動的に保存されます"},
@@ -551,6 +559,64 @@ function makeResizable(table, key){
   });
 }
 
+/* ---------- แปลคอมเมนต์ลูกค้าตามภาษาที่เลือกบน app bar (Chrome Translator API — แปลในเครื่อง ข้อความไม่ออกนอกเบราว์เซอร์) ---------- */
+const trTranslators = new Map();   // "th>en" -> Translator
+const trCache = new Map();         // "th>en|ข้อความ" -> คำแปล
+let trNeedsDownload = false;
+
+function cmtSpan(text){ return `<span class="cmt-tr" data-orig="${esc(text)}">${esc(text)}</span>`; }
+
+// ตรวจภาษาจากตัวอักษร (พอสำหรับ ไทย/ญี่ปุ่น/อังกฤษ) — ไม่ต้องพึ่ง LanguageDetector
+function detectLang(s){
+  if (/[฀-๿]/.test(s)) return 'th';
+  if (/[぀-ヿ一-鿿]/.test(s)) return 'ja';
+  if (/[A-Za-z]/.test(s)) return 'en';
+  return null;
+}
+async function getTranslator(src, tgt, allowDownload){
+  if (!('Translator' in self)) return null;
+  const key = src + '>' + tgt;
+  if (trTranslators.has(key)) return trTranslators.get(key);
+  let av;
+  try { av = await self.Translator.availability({ sourceLanguage: src, targetLanguage: tgt }); } catch { return null; }
+  if (av === 'unavailable') return null;
+  if (av !== 'available' && !allowDownload) { trNeedsDownload = true; return null; }   // ต้องมี user gesture ถึงจะโหลดโมเดลได้
+  try {
+    const tr = await self.Translator.create({ sourceLanguage: src, targetLanguage: tgt });
+    trTranslators.set(key, tr);
+    return tr;
+  } catch { trNeedsDownload = true; return null; }
+}
+async function translateIn(root, allowDownload){
+  if (!('Translator' in self) || !root) return;
+  trNeedsDownload = false;
+  for (const el of [...root.querySelectorAll('.cmt-tr')]) {
+    if (el.dataset.done) continue;
+    const orig = el.dataset.orig || '';
+    const src = detectLang(orig);
+    if (!src || src === lang) continue;
+    const ck = `${src}>${lang}|${orig}`;
+    let out = trCache.get(ck);
+    if (out == null) {
+      const tr = await getTranslator(src, lang, allowDownload);
+      if (!tr) continue;
+      try { out = await tr.translate(orig); } catch { continue; }
+      trCache.set(ck, out);
+    }
+    el.dataset.done = '1';
+    el.innerHTML = `${esc(out)} <a href="#" class="cmt-orig" title="${esc(t('showOriginal'))}: ${esc(orig)}">🌐</a>`;
+    const link = el.querySelector('.cmt-orig');
+    let showingOrig = false;
+    link.onclick = ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      showingOrig = !showingOrig;
+      el.firstChild.textContent = (showingOrig ? orig : out) + ' ';
+    };
+  }
+  const btn = $('btnTranslate');
+  if (btn) btn.classList.toggle('fc-hidden', !trNeedsDownload);
+}
+
 /* ---------- All-responses: คอลัมน์ย้ายลำดับ + ซ่อน/แสดงได้ (จำค่าไว้ใน localStorage) ---------- */
 const DET_COLUMNS = [
   { key:'idx', label:'#', locked:true, thCls:'fc-c', width:44,
@@ -580,7 +646,7 @@ const DET_COLUMNS = [
   { key:'q5', label:()=>t('q5'), thCls:'fc-c', width:64, sortKey:'q5_overall',
     cell:r=>`<td class="fc-c">${r.q5_overall}</td>` },
   { key:'comment', label:()=>t('colComment'), width:320,
-    cell:r=>`<td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${esc(r.comment||'')}</td>` },
+    cell:r=>`<td style="white-space:normal;word-break:break-word;line-height:1.6" title="${esc(r.comment||'')}">${r.comment ? cmtSpan(r.comment) : ''}</td>` },
   { key:'customer_email', label:()=>t('colEmail'), width:170,
     cell:r=>`<td>${r.customer_email ? `<div>${esc(r.customer_email)}</div><span class="fc-badge ${r.thanks_sent ? 'fc-badge--ok' : 'fc-badge--neutral'}">${r.thanks_sent ? t('thanksSent') : t('thanksPending')}</span>` : ''}</td>` },
   { key:'geo_area', label:()=>t('colGeo'), width:150,
@@ -656,6 +722,8 @@ function renderColsModal(){
 }
 function wireColsModalUi(){
   $('btnDetCols').onclick = () => { renderColsModal(); $('colsModal').classList.remove('fc-hidden'); };
+  // ครั้งแรกที่ Chrome ต้องดาวน์โหลดโมเดลภาษา ต้องมี user gesture — ปุ่มนี้คือ gesture นั้น
+  $('btnTranslate').onclick = () => translateIn($('detBox'), true);
   $('colsClose').onclick = () => $('colsModal').classList.add('fc-hidden');
   $('colsReset').onclick = () => {
     detColOrder = DET_COL_KEYS.slice(); detColHidden = [];
@@ -1265,7 +1333,7 @@ async function openMonthlyProfile(engineerId, monthFlag){
         <span>${fmtDateTime(r.submitted_at)} · RP ${esc(r.service_report_no||'-')} / SO ${esc(r.service_order_no||'-')}${r.customer_name ? ' · ' + esc(r.customer_name) : ''}</span>
         <span><b>${rAvg.toFixed(2)}</b></span>
       </div>
-      <div style="margin-top:4px">${r.comment ? esc(r.comment) : `<span class="fc-mut">${t('epNoComments')}</span>`}</div>
+      <div style="margin-top:4px">${r.comment ? cmtSpan(r.comment) : `<span class="fc-mut">${t('epNoComments')}</span>`}</div>
     </div>`;
   }).join('') : '';
 
@@ -1281,6 +1349,7 @@ async function openMonthlyProfile(engineerId, monthFlag){
     ${n ? `<p class="fc-mut" style="margin:var(--fc-s3) 0 6px">${t('monthResponses')}</p>
     <div style="max-height:220px;overflow-y:auto">${respListHtml}</div>` : ''}
   `;
+  translateIn(body);
 }
 
 async function openEngineerProfile(engineerId){
@@ -1333,8 +1402,9 @@ async function openEngineerProfile(engineerId){
     <p class="fc-mut" style="margin:0 0 6px">${t('epStats')}</p>
     ${bars}
     <p class="fc-mut" style="margin:var(--fc-s3) 0 6px">${t('epRecentComments')}</p>
-    ${comments.length ? comments.map(c => `<div class="ep-comment">${esc(c.comment)}<div style="font-size:11px;color:var(--fc-text-mute);margin-top:2px">${fmtDateTime(c.submitted_at)}</div></div>`).join('') : `<p class="fc-mut">${t('epNoComments')}</p>`}
+    ${comments.length ? comments.map(c => `<div class="ep-comment">${cmtSpan(c.comment)}<div style="font-size:11px;color:var(--fc-text-mute);margin-top:2px">${fmtDateTime(c.submitted_at)}</div></div>`).join('') : `<p class="fc-mut">${t('epNoComments')}</p>`}
   `;
+  translateIn(body);
 }
 
 /* ---------- Manage engineers ---------- */
@@ -1507,6 +1577,7 @@ function renderDetail(){
   box.querySelectorAll('a.reply-btn').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); const r = rows.find(x => x.id === a.dataset.rid); if (r) replyToEngineer(r); };
   });
+  translateIn(box);
 
   renderPager(total, start, view.length, maxPage);
 }
