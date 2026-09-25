@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.09.25a - หน้าลูกค้า: เอาบรรทัด "Experience" (อายุงานวิศวกร) ออก
        2026.09.13e - เปลี่ยน popup ยืนยัน (เลข Report/Order ซ้ำ, ยกเลิก QR) จาก confirm() ของเบราว์เซอร์
                      เป็น modal สไตล์แอปเอง (showConfirm())
        2026.09.13d - หน้าลูกค้า: บรรทัด "Team" ขึ้นชื่อเพื่อนร่วมทีมทีละบรรทัด (bullet) แทนการต่อด้วยจุลภาคบรรทัดเดียว
@@ -251,7 +252,6 @@
           <div class="name" id="ciName">—</div>
           <div class="meta" id="ciTitle"></div>
           <div class="meta" id="ciDept"></div>
-          <div class="meta" id="ciYears"></div>
           <div class="meta" id="ciTel"></div>
           <div class="meta" id="ciTeam"></div>
           <div class="meta" id="ciReport"></div>
@@ -356,7 +356,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.13e";
+const APP_VERSION = "2026.09.25a";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -1072,9 +1072,6 @@ function renderEngInfo(){
     ? `${t('lblTitle')} : ${titleLabel(CUST_INFO.title)}` : '';
   $('ciDept').textContent = CUST_INFO.department
     ? `${t('lblDepartment')} : ${deptLabel(CUST_INFO.department)}` : '';
-  const yrs = yearsFromHire(CUST_INFO.hire_date);
-  $('ciYears').textContent = yrs != null
-    ? `${t('lblExperience')} : ${t('yrsValue', { n: yrs })}` : '';
   $('ciTel').textContent = CUST_INFO.tel
     ? `${t('lblTel')} : ${CUST_INFO.tel}` : '';
   if (CUST_INFO.team_names) {
