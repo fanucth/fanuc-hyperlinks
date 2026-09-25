@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.11 | Updated: 2026-09-24
+<!-- VERSION: v3.12 | Updated: 2026-09-25
+     Changes (v3.12):
+       - เพิ่มปุ่ม 'แก้รหัส' ในรายการที่บันทึกแล้ว เฉพาะ admin (Weerachai.J, Noraphat.M) — บังคับสิทธิ์ที่ DB ด้วย trigger + log ใน scrap_code_log (ต้องรัน admin_edit_code.sql)
      Changes (v3.11):
        - Export PDF: เลือกได้ว่าจะแสดง ทั้งหมด / Before อย่างเดียว / After อย่างเดียว (Excel ไม่มีตัวเลือกนี้)
      Changes (v3.10):
@@ -359,7 +361,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.11';
+const APP_VERSION = 'v3.12';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -392,6 +394,11 @@ const TRANSLATIONS = {
   beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  editCodeBtn:       { th:'🔧 แก้รหัส', en:'🔧 Fix code', ja:'🔧 コード修正' },
+  editCodePrompt:    { th:'แก้รหัสชิ้นงาน (รหัสเดิม: {code})\nใส่รหัสที่ถูกต้อง:', en:'Fix item code (current: {code})\nEnter the correct code:', ja:'品目コードを修正 (現在: {code})\n正しいコードを入力:' },
+  confirmEditCode:   { th:'ยืนยันเปลี่ยนรหัส\n{old}  →  {new}', en:'Confirm change\n{old}  →  {new}', ja:'変更を確認\n{old}  →  {new}' },
+  codeUpdated:       { th:'แก้รหัสเป็น {code} แล้ว', en:'Code changed to {code}', ja:'コードを {code} に変更しました' },
+  codeUpdateFail:    { th:'แก้รหัสไม่สำเร็จ (เฉพาะ admin เท่านั้น): {err}', en:'Could not change code (admins only): {err}', ja:'コードを変更できません (管理者のみ): {err}' },
   editPhotosBtn:     { th:'✏️ เพิ่มรูป', en:'✏️ Add photos', ja:'✏️ 写真を追加' },
   editModeTitle:     { th:'กำลังเพิ่มรูปให้: {code}', en:'Adding photos to: {code}', ja:'写真を追加中：{code}' },
   editModeSummary:   { th:'รูปเดิม: ก่อน {before} / หลัง {after} • รูปที่ถ่ายเพิ่มจะแสดงด้านล่าง', en:'Existing photos: {before} before / {after} after • Newly captured photos appear below', ja:'既存写真：廃棄前{before}枚 / 廃棄後{after}枚 • 追加写真は下に表示されます' },
@@ -1050,6 +1057,7 @@ updateEditUi();
 const searchCodeInput = document.getElementById('searchCode');
 
 const LIST_PAGE_SIZE = 10;
+let isScrapAdmin = false; // ผลจาก rpc is_scrap_admin() — ใช้แค่ซ่อน/โชว์ปุ่ม การบังคับสิทธิ์จริงอยู่ที่ trigger ใน DB
 let cloudPage = 0;        // หน้าปัจจุบัน (เริ่มที่ 0)
 let cloudTotalCount = 0;  // จำนวนรายการทั้งหมดที่ตรงเงื่อนไขค้นหา
 
@@ -1112,6 +1120,7 @@ function renderCloudTable(){
       <td><div class="table-actions">
         <button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button>
         <button class="btn-view btn-edit" data-id="${r.id}">${t('editPhotosBtn')}</button>
+        ${isScrapAdmin ? `<button class="btn-view btn-code" data-id="${r.id}">${t('editCodeBtn')}</button>` : ''}
       </div></td>
       <td>${nBefore}</td><td>${nAfter}</td>
       <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
@@ -1122,12 +1131,40 @@ function renderCloudTable(){
   wrap.innerHTML = html;
 
   wrap.querySelectorAll('.btn-view').forEach(btn => {
-    if (btn.classList.contains('btn-edit')) return;
+    if (btn.classList.contains('btn-edit') || btn.classList.contains('btn-code')) return;
     btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
   });
   wrap.querySelectorAll('.btn-edit').forEach(btn => {
     btn.onclick = () => startEditRecord(cloudRecords.find(r => r.id === btn.dataset.id));
   });
+  wrap.querySelectorAll('.btn-code').forEach(btn => {
+    btn.onclick = () => editRecordCode(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+}
+
+async function loadAdminFlag(){
+  try {
+    const { data, error } = await sb.rpc('is_scrap_admin');
+    isScrapAdmin = !error && data === true;
+  } catch (e) { isScrapAdmin = false; }
+}
+
+// แก้รหัสชิ้นงานที่ใส่ผิด (เฉพาะ admin) — DB trigger บล็อกคนอื่นอีกชั้น และเก็บ log ใน scrap_code_log
+async function editRecordCode(record){
+  if (!record) return;
+  const input = window.prompt(t('editCodePrompt', { code: record.item_code }), record.item_code);
+  if (input === null) return;
+  const newCode = input.trim().toUpperCase();
+  if (!newCode || newCode === record.item_code) return;
+  if (!window.confirm(t('confirmEditCode', { old: record.item_code, new: newCode }))) return;
+  const { data, error } = await sb.from(TABLE_RECORDS)
+    .update({ item_code: newCode }).eq('id', record.id).select();
+  if (error || !data || data.length === 0){
+    toast(t('codeUpdateFail', { err: error ? error.message : 'no permission' }), true);
+    return;
+  }
+  toast(t('codeUpdated', { code: newCode }));
+  await refreshCloudRecords();
 }
 
 document.getElementById('btnRefreshList').onclick = refreshCloudRecords;
@@ -1547,12 +1584,12 @@ async function initSupabase(){
   document.getElementById('searchRow').style.display = 'flex';
 
   const { data: { session } } = await sb.auth.getSession();
-  if (session) { showAppScreen(); await refreshCloudRecords(); }
+  if (session) { showAppScreen(); await loadAdminFlag(); await refreshCloudRecords(); }
   else { showLoginScreen(); }
 
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); refreshCloudRecords(); }
-    if (event === 'SIGNED_OUT') { showLoginScreen(); }
+    if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); loadAdminFlag().then(refreshCloudRecords); }
+    if (event === 'SIGNED_OUT') { isScrapAdmin = false; showLoginScreen(); }
   });
 }
 
