@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.12 | Updated: 2026-09-25
+<!-- VERSION: v3.13 | Updated: 2026-09-25
+     Changes (v3.13):
+       - ขยายความกว้างการ์ด 'รายการที่บันทึกแล้ว' จาก 900px เป็น 1400px (96vw)
      Changes (v3.12):
        - เพิ่มปุ่ม 'แก้รหัส' ในรายการที่บันทึกแล้ว เฉพาะ admin (Weerachai.J, Noraphat.M) — บังคับสิทธิ์ที่ DB ด้วย trigger + log ใน scrap_code_log (ต้องรัน admin_edit_code.sql)
      Changes (v3.11):
@@ -98,7 +100,7 @@
   .btn-logout:active{background:var(--accent2);color:#fff;}
   main{max-width:520px;margin:0 auto;padding:8px 14px 90px;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
-  .card-wide{position:relative;left:50%;width:95vw;max-width:900px;transform:translateX(-50%);}
+  .card-wide{position:relative;left:50%;width:96vw;max-width:1400px;transform:translateX(-50%);}
   .card h2{font-size:14px;margin:0 0 10px;color:var(--accent);letter-spacing:.3px;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
   input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:10px;}
@@ -361,7 +363,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.12';
+const APP_VERSION = 'v3.13';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
