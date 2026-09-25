@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.25a - อันดับคะแนนวิศวกร: โชว์วิศวกรทุกคนที่ยังทำงานอยู่แม้ช่วงที่เลือกจะไม่มีข้อมูลเลย (เดิมขึ้นหน้าว่าง
+                     "ไม่มีข้อมูล") คนที่ยังไม่มีคะแนนเว้นว่างไว้ (เดิมขึ้น "—"); ยังเคารพตัวกรองแผนก/วิศวกร
        2026.09.24a - เนื้ออีเมลปุ่มตอบกลับ: "Management would like..." -> "I would like..." (TH ตัดคำว่า "ฝ่ายบริหาร" ออกเช่นกัน)
        2026.09.18f - popup คลิกดาว (เดือนนี้/เดือนก่อน) เพิ่มรายการคำตอบแต่ละรายการ (วันที่/RP-SO/ลูกค้า/
                      คะแนนเฉลี่ย/คอมเมนต์) ต่อจากกราฟแท่ง Q1-Q5 — เช่นมีคนตอบ 2 รายการ ก็โชว์รายละเอียด
@@ -344,7 +346,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.24a";
+const APP_VERSION = "2026.09.25a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -1094,17 +1096,15 @@ function renderKpis(){
 function renderRanking(){
   $('rankNote').textContent = t('rankNoteTxt');
   const box = $('sumBox');
-  if (!rows.length) {
-    box.innerHTML = `<div class="fc-empty"><div class="fc-empty__title">${t('noResults')}</div><div>${t('emptyHint')}</div></div>`;
-    $('rankPager').innerHTML = '';
-    return;
-  }
   const minN = Math.max(1, parseInt($('fMinN').value, 10) || 1);
   const scored = agg().filter(e => e.n >= minN);
   const scoredIds = new Set(scored.map(e => e.engineer_id));
-  // วิศวกรที่ยังทำงานอยู่แต่ยังไม่มีรายการถึงขั้นต่ำ — โชว์ไว้ต่อท้าย ไม่ให้หายไปจากตาราง
+  const fDeptVal = $('fDept').value, fEngVal = $('fEngineer').value;
+  // วิศวกรที่ยังทำงานอยู่แต่ยังไม่มีรายการถึงขั้นต่ำ — โชว์ไว้ต่อท้าย (คะแนนเว้นว่าง) แม้ช่วงที่เลือกจะไม่มีข้อมูลเลย
+  // ยังเคารพตัวกรองแผนก/วิศวกร เพื่อไม่ให้โชว์คนที่ผู้ใช้กรองออกไปแล้ว
   const noData = ALL_ENGINEERS
-    .filter(e => e.active !== false && !scoredIds.has(e.id))
+    .filter(e => e.active !== false && !scoredIds.has(e.id)
+      && (!fDeptVal || e.department === fDeptVal) && (!fEngVal || e.id === fEngVal))
     .map(e => ({ engineer_id: e.id, name: `${e.fname||''} ${e.lname||''}`.trim(), dept: e.department || '', active: true, n: 0, q: [0,0,0,0,0], avg: null }))
     .sort((a,b) => a.name.localeCompare(b.name, 'th'));
   const sortedScored = sortArr(scored, rankSort, 'rank');
@@ -1116,7 +1116,7 @@ function renderRanking(){
   const start = rankPage * RANK_PAGE_SIZE;
   const view = list.slice(start, start + RANK_PAGE_SIZE);
 
-  const c = v => v == null || isNaN(v) ? `<td class="fc-c">—</td>` : `<td class="fc-c">${v.toFixed(2)}</td>`;
+  const c = v => v == null || isNaN(v) ? `<td class="fc-c"></td>` : `<td class="fc-c">${v.toFixed(2)}</td>`;
   const medal = i => i === 0 ? '<span class="medal">🥇</span>' : i === 1 ? '<span class="medal">🥈</span>' : i === 2 ? '<span class="medal">🥉</span>' : (i + 1);
   const S = rankSort;
   box.innerHTML = `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover" id="sumTable">
@@ -1133,7 +1133,7 @@ function renderRanking(){
         <td class="fc-c fc-rank">${e.n > 0 && S.key === 'avg' && S.dir === 'desc' ? medal(rank) : (rank + 1)}</td>
         <td><a href="#" class="eng-link" data-eid="${esc(e.engineer_id||'')}">${esc(e.name)}</a>${!e.active ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}</td><td>${esc(e.dept)}</td><td class="fc-c">${e.n}</td>
         ${e.n > 0 ? `${c(e.q[0]/e.n)}${c(e.q[1]/e.n)}${c(e.q[2]/e.n)}${c(e.q[3]/e.n)}${c(e.q[4]/e.n)}` : `${c(null)}${c(null)}${c(null)}${c(null)}${c(null)}`}
-        <td class="fc-c">${e.avg != null ? `<b>${e.avg.toFixed(2)}</b> ${starsHtml(e.avg)}` : '—'}</td>
+        <td class="fc-c">${e.avg != null ? `<b>${e.avg.toFixed(2)}</b> ${starsHtml(e.avg)}` : ''}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
   wireSort($('sumTable'), rankSort, () => { rankPage = 0; renderRanking(); });
