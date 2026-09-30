@@ -12,6 +12,9 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.30a - ตาราง "All responses": คอลัมน์ "ทีมงาน" คลิกชื่อแต่ละคนเปิดโปรไฟล์ได้แล้ว (เดิมเป็นข้อความ
+                     รวมชื่อ กดไม่ได้) + โชว์จำนวนคน เช่น "(3 คน)" ถ้ามีมากกว่า 1 คน  [ต้องรัน migrate_team_json.sql —
+                     ถ้ายังไม่รันจะ fallback กลับไปเป็นข้อความเดิม กดไม่ได้ ไม่พัง]
        2026.09.25b - แปลคอมเมนต์ลูกค้าตามภาษาที่เลือกบน app bar (ไทย/EN/日本語) ด้วย Chrome Translator API
                      (แปลในเครื่อง ไม่ส่งข้อความออกนอกเบราว์เซอร์) ในตาราง All responses + popup โปรไฟล์/ผลงานรายเดือน;
                      ไอคอน 🌐 ข้างคำแปลคลิกดูต้นฉบับ; ครั้งแรกที่ต้องโหลดโมเดลภาษาจะมีปุ่ม "🌐 แปลคอมเมนต์" ให้กด
@@ -352,7 +355,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.25b";
+const APP_VERSION = "2026.09.30a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -432,6 +435,7 @@ const I18N = {
   kpiNoData:{th:"ยังไม่มีข้อมูล",en:"No data yet",ja:"データなし"},
   unitScore:{th:"คะแนน",en:"avg",ja:"点"},
   unitResp:{th:"รายการ",en:"responses",ja:"件"},
+  unitPeople:{th:"คน",en:"people",ja:"人"},
   rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
   rateMid:{th:"ดี",en:"Good",ja:"良好"},
   rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
@@ -626,7 +630,16 @@ const DET_COLUMNS = [
   { key:'engineer', label:()=>t('colEngineer'), width:150,
     cell:r=>`<td><a href="#" class="eng-link" data-eid="${esc(r.engineer_id||'')}">${esc(`${r.fname||''} ${r.lname||''}`.trim())}</a>${r.engineer_active === false ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}</td>` },
   { key:'team_names', label:()=>t('colTeam'), width:170,
-    cell:r=>`<td style="white-space:normal;word-break:break-word;color:var(--fc-text-dim);font-size:12.5px">${esc(r.team_names||'')}</td>` },
+    cell:r=>{
+      // team_json = [{id,name,lead,active}, ...] (ต้องรัน migrate_team_json.sql) — แต่ละคนกดดูโปรไฟล์ได้
+      // ถ้ายังไม่ได้รัน migrate ตัวนี้ ใช้ team_names (ข้อความล้วน กดไม่ได้) เป็น fallback แทน ไม่พัง
+      const team = Array.isArray(r.team_json) ? r.team_json : null;
+      const inner = team && team.length
+        ? team.map(m => `<a href="#" class="eng-link" data-eid="${esc(m.id||'')}">${esc(m.name)}</a>${m.active === false ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}`).join(', ')
+          + (team.length > 1 ? ` <span class="fc-mut" style="font-size:11px">(${team.length} ${t('unitPeople')})</span>` : '')
+        : esc(r.team_names || '');
+      return `<td style="white-space:normal;word-break:break-word;color:var(--fc-text-dim);font-size:12.5px">${inner}</td>`;
+    } },
   { key:'department', label:()=>t('colDept'), width:150,
     cell:r=>`<td>${esc(r.department||'')}</td>` },
   { key:'service_report_no', label:()=>t('colReport'), thCls:'fc-c', width:88,
