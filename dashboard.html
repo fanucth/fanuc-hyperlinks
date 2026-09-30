@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.09.30b - คอลัมน์ "ทีมงาน": ถ้ามีมากกว่า 1 คน ขึ้นบรรทัดใหม่พร้อมเลขนำหน้า (1. ชื่อ / 2. ชื่อ ...)
+                     แทนการต่อด้วยจุลภาคบรรทัดเดียว (ใช้กับทั้งโหมดคลิกได้และโหมด fallback ข้อความล้วน)
        2026.09.30a - ตาราง "All responses": คอลัมน์ "ทีมงาน" คลิกชื่อแต่ละคนเปิดโปรไฟล์ได้แล้ว (เดิมเป็นข้อความ
                      รวมชื่อ กดไม่ได้) + โชว์จำนวนคน เช่น "(3 คน)" ถ้ามีมากกว่า 1 คน  [ต้องรัน migrate_team_json.sql —
                      ถ้ายังไม่รันจะ fallback กลับไปเป็นข้อความเดิม กดไม่ได้ ไม่พัง]
@@ -355,7 +357,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.30a";
+const APP_VERSION = "2026.09.30b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -633,11 +635,16 @@ const DET_COLUMNS = [
     cell:r=>{
       // team_json = [{id,name,lead,active}, ...] (ต้องรัน migrate_team_json.sql) — แต่ละคนกดดูโปรไฟล์ได้
       // ถ้ายังไม่ได้รัน migrate ตัวนี้ ใช้ team_names (ข้อความล้วน กดไม่ได้) เป็น fallback แทน ไม่พัง
+      // มากกว่า 1 คน -> ขึ้นบรรทัดใหม่ + ใส่เลขนำหน้า; คนเดียวโชว์เฉยๆ ไม่ต้องใส่เลข
       const team = Array.isArray(r.team_json) ? r.team_json : null;
-      const inner = team && team.length
-        ? team.map(m => `<a href="#" class="eng-link" data-eid="${esc(m.id||'')}">${esc(m.name)}</a>${m.active === false ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}`).join(', ')
-          + (team.length > 1 ? ` <span class="fc-mut" style="font-size:11px">(${team.length} ${t('unitPeople')})</span>` : '')
-        : esc(r.team_names || '');
+      const memberHtml = m => `<a href="#" class="eng-link" data-eid="${esc(m.id||'')}">${esc(m.name)}</a>${m.active === false ? ` <span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>` : ''}`;
+      let inner;
+      if (team && team.length) {
+        inner = team.length > 1 ? team.map((m,i) => `${i+1}. ${memberHtml(m)}`).join('<br>') : memberHtml(team[0]);
+      } else {
+        const names = (r.team_names || '').split(',').map(s => s.trim()).filter(Boolean);
+        inner = names.length > 1 ? names.map((n,i) => `${i+1}. ${esc(n)}`).join('<br>') : esc(r.team_names || '');
+      }
       return `<td style="white-space:normal;word-break:break-word;color:var(--fc-text-dim);font-size:12.5px">${inner}</td>`;
     } },
   { key:'department', label:()=>t('colDept'), width:150,
