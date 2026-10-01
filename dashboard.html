@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.01b - popup ข้อมูล IP: เพิ่มรหัสไปรษณีย์ + พิกัด (คลิกพิกัดเปิด Google Maps ได้)
        2026.10.01a - คลิกไอคอน 📍/เลข IP ในตาราง All responses เปิด popup โชว์เมือง/จังหวัด, ประเทศ, องค์กร/ISP
                      ของ IP นั้น (ผ่าน ipinfo.io ฟรี ไม่ต้องใช้ key, cache ไว้ 24 ชม./IP ใน localStorage)
        2026.09.30b - คอลัมน์ "ทีมงาน": ถ้ามีมากกว่า 1 คน ขึ้นบรรทัดใหม่พร้อมเลขนำหน้า (1. ชื่อ / 2. ชื่อ ...)
@@ -369,7 +370,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.01a";
+const APP_VERSION = "2026.10.01b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -457,6 +458,8 @@ const I18N = {
   ipCity:{th:"เมือง/จังหวัด",en:"City/Region",ja:"市区町村"},
   ipCountry:{th:"ประเทศ",en:"Country",ja:"国"},
   ipOrg:{th:"องค์กร/ISP",en:"Org/ISP",ja:"組織/ISP"},
+  ipPostal:{th:"รหัสไปรษณีย์",en:"Postal code",ja:"郵便番号"},
+  ipLoc:{th:"พิกัด",en:"Coordinates",ja:"座標"},
   rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
   rateMid:{th:"ดี",en:"Good",ja:"良好"},
   rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
@@ -1354,13 +1357,17 @@ function renderIpInfo(ip, data){
     return;
   }
   const lines = [
-    [t('ipCity'), [data.city, data.region].filter(Boolean).join(', ')],
-    [t('ipCountry'), data.country || ''],
-    [t('ipOrg'), data.org || ''],
+    [t('ipCity'), esc([data.city, data.region].filter(Boolean).join(', '))],
+    [t('ipCountry'), esc(data.country || '')],
+    [t('ipPostal'), esc(data.postal || '')],
   ].filter(([,v]) => v);
+  if (data.loc) {
+    lines.push([t('ipLoc'), `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${esc(data.loc)}">${esc(data.loc)}</a>`]);
+  }
+  if (data.org) lines.push([t('ipOrg'), esc(data.org)]);
   $('ipInfoBody').innerHTML = `
     <p class="fc-mut" style="font-family:var(--fc-font-mono);margin:0 0 10px">${esc(ip)}</p>
-    ${lines.map(([k,v]) => `<div class="ep-bar-row" style="margin-bottom:8px"><span class="lbl" style="width:90px">${esc(k)}</span><span style="font-size:13px">${esc(v)}</span></div>`).join('')}
+    ${lines.map(([k,v]) => `<div class="ep-bar-row" style="margin-bottom:8px"><span class="lbl" style="width:90px">${esc(k)}</span><span style="font-size:13px">${v}</span></div>`).join('')}
   `;
 }
 
