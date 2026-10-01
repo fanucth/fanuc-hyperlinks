@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.01f - แถบคะแนนรายข้อ: ต่อท้าย Q5 ด้วยจำนวน response ทั้งหมดของเดือนนี้ (ไม่ขึ้นกับตัวกรอง)
        2026.10.01e - เพิ่มแถบคะแนนเฉลี่ยรายข้อ Q1-Q5 (ตามตัวกรอง) ใต้การ์ด KPI
        2026.10.01d - popup ข้อมูล IP: เอาแถว "พิกัด" (Coordinates + ลิงก์ Google Maps) ออก
        2026.10.01c - หน้า "จัดการวิศวกร": แก้ไข/อัปโหลดรูปใหม่ได้, แสดง+แก้วันเริ่มงานได้, ปุ่ม "+ เพิ่มวิศวกรใหม่"
@@ -427,7 +428,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.01e";
+const APP_VERSION = "2026.10.01f";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -551,6 +552,7 @@ const I18N = {
   q3:{th:"การอธิบายงาน",en:"Explanation",ja:"説明"},
   q4:{th:"มืออาชีพ",en:"Professional",ja:"プロ意識"},
   q5:{th:"ภาพรวม",en:"Overall",ja:"総合"},
+  qMonthCnt:{th:"เดือนนี้ทั้งหมด (response)",en:"This month (responses)",ja:"今月の回答数"},
   q3Full:{th:"การอธิบายปัญหาและงานที่ทำ ชัดเจน เข้าใจง่าย",en:"Clear explanation of the problem and work performed",ja:"問題と作業内容の説明の分かりやすさ"},
   q3WordingNote:{th:"⚠️ 11 ก.ย. 2026 เปลี่ยนคำถามข้อ 3 จาก \"ความชัดเจนเรื่องค่าใช้จ่าย/ใบเสนอราคา\" เป็น \"ความชัดเจนในการอธิบายงาน\" — คำตอบก่อนหน้านี้ตอบคำถามฉบับเดิม",en:"⚠️ 2026-09-11: Q3 wording changed from cost/quotation clarity to explanation clarity — responses before this date answered the old question",ja:"⚠️ 2026年9月11日 質問3の内容を「費用・見積りの説明」から「作業内容の説明」に変更 — それ以前の回答は旧質問への回答です"},
   colCustomer:{th:"ลูกค้า",en:"Customer",ja:"顧客名"},
@@ -1041,8 +1043,12 @@ async function loadGeoSetting(){
 
 // ผู้นำเดือนนี้/เดือนก่อน (ไม่ขึ้นกับตัวกรอง) — คะแนนสูงสุด + ทำมากสุด
 let leaders = null;
+let monthCount = null;
 async function loadLeaders(){
   const now = new Date();
+  const { count } = await sb.from('v_survey_full').select('*', { count:'exact', head:true })
+    .gte('submitted_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString());
+  monthCount = count;
   const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   let { data, error } = await sb.from('v_survey_by_engineer')
     .select('engineer_id,fname,lname,department,submitted_at,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall')
@@ -1266,7 +1272,7 @@ function renderQAvg(){
     const v = rows.reduce((s,r)=>s+r[k],0) / rows.length;
     const lbl = i === 2 ? `<span title="${esc(t('q3Full'))}">${t('q3')}</span>` : t('q' + (i+1));
     return `<span style="white-space:nowrap">Q${i+1} ${lbl} <b>${v.toFixed(2)}</b></span>`;
-  }).join('');
+  }).join('') + (monthCount != null ? `<span style="white-space:nowrap">| ${t('qMonthCnt')} <b>${monthCount}</b></span>` : '');
   box.innerHTML = `<div class="fc-kpi" style="padding:6px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;align-items:center">${items}</div>`;
 }
 
