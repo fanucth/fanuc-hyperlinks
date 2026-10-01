@@ -10,6 +10,10 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.10.01a - หน้าลูกค้า: ดึงคำถาม 5 ข้อ (3 ภาษา) จากตาราง survey_questions แทนค่า hardcode ใน
+                     QUESTIONS — แก้ได้จากหน้า "จัดการคำถาม" ใน dashboard.html มีผลทันที (ถ้าดึงไม่ได้/
+                     ตารางยังไม่มี fallback กลับไปใช้ค่า hardcode ด้านล่างแทน ไม่พัง)  [ต้องรัน
+                     migrate_engineer_crud_and_questions.sql]
        2026.09.25a - หน้าลูกค้า: เอาบรรทัด "Experience" (อายุงานวิศวกร) ออก
        2026.09.13e - เปลี่ยน popup ยืนยัน (เลข Report/Order ซ้ำ, ยกเลิก QR) จาก confirm() ของเบราว์เซอร์
                      เป็น modal สไตล์แอปเอง (showConfirm())
@@ -356,7 +360,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.09.25a";
+const APP_VERSION = "2026.10.01a";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -501,6 +505,20 @@ const QUESTIONS = [
   {key:"q4_professionalism", th:"ความเป็นมืออาชีพ มารยาท และความสุภาพ",   en:"Professionalism, manner and courtesy", ja:"プロ意識・態度・礼儀"},
   {key:"q5_overall",         th:"ความพึงพอใจโดยรวมต่อบริการครั้งนี้",       en:"Overall satisfaction with this service", ja:"今回のサービスの総合満足度"},
 ];
+
+// ดึงคำถามล่าสุดจากตาราง survey_questions (แก้ได้จากหน้า "จัดการคำถาม" ใน dashboard.html)
+// แก้ค่าใน QUESTIONS ตรงๆ (mutate object เดิม ไม่สร้าง array ใหม่) — ถ้าตารางยังไม่มี/ดึงไม่ได้ ใช้ค่า hardcode ข้างบนแทน ไม่พัง
+async function loadQuestionsFromDb(){
+  try {
+    const { data, error } = await sb.from('survey_questions').select('key,th,en,ja');
+    if (error || !data) return;
+    const byKey = Object.fromEntries(data.map(q => [q.key, q]));
+    QUESTIONS.forEach(q => {
+      const row = byKey[q.key];
+      if (row && row.th && row.en && row.ja) { q.th = row.th; q.en = row.en; q.ja = row.ja; }
+    });
+  } catch {}
+}
 
 // แผนก 3 ภาษา — key = ค่าที่เก็บใน engineers.department (ตรงเป๊ะ)
 // IT เพิ่ม/แก้แผนกจริงได้ตรงนี้ ถ้าไม่เจอใน map จะโชว์ค่าดิบตามที่เก็บใน DB
@@ -1111,6 +1129,7 @@ async function startCustomer(){
 
     CUST_INFO = info;
     renderEngInfo();
+    await loadQuestionsFromDb();   // ดึงคำถามล่าสุดจาก Supabase (ผู้บริหารแก้ได้ใน dashboard) — fallback เป็นค่า hardcode ด้านบนถ้าดึงไม่ได้
     renderQuestions();
     hide('custLoading'); show('custForm');
     initSigPad();   // ต้องเรียกหลัง show() ไม่งั้น canvas กว้าง=0 เซ็นไม่ติด

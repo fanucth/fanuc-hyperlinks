@@ -12,6 +12,10 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.01c - หน้า "จัดการวิศวกร": แก้ไข/อัปโหลดรูปใหม่ได้, แสดง+แก้วันเริ่มงานได้, ปุ่ม "+ เพิ่มวิศวกรใหม่"
+                     (สร้างบัญชี login อัตโนมัติผ่าน Edge Function ใหม่ create-engineer พร้อมโชว์รหัสผ่านชั่วคราว
+                     ให้คัดลอกไปแจ้งวิศวกร)  [ต้องรัน migrate_engineer_crud_and_questions.sql + deploy
+                     create-engineer]; เพิ่มหน้าใหม่ "จัดการคำถาม" แก้คำถาม 5 ข้อได้ทั้ง 3 ภาษา มีผลกับ survey.html ทันที
        2026.10.01b - popup ข้อมูล IP: เพิ่มรหัสไปรษณีย์ + พิกัด (คลิกพิกัดเปิด Google Maps ได้)
        2026.10.01a - คลิกไอคอน 📍/เลข IP ในตาราง All responses เปิด popup โชว์เมือง/จังหวัด, ประเทศ, องค์กร/ISP
                      ของ IP นั้น (ผ่าน ipinfo.io ฟรี ไม่ต้องใช้ key, cache ไว้ 24 ชม./IP ใน localStorage)
@@ -175,6 +179,7 @@
     </label>
     <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
     <button id="btnManageEng" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="manageEng">จัดการวิศวกร</button>
+    <button id="btnManageQ" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="manageQ">จัดการคำถาม</button>
     <button id="btnChgPw" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="changePw">เปลี่ยนรหัสผ่าน</button>
     <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" data-i18n="logout">ออกจากระบบ</button>
   </div>
@@ -268,11 +273,24 @@
           <input type="text" id="mgSearch" class="fc-input"></label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;align-self:flex-end;padding-bottom:8px;cursor:pointer">
           <input type="checkbox" id="mgShowResigned"> <span data-i18n="mgShowResigned">แสดงคนที่ลาออกแล้วด้วย</span></label>
+        <button class="fc-btn fc-btn--primary fc-btn--sm" id="btnAddEng" data-i18n="mgAddNew">+ เพิ่มวิศวกรใหม่</button>
       </div>
     </div>
     <div class="fc-card">
       <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="manageEng">จัดการวิศวกร</h2></div>
       <div id="mgBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="mgTable"></table></div>
+    </div>
+  </section>
+
+  <!-- MANAGE QUESTIONS -->
+  <section id="viewManageQ" class="fc-hidden">
+    <div class="fc-card fc-card--tight">
+      <button class="fc-btn fc-btn--sm" id="btnBackToDash2">← <span data-i18n="backToDash">กลับไปแดชบอร์ด</span></button>
+    </div>
+    <div class="fc-card">
+      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="manageQ">จัดการคำถาม</h2></div>
+      <p class="fc-mut" data-i18n="mqHint">แก้คำถามที่ลูกค้าจะเห็นตอนตอบแบบสอบถาม — มีผลทันทีกับคนที่ตอบหลังจากบันทึก</p>
+      <div id="mqBox"></div>
     </div>
   </section>
 </main>
@@ -311,12 +329,46 @@
   </div>
 </div>
 
+<div id="engAddModal" class="fc-modal fc-hidden">
+  <div class="fc-modal__box" style="max-width:480px">
+    <h3 data-i18n="mgAddNewHead">เพิ่มวิศวกรใหม่</h3>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="email">อีเมล</span>
+      <input type="email" id="addEmail" class="fc-input" placeholder="name@fth.fanuc.com"></label>
+    <div class="fc-row" style="gap:var(--fc-s2)">
+      <label class="fc-field" style="flex:1"><span class="fc-field__label" data-i18n="mgFname">ชื่อ</span>
+        <input type="text" id="addFname" class="fc-input"></label>
+      <label class="fc-field" style="flex:1"><span class="fc-field__label" data-i18n="mgLname">นามสกุล</span>
+        <input type="text" id="addLname" class="fc-input"></label>
+    </div>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="filterDept">แผนก</span>
+      <select id="addDept" class="fc-select"></select></label>
+    <div class="fc-row" style="gap:var(--fc-s2)">
+      <label class="fc-field" style="flex:1"><span class="fc-field__label" data-i18n="mgTitle">ตำแหน่ง</span>
+        <input type="text" id="addTitle" class="fc-input"></label>
+      <label class="fc-field" style="flex:1"><span class="fc-field__label" data-i18n="mgTel">เบอร์ติดต่อ</span>
+        <input type="text" id="addTel" class="fc-input"></label>
+    </div>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="epHireDate">วันเริ่มงาน</span>
+      <input type="date" id="addHireDate" class="fc-input"></label>
+    <p class="fc-note" data-i18n="mgAddNote">ระบบจะสร้างบัญชี login ให้อัตโนมัติ พร้อมรหัสผ่านชั่วคราวให้คัดลอกไปแจ้งวิศวกร</p>
+    <div id="addResult" class="fc-hidden" style="background:var(--fc-zebra);border-radius:var(--fc-radius);padding:var(--fc-s3);margin-bottom:var(--fc-s3);font-family:var(--fc-font-mono);font-size:13px"></div>
+    <p id="addErr" class="fc-field__error" style="min-height:16px"></p>
+    <div class="fc-row" style="gap:var(--fc-s2)">
+      <button class="fc-btn" id="addCancel" style="flex:1" data-i18n="cancel">ยกเลิก</button>
+      <button class="fc-btn fc-btn--primary" id="addSave" style="flex:1" data-i18n="mgCreate">สร้างวิศวกร</button>
+    </div>
+  </div>
+</div>
+
 <div id="engEditModal" class="fc-modal fc-hidden">
   <div class="fc-modal__box" style="max-width:480px">
     <h3 data-i18n="mgEditHead">แก้ไขข้อมูลวิศวกร</h3>
-    <div style="display:flex;justify-content:center;margin-bottom:var(--fc-s3)">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:var(--fc-s3)">
       <img id="mgPhoto" class="ep-photo" style="width:100px;height:100px" alt="" hidden>
       <div id="mgPhotoPlaceholder" class="ep-photo" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--fc-text-mute)"></div>
+      <input type="file" id="mgPhotoFile" accept="image/jpeg,image/png,image/webp" style="display:none">
+      <button type="button" class="fc-btn fc-btn--sm" id="mgPhotoPick" data-i18n="mgChangePhoto">เปลี่ยนรูป</button>
+      <p class="fc-mut" id="mgPhotoStatus" style="margin:0;font-size:11px"></p>
     </div>
     <label class="fc-field"><span class="fc-field__label" data-i18n="email">อีเมล</span>
       <input type="text" id="mgEmail" class="fc-input" disabled></label>
@@ -334,6 +386,8 @@
       <label class="fc-field" style="flex:1"><span class="fc-field__label" data-i18n="mgTel">เบอร์ติดต่อ</span>
         <input type="text" id="mgTel" class="fc-input"></label>
     </div>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="epHireDate">วันเริ่มงาน</span>
+      <input type="date" id="mgHireDate" class="fc-input"></label>
     <label class="fc-field"><span class="fc-field__label" data-i18n="mgStatus">สถานะ</span>
       <div class="fc-seg">
         <button type="button" class="fc-seg__btn" id="mgStatusActive" data-i18n="mgActive">ทำงานอยู่</button>
@@ -370,7 +424,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.01b";
+const APP_VERSION = "2026.10.01c";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -535,6 +589,22 @@ const I18N = {
   resignedBadge:{th:"ลาออกแล้ว",en:"Resigned",ja:"退職済"},
   mgFillNames:{th:"กรอกชื่อและนามสกุลให้ครบ",en:"Please fill in first and last name",ja:"名と姓を入力してください"},
   noPhoto:{th:"ไม่มีรูป",en:"No photo",ja:"写真なし"},
+  mgChangePhoto:{th:"เปลี่ยนรูป",en:"Change photo",ja:"写真を変更"},
+  mgPhotoUploading:{th:"กำลังอัปโหลด...",en:"Uploading...",ja:"アップロード中..."},
+  mgPhotoUploaded:{th:"อัปโหลดแล้ว — กด บันทึก เพื่อยืนยัน",en:"Uploaded — click Save to confirm",ja:"アップロード完了 — 保存を押して確定してください"},
+  mgPhotoUploadFail:{th:"อัปโหลดรูปไม่สำเร็จ: {err}",en:"Photo upload failed: {err}",ja:"写真のアップロードに失敗しました: {err}"},
+  mgAddNew:{th:"+ เพิ่มวิศวกรใหม่",en:"+ Add engineer",ja:"+ エンジニアを追加"},
+  mgAddNewHead:{th:"เพิ่มวิศวกรใหม่",en:"Add new engineer",ja:"新しいエンジニアを追加"},
+  mgAddNote:{th:"ระบบจะสร้างบัญชี login ให้อัตโนมัติ พร้อมรหัสผ่านชั่วคราวให้คัดลอกไปแจ้งวิศวกร",en:"A login account will be created automatically with a temporary password to hand to the engineer",ja:"ログインアカウントが自動作成され、仮パスワードが発行されます（エンジニアに伝えてください）"},
+  mgCreate:{th:"สร้างวิศวกร",en:"Create engineer",ja:"エンジニアを作成"},
+  mgAddFillRequired:{th:"กรอกอีเมล ชื่อ และนามสกุลให้ครบ",en:"Please fill in email, first name, and last name",ja:"メール・名・姓を入力してください"},
+  mgCreateSuccess:{th:"สร้างวิศวกรแล้ว<br>อีเมล: {email}<br>รหัสผ่านชั่วคราว: <b>{pw}</b><br>ให้วิศวกร login แล้วเปลี่ยนรหัสผ่านเองได้ทันที",en:"Engineer created<br>Email: {email}<br>Temporary password: <b>{pw}</b><br>They can log in and change the password themselves",ja:"エンジニアを作成しました<br>メール: {email}<br>仮パスワード: <b>{pw}</b><br>ログイン後にパスワードを変更できます"},
+  mgCreateExisting:{th:"อีเมลนี้มีบัญชี login อยู่แล้ว เพิ่ม/อัปเดตข้อมูลในตาราง engineers ให้แล้ว (ไม่เปลี่ยนรหัสผ่านเดิม)",en:"This email already has a login — engineer record added/updated (existing password unchanged)",ja:"このメールは既にログインがあります。エンジニア情報は追加/更新しました（既存のパスワードは変更していません）"},
+  mgCreateFail:{th:"สร้างวิศวกรไม่สำเร็จ: {err}",en:"Failed to create engineer: {err}",ja:"エンジニアの作成に失敗しました: {err}"},
+  manageQ:{th:"จัดการคำถาม",en:"Manage questions",ja:"質問管理"},
+  mqHint:{th:"แก้คำถามที่ลูกค้าจะเห็นตอนตอบแบบสอบถาม — มีผลทันทีกับคนที่ตอบหลังจากบันทึก",en:"Edit the questions customers see on the survey — takes effect immediately for responses after saving",ja:"お客様に表示される質問を編集 — 保存後の回答から即時反映されます"},
+  mqSaved:{th:"บันทึกคำถามแล้ว",en:"Question saved",ja:"質問を保存しました"},
+  mqFillAll:{th:"กรอกให้ครบทั้ง 3 ภาษา",en:"Please fill in all 3 languages",ja:"3言語すべて入力してください"},
 };
 let lang = localStorage.getItem('dashLang') || 'th';
 function t(key, vars){
@@ -781,7 +851,7 @@ function toast(msg, err){
   el.className = 'fc-toast is-show' + (err ? ' fc-toast--err' : '');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3200);
 }
-function show(id){ ['viewLogin','viewDash','viewManageEng'].forEach(v => $(v).classList.toggle('fc-hidden', v !== id)); }
+function show(id){ ['viewLogin','viewDash','viewManageEng','viewManageQ'].forEach(v => $(v).classList.toggle('fc-hidden', v !== id)); }
 
 /* ---------- theme ---------- */
 function setTheme(m){
@@ -816,6 +886,7 @@ async function boot(){
   wirePwUi();
   wireManageEngUi();
   wireColsModalUi();
+  wireManageQUi();
   $('engModalClose').onclick = () => $('engModal').classList.add('fc-hidden');
   $('ipInfoClose').onclick = () => $('ipInfoModal').classList.add('fc-hidden');
 
@@ -935,6 +1006,9 @@ async function startDash(){
   $('btnManageEng').classList.remove('fc-hidden');
   $('btnManageEng').onclick = () => { show('viewManageEng'); loadManageEngList(); };
   $('btnBackToDash').onclick = () => show('viewDash');
+  $('btnManageQ').classList.remove('fc-hidden');
+  $('btnManageQ').onclick = () => { show('viewManageQ'); loadManageQuestions(); };
+  $('btnBackToDash2').onclick = () => show('viewDash');
   $('btnApply').onclick = applyFilter;
   $('btnExport').onclick = exportXlsx;
   $('btnExportRank').onclick = exportRanking;
@@ -1555,10 +1629,14 @@ function setMgStatusUi(active){
   $('mgLoginNote').textContent = active ? t('mgLoginNoteOn') : t('mgLoginNoteOff');
 }
 
+let mgPendingPhotoPath = null;   // path ที่เพิ่งอัปโหลดรอบนี้ (ยังไม่ได้บันทึกจนกว่าจะกด "บันทึก")
+
 function openEngEdit(id){
   const e = MG_LIST.find(x => x.id === id);
   if (!e) return;
   mgEditing = e;
+  mgPendingPhotoPath = null;
+  $('mgPhotoStatus').textContent = '';
   if (e.photo_path) {
     $('mgPhoto').src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${e.photo_path}`;
     $('mgPhoto').hidden = false;
@@ -1576,10 +1654,25 @@ function openEngEdit(id){
     + (e.department && !DEPT_OPTIONS.includes(e.department) ? `<option value="${esc(e.department)}" selected>${esc(e.department)}</option>` : '');
   $('mgTitle').value = e.title || '';
   $('mgTel').value = e.tel || '';
+  $('mgHireDate').value = e.hire_date || '';
   $('mgResignedAt').value = e.resigned_at || '';
   $('mgErr').textContent = '';
   setMgStatusUi(e.active !== false);
   $('engEditModal').classList.remove('fc-hidden');
+}
+
+async function uploadEngPhoto(file){
+  if (!mgEditing || !file) return;
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${mgEditing.id}-${Date.now()}.${ext}`;
+  $('mgPhotoStatus').textContent = t('mgPhotoUploading');
+  const { error } = await sb.storage.from('engineer-photos').upload(path, file, { contentType: file.type });
+  if (error) { $('mgPhotoStatus').textContent = t('mgPhotoUploadFail', { err: error.message }); return; }
+  mgPendingPhotoPath = path;
+  $('mgPhoto').src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${path}`;
+  $('mgPhoto').hidden = false;
+  $('mgPhotoPlaceholder').hidden = true;
+  $('mgPhotoStatus').textContent = t('mgPhotoUploaded');
 }
 
 function wireManageEngUi(){
@@ -1589,6 +1682,11 @@ function wireManageEngUi(){
   $('mgStatusResigned').onclick = () => setMgStatusUi(false);
   $('mgCancel').onclick = () => $('engEditModal').classList.add('fc-hidden');
   $('mgSave').onclick = saveEngEdit;
+  $('mgPhotoPick').onclick = () => $('mgPhotoFile').click();
+  $('mgPhotoFile').onchange = () => { const f = $('mgPhotoFile').files[0]; if (f) uploadEngPhoto(f); };
+  $('btnAddEng').onclick = openAddEng;
+  $('addCancel').onclick = () => $('engAddModal').classList.add('fc-hidden');
+  $('addSave').onclick = saveNewEngineer;
 }
 
 async function saveEngEdit(){
@@ -1602,9 +1700,11 @@ async function saveEngEdit(){
     department: $('mgDept').value || null,
     title: $('mgTitle').value.trim() || null,
     tel: $('mgTel').value.trim() || null,
+    hire_date: $('mgHireDate').value || null,
     active: willBeActive,
     resigned_at: willBeActive ? null : ($('mgResignedAt').value || new Date().toISOString().slice(0, 10)),
   };
+  if (mgPendingPhotoPath) payload.photo_path = mgPendingPhotoPath;
   $('mgSave').disabled = true;
   const { error } = await sb.from('engineers').update(payload).eq('id', mgEditing.id);
   if (error) { $('mgSave').disabled = false; $('mgErr').textContent = error.message; return; }
@@ -1630,6 +1730,95 @@ async function saveEngEdit(){
     }
   }
 }
+
+/* ---------- เพิ่มวิศวกรใหม่ (สร้าง Auth login ผ่าน Edge Function create-engineer + แถว engineers) ---------- */
+function openAddEng(){
+  $('addEmail').value = ''; $('addFname').value = ''; $('addLname').value = '';
+  $('addTitle').value = ''; $('addTel').value = ''; $('addHireDate').value = '';
+  $('addDept').innerHTML = DEPT_OPTIONS.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  $('addErr').textContent = '';
+  $('addResult').classList.add('fc-hidden'); $('addResult').innerHTML = '';
+  $('addSave').disabled = false;
+  $('engAddModal').classList.remove('fc-hidden');
+}
+async function saveNewEngineer(){
+  const email = $('addEmail').value.trim().toLowerCase();
+  const fname = $('addFname').value.trim();
+  const lname = $('addLname').value.trim();
+  if (!email || !fname || !lname) { $('addErr').textContent = t('mgAddFillRequired'); return; }
+  $('addSave').disabled = true;
+  $('addErr').textContent = '';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/create-engineer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CONFIG.anonKey, Authorization: 'Bearer ' + session.access_token },
+      body: JSON.stringify({
+        email, fname, lname,
+        department: $('addDept').value || null,
+        title: $('addTitle').value.trim() || null,
+        tel: $('addTel').value.trim() || null,
+        hire_date: $('addHireDate').value || null,
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error) throw new Error(j.error || res.status);
+    $('addResult').classList.remove('fc-hidden');
+    $('addResult').innerHTML = j.created
+      ? t('mgCreateSuccess', { email, pw: j.tempPassword })
+      : t('mgCreateExisting');
+    loadManageEngList();
+  } catch (e) {
+    $('addErr').textContent = t('mgCreateFail', { err: e.message || e });
+  } finally {
+    $('addSave').disabled = false;
+  }
+}
+
+/* ---------- จัดการคำถาม (survey_questions — exec แก้ได้ 3 ภาษา, survey.html ดึงไปแสดงจริง) ---------- */
+const Q_KEYS = ['q1_response_time', 'q2_technical_skill', 'q3_communication_cost', 'q4_professionalism', 'q5_overall'];
+let MQ_LIST = [];
+async function loadManageQuestions(){
+  const box = $('mqBox');
+  skeleton(box);
+  const { data, error } = await sb.from('survey_questions').select('*');
+  if (error) { box.innerHTML = `<div class="fc-empty">${esc(error.message)}</div>`; return; }
+  const byKey = Object.fromEntries((data || []).map(q => [q.key, q]));
+  MQ_LIST = Q_KEYS.map((k, i) => byKey[k] || { key: k, th: '', en: '', ja: '' });
+  renderManageQ();
+}
+function renderManageQ(){
+  const box = $('mqBox');
+  box.innerHTML = MQ_LIST.map((q, i) => `
+    <div class="fc-card" style="margin-bottom:var(--fc-s3)">
+      <div class="fc-card__head"><h3 class="fc-card__title" style="font-size:15px">${t('q' + (i + 1))} <span class="fc-mut" style="font-size:11px;font-family:var(--fc-font-mono)">(${q.key})</span></h3></div>
+      <label class="fc-field"><span class="fc-field__label">ไทย</span>
+        <textarea class="fc-input mq-th" rows="2" data-key="${q.key}">${esc(q.th)}</textarea></label>
+      <label class="fc-field"><span class="fc-field__label">English</span>
+        <textarea class="fc-input mq-en" rows="2" data-key="${q.key}">${esc(q.en)}</textarea></label>
+      <label class="fc-field"><span class="fc-field__label">日本語</span>
+        <textarea class="fc-input mq-ja" rows="2" data-key="${q.key}">${esc(q.ja)}</textarea></label>
+      <p class="fc-field__error mq-err" data-key="${q.key}" style="min-height:16px"></p>
+      <button class="fc-btn fc-btn--primary fc-btn--sm mq-save" data-key="${q.key}" data-i18n="save">บันทึก</button>
+    </div>`).join('');
+  box.querySelectorAll('.mq-save').forEach(btn => {
+    btn.onclick = () => saveQuestion(btn.dataset.key);
+  });
+}
+async function saveQuestion(key){
+  const th = mqVal('mq-th', key), en = mqVal('mq-en', key), ja = mqVal('mq-ja', key);
+  const errEl = document.querySelector(`.mq-err[data-key="${key}"]`);
+  if (!th || !en || !ja) { errEl.textContent = t('mqFillAll'); return; }
+  errEl.textContent = '';
+  const { error } = await sb.from('survey_questions').upsert({ key, th, en, ja, updated_at: new Date().toISOString(), updated_by: ME }, { onConflict: 'key' });
+  if (error) { errEl.textContent = error.message; return; }
+  toast(t('mqSaved'));
+}
+function mqVal(cls, key){
+  const el = document.querySelector(`.${cls}[data-key="${key}"]`);
+  return el ? el.value.trim() : '';
+}
+function wireManageQUi(){ /* ปุ่มต่อข้อ wire ใน renderManageQ() เอง */ }
 
 function renderDetail(){
   const box = $('detBox');
