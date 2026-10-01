@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.01e - เพิ่มแถบคะแนนเฉลี่ยรายข้อ Q1-Q5 (ตามตัวกรอง) ใต้การ์ด KPI
+       2026.10.01d - popup ข้อมูล IP: เอาแถว "พิกัด" (Coordinates + ลิงก์ Google Maps) ออก
        2026.10.01c - หน้า "จัดการวิศวกร": แก้ไข/อัปโหลดรูปใหม่ได้, แสดง+แก้วันเริ่มงานได้, ปุ่ม "+ เพิ่มวิศวกรใหม่"
                      (สร้างบัญชี login อัตโนมัติผ่าน Edge Function ใหม่ create-engineer พร้อมโชว์รหัสผ่านชั่วคราว
                      ให้คัดลอกไปแจ้งวิศวกร)  [ต้องรัน migrate_engineer_crud_and_questions.sql + deploy
@@ -210,6 +212,7 @@
   <section id="viewDash" class="fc-hidden">
 
     <div class="fc-kpis" id="kpis" style="margin-bottom:var(--fc-s4)"></div>
+    <div id="qAvgBox" style="margin-bottom:var(--fc-s4)"></div>
 
     <div class="fc-card fc-card--tight">
       <div class="filters-bar">
@@ -424,7 +427,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.01c";
+const APP_VERSION = "2026.10.01e";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -513,7 +516,6 @@ const I18N = {
   ipCountry:{th:"ประเทศ",en:"Country",ja:"国"},
   ipOrg:{th:"องค์กร/ISP",en:"Org/ISP",ja:"組織/ISP"},
   ipPostal:{th:"รหัสไปรษณีย์",en:"Postal code",ja:"郵便番号"},
-  ipLoc:{th:"พิกัด",en:"Coordinates",ja:"座標"},
   rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
   rateMid:{th:"ดี",en:"Good",ja:"良好"},
   rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
@@ -1255,6 +1257,19 @@ function leaderCard(labelKey, g, kind, monthFlag){
   </div>`;
 }
 
+// คะแนนเฉลี่ยรายข้อ Q1-Q5 (ตามตัวกรองหน้าหลัก)
+function renderQAvg(){
+  const box = $('qAvgBox');
+  if (!rows.length) { box.innerHTML = ''; return; }
+  const cols = ['q1_response_time','q2_technical_skill','q3_communication_cost','q4_professionalism','q5_overall'];
+  const items = cols.map((k, i) => {
+    const v = rows.reduce((s,r)=>s+r[k],0) / rows.length;
+    const lbl = i === 2 ? `<span title="${esc(t('q3Full'))}">${t('q3')}</span>` : t('q' + (i+1));
+    return `<span style="white-space:nowrap">Q${i+1} ${lbl} <b>${v.toFixed(2)}</b></span>`;
+  }).join('');
+  box.innerHTML = `<div class="fc-kpi" style="padding:6px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;align-items:center">${items}</div>`;
+}
+
 function renderKpis(){
   const box = $('kpis');
   const L = leaders || {};
@@ -1272,6 +1287,7 @@ function renderKpis(){
     + leaderCard('kpiTopRespM', L.respM, 'resp', 'this')
     + leaderCard('kpiTopRateL', L.rateL, 'rate', 'last')
     + leaderCard('kpiTopRespL', L.respL, 'resp', 'last');
+  renderQAvg();
   box.querySelectorAll('a.eng-link').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); if (a.dataset.eid) openEngineerProfile(a.dataset.eid); };
   });
@@ -1435,9 +1451,6 @@ function renderIpInfo(ip, data){
     [t('ipCountry'), esc(data.country || '')],
     [t('ipPostal'), esc(data.postal || '')],
   ].filter(([,v]) => v);
-  if (data.loc) {
-    lines.push([t('ipLoc'), `<a class="geo-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${esc(data.loc)}">${esc(data.loc)}</a>`]);
-  }
   if (data.org) lines.push([t('ipOrg'), esc(data.org)]);
   $('ipInfoBody').innerHTML = `
     <p class="fc-mut" style="font-family:var(--fc-font-mono);margin:0 0 10px">${esc(ip)}</p>
