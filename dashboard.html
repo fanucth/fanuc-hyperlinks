@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.01a - คลิกไอคอน 📍/เลข IP ในตาราง All responses เปิด popup โชว์เมือง/จังหวัด, ประเทศ, องค์กร/ISP
+                     ของ IP นั้น (ผ่าน ipinfo.io ฟรี ไม่ต้องใช้ key, cache ไว้ 24 ชม./IP ใน localStorage)
        2026.09.30b - คอลัมน์ "ทีมงาน": ถ้ามีมากกว่า 1 คน ขึ้นบรรทัดใหม่พร้อมเลขนำหน้า (1. ชื่อ / 2. ชื่อ ...)
                      แทนการต่อด้วยจุลภาคบรรทัดเดียว (ใช้กับทั้งโหมดคลิกได้และโหมด fallback ข้อความล้วน)
        2026.09.30a - ตาราง "All responses": คอลัมน์ "ทีมงาน" คลิกชื่อแต่ละคนเปิดโปรไฟล์ได้แล้ว (เดิมเป็นข้อความ
@@ -298,6 +300,16 @@
   </div>
 </div>
 
+<div id="ipInfoModal" class="fc-modal fc-hidden">
+  <div class="fc-modal__box" style="max-width:340px">
+    <h3 data-i18n="ipInfoHead">ข้อมูล IP</h3>
+    <div id="ipInfoBody"></div>
+    <div class="fc-row" style="gap:var(--fc-s2);margin-top:var(--fc-s3)">
+      <button class="fc-btn" id="ipInfoClose" style="flex:1" data-i18n="close">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div id="engEditModal" class="fc-modal fc-hidden">
   <div class="fc-modal__box" style="max-width:480px">
     <h3 data-i18n="mgEditHead">แก้ไขข้อมูลวิศวกร</h3>
@@ -357,7 +369,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.09.30b";
+const APP_VERSION = "2026.10.01a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -438,6 +450,13 @@ const I18N = {
   unitScore:{th:"คะแนน",en:"avg",ja:"点"},
   unitResp:{th:"รายการ",en:"responses",ja:"件"},
   unitPeople:{th:"คน",en:"people",ja:"人"},
+  viewIpInfo:{th:"ดูข้อมูล IP",en:"View IP info",ja:"IP情報を見る"},
+  ipInfoHead:{th:"ข้อมูล IP",en:"IP info",ja:"IP情報"},
+  ipInfoFail:{th:"ดึงข้อมูล IP ไม่สำเร็จ ลองใหม่ภายหลัง",en:"Failed to look up this IP — try again later",ja:"IP情報の取得に失敗しました。後でもう一度お試しください"},
+  ipInfoPrivate:{th:"IP นี้เป็น IP วงใน/ไม่สามารถระบุตำแหน่งได้",en:"This is a private/unroutable IP — no location data",ja:"プライベートIPのため位置情報がありません"},
+  ipCity:{th:"เมือง/จังหวัด",en:"City/Region",ja:"市区町村"},
+  ipCountry:{th:"ประเทศ",en:"Country",ja:"国"},
+  ipOrg:{th:"องค์กร/ISP",en:"Org/ISP",ja:"組織/ISP"},
   rateHigh:{th:"ดีมาก",en:"Excellent",ja:"優秀"},
   rateMid:{th:"ดี",en:"Good",ja:"良好"},
   rateLow:{th:"ต้องพัฒนา",en:"Needs work",ja:"要改善"},
@@ -672,7 +691,9 @@ const DET_COLUMNS = [
   { key:'geo_area', label:()=>t('colGeo'), width:150,
     cell:r=>`<td style="white-space:normal;line-height:1.5">${geoCell(r)}</td>` },
   { key:'client_ip', label:()=>t('colIP'), width:118,
-    cell:r=>`<td style="font-family:var(--fc-font-mono);font-size:12px;color:var(--fc-text-dim)">${esc(r.client_ip||'')}</td>` },
+    cell:r=>r.client_ip
+      ? `<td><a href="#" class="ip-link" data-ip="${esc(r.client_ip)}" style="font-family:var(--fc-font-mono);font-size:12px;color:var(--fc-text-dim);text-decoration:none" title="${esc(t('viewIpInfo'))}">📍 ${esc(r.client_ip)}</a></td>`
+      : `<td></td>` },
   { key:'sig', label:()=>t('colSig'), thCls:'fc-c', width:66, noSort:true,
     cell:r=>`<td class="fc-c"><a href="#" class="sig-btn" data-sig="${esc(r.signature_path||'')}" data-rp="${esc(r.service_report_no||'')}" data-so="${esc(r.service_order_no||'')}" title="${t('colSig')}">👁</a></td>` },
   { key:'reply', label:()=>t('colReply'), thCls:'fc-c', width:56, noSort:true,
@@ -793,6 +814,7 @@ async function boot(){
   wireManageEngUi();
   wireColsModalUi();
   $('engModalClose').onclick = () => $('engModal').classList.add('fc-hidden');
+  $('ipInfoClose').onclick = () => $('ipInfoModal').classList.add('fc-hidden');
 
   // มาจากลิงก์ "ลืมรหัสผ่าน" ในอีเมล
   if (location.hash.includes('type=recovery')) { show('viewLogin'); wireLogin(); return; }
@@ -1298,6 +1320,50 @@ async function replyToEngineer(r){
 
 // สรุปผลงานของวิศวกรคนนี้ "เฉพาะเดือนที่การ์ด KPI พูดถึง" (เดือนนี้/เดือนก่อน) — คนละชุดข้อมูลกับ
 // openEngineerProfile() ที่ใช้ตัวกรองหลักของหน้า (อาจเป็นช่วงอื่น) เพื่อให้ตัวเลขตรงกับที่การ์ดโชว์จริง
+// เช็ค IP ลูกค้า (เมือง/จังหวัด/ประเทศ + องค์กร/ISP) ผ่าน ipinfo.io — ฟรี ไม่ต้องใช้ key
+// (ไม่ใส่ token = จำกัด 1,000 ครั้ง/วัน ใช้ร่วมกับคนอื่นที่ใช้ IP ออกเน็ตเดียวกับผู้ใช้ — ถ้าชนบ่อยค่อยสมัคร token ฟรีใส่ตรงนี้)
+const IPINFO_TOKEN = '';   // ว่างได้ ใส่ token จาก ipinfo.io ตรงนี้ถ้าอยากได้โควตาไม่จำกัด
+const IP_CACHE_HOURS = 24;
+async function openIpInfo(ip){
+  const body = $('ipInfoBody');
+  body.innerHTML = `<div class="fc-skeleton" style="height:70px"></div>`;
+  $('ipInfoModal').classList.remove('fc-hidden');
+
+  const ck = 'ipInfoCache:' + ip;
+  try {
+    const cached = JSON.parse(localStorage.getItem(ck) || 'null');
+    if (cached && (Date.now() - cached.at) < IP_CACHE_HOURS * 3600 * 1000) {
+      return renderIpInfo(ip, cached.data);
+    }
+  } catch {}
+
+  try {
+    const url = `https://ipinfo.io/${encodeURIComponent(ip)}/json` + (IPINFO_TOKEN ? `?token=${IPINFO_TOKEN}` : '');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), data })); } catch {}
+    renderIpInfo(ip, data);
+  } catch (e) {
+    body.innerHTML = `<p class="fc-mut">${esc(ip)}</p><div class="fc-empty">${t('ipInfoFail')}</div>`;
+  }
+}
+function renderIpInfo(ip, data){
+  if (data.bogon || (!data.city && !data.country)) {
+    $('ipInfoBody').innerHTML = `<p class="fc-mut" style="font-family:var(--fc-font-mono)">${esc(ip)}</p><div class="fc-empty">${t('ipInfoPrivate')}</div>`;
+    return;
+  }
+  const lines = [
+    [t('ipCity'), [data.city, data.region].filter(Boolean).join(', ')],
+    [t('ipCountry'), data.country || ''],
+    [t('ipOrg'), data.org || ''],
+  ].filter(([,v]) => v);
+  $('ipInfoBody').innerHTML = `
+    <p class="fc-mut" style="font-family:var(--fc-font-mono);margin:0 0 10px">${esc(ip)}</p>
+    ${lines.map(([k,v]) => `<div class="ep-bar-row" style="margin-bottom:8px"><span class="lbl" style="width:90px">${esc(k)}</span><span style="font-size:13px">${esc(v)}</span></div>`).join('')}
+  `;
+}
+
 async function openMonthlyProfile(engineerId, monthFlag){
   if (!engineerId) return;
   const body = $('engModalBody');
@@ -1596,6 +1662,9 @@ function renderDetail(){
   });
   box.querySelectorAll('a.reply-btn').forEach(a => {
     a.onclick = ev => { ev.preventDefault(); const r = rows.find(x => x.id === a.dataset.rid); if (r) replyToEngineer(r); };
+  });
+  box.querySelectorAll('a.ip-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); if (a.dataset.ip) openIpInfo(a.dataset.ip); };
   });
   translateIn(box);
 
