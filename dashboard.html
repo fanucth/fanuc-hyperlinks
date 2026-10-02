@@ -12,6 +12,8 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.02f - ตัดสินเสมอเพิ่มข้อ 4-5: เฉลี่ยเดือนก่อน (เฉพาะการ์ดเดือนนี้/ตาราง) -> เฉลี่ยรวมทั้งหมดตลอดกาล
+       2026.10.02e - กติกาตัดสินเมื่อคะแนนเฉลี่ยเท่ากัน (การ์ดผู้นำ + ตารางอันดับ): survey มากกว่า -> Q5 ภาพรวมสูงกว่า -> ชื่อ
        2026.10.02d - มือถือ: สวิตช์พิกัดเหลือหมุด 📍, ปุ่ม จัดการวิศวกร/คำถาม/รหัสผ่าน/ออกจากระบบ เป็นไอคอน (จอคอมยังมีข้อความเหมือนเดิม)
        2026.10.02c - มือถือ: header เหลือแค่โลโก้ + แถวปุ่ม, ซ่อนชื่อหน้าและสวิตช์ "เก็บพิกัด"
        2026.10.02b - มือถือ: header เป็น 2 แถว (โลโก้+ชื่อบรรทัดเดียว / แถวปุ่มเลื่อนแนวนอนได้) ซ่อนคำอธิบายรอง
@@ -473,7 +475,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.02d";
+const APP_VERSION = "2026.10.02f";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -1089,6 +1091,7 @@ async function loadGeoSetting(){
 // ผู้นำเดือนนี้/เดือนก่อน (ไม่ขึ้นกับตัวกรอง) — คะแนนสูงสุด + ทำมากสุด
 let leaders = null;
 let monthCount = null;
+let tieStats = {};   // engineer_id -> { last: เฉลี่ยเดือนก่อน, all: เฉลี่ยรวมทั้งหมด } ใช้ตัดสินเสมอ
 async function loadLeaders(){
   const now = new Date();
   const { count } = await sb.from('v_survey_full').select('*', { count:'exact', head:true })
@@ -1111,22 +1114,52 @@ async function loadLeaders(){
   (data || []).forEach(r => {
     const k = mKey(r.submitted_at); if (!bucket[k]) return;
     const g = bucket[k][r.engineer_id] || (bucket[k][r.engineer_id] =
-      { engineer_id:r.engineer_id, fname:r.fname||'', lname:r.lname||'', dept:r.department||'', n:0, sum:0 });
+      { engineer_id:r.engineer_id, fname:r.fname||'', lname:r.lname||'', dept:r.department||'', n:0, sum:0, q5:0 });
     g.n++;
+    g.q5 += r.q5_overall;
     g.sum += (r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall) / 5;
+  });
+  // คะแนนเฉลี่ยรวมทั้งหมดตลอดกาลต่อวิศวกร (ใช้ตัดสินเสมอข้อ 3) + เฉลี่ยเดือนก่อน
+  tieStats = {};
+  Object.values(bucket[lastKey]).forEach(g => { tieStats[g.engineer_id] = { last: Math.round(g.sum / g.n * 100) / 100, all: 0 }; });
+  const allAgg = {};
+  const cols = 'engineer_id,q1_response_time,q2_technical_skill,q3_communication_cost,q4_professionalism,q5_overall';
+  for (const src of ['v_survey_by_engineer', 'v_survey_full']) {
+    let ok = true, from = 0; const tmp = {};
+    for (;;) {
+      const { data: part, error: e2 } = await sb.from(src).select(cols).range(from, from + 999);
+      if (e2) { ok = false; break; }
+      (part || []).forEach(r => {
+        const a = tmp[r.engineer_id] || (tmp[r.engineer_id] = { n:0, s:0 });
+        a.n++; a.s += (r.q1_response_time + r.q2_technical_skill + r.q3_communication_cost + r.q4_professionalism + r.q5_overall) / 5;
+      });
+      if (!part || part.length < 1000) break;
+      from += 1000;
+    }
+    if (ok) { Object.assign(allAgg, tmp); break; }
+  }
+  Object.entries(allAgg).forEach(([id, a]) => {
+    (tieStats[id] || (tieStats[id] = { last: 0, all: 0 })).all = Math.round(a.s / a.n * 100) / 100;
   });
   const pick = (k, by) => {
     const arr = Object.values(bucket[k] || {});
     if (!arr.length) return null;
+    // เสมอกัน (เทียบที่ทศนิยม 2 ตำแหน่งเท่าที่โชว์): survey มากกว่า -> Q5 สูงกว่า -> เฉลี่ยเดือนก่อน -> เฉลี่ยรวมทั้งหมด -> ชื่อ
+    const avg2 = g => Math.round(g.sum / g.n * 100) / 100;
+    const q52  = g => Math.round(g.q5 / g.n * 100) / 100;
+    const ts   = g => tieStats[g.engineer_id] || { last: 0, all: 0 };
+    const byName = (a,b) => `${a.fname} ${a.lname}`.localeCompare(`${b.fname} ${b.lname}`, 'th');
+    const tail = (a,b) => (q52(b) - q52(a)) || (k === curKey ? ts(b).last - ts(a).last : 0) || (ts(b).all - ts(a).all) || byName(a,b);
     return by === 'rate'
-      ? arr.slice().sort((a,b) => (b.sum/b.n) - (a.sum/a.n))[0]
-      : arr.slice().sort((a,b) => b.n - a.n)[0];
+      ? arr.slice().sort((a,b) => (avg2(b) - avg2(a)) || (b.n - a.n) || tail(a,b))[0]
+      : arr.slice().sort((a,b) => (b.n - a.n) || (avg2(b) - avg2(a)) || tail(a,b))[0];
   };
   leaders = {
     rateM: pick(curKey, 'rate'), respM: pick(curKey, 'resp'),
     rateL: pick(lastKey, 'rate'), respL: pick(lastKey, 'resp'),
   };
   renderKpis();
+  if (rows && rows.length && $('sumTable')) renderRanking();   // ให้ตารางอันดับใช้ค่าตัดสินเสมอที่เพิ่งโหลด
 }
 async function saveGeoSetting(){
   const on = $('setGeo').checked;
@@ -1188,6 +1221,12 @@ function sortArr(arr, st, kind){
             yn = isFinite(ny) && String(y).trim() !== '';
       if (xn && yn) c = nx - ny;
       else c = String(x ?? '').localeCompare(String(y ?? ''), 'th');
+    }
+    // ตารางอันดับ เรียงตามเฉลี่ยรวมแล้วเสมอกัน: จำนวน survey มากกว่า -> Q5 สูงกว่า -> ชื่อ
+    if (kind === 'rank' && st.key === 'avg' && Math.abs(c) < 0.005) {
+      const ta = tieStats[a.engineer_id] || {last:0,all:0}, tb = tieStats[b.engineer_id] || {last:0,all:0};
+      c = (a.n - b.n) || (a.q[4]/a.n - b.q[4]/b.n) || (ta.last - tb.last) || (ta.all - tb.all);
+      if (!c) return String(a.name||'').localeCompare(String(b.name||''), 'th');
     }
     return st.dir === 'asc' ? c : -c;
   });
