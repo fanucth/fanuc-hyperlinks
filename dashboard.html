@@ -12,6 +12,10 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.02d - มือถือ: สวิตช์พิกัดเหลือหมุด 📍, ปุ่ม จัดการวิศวกร/คำถาม/รหัสผ่าน/ออกจากระบบ เป็นไอคอน (จอคอมยังมีข้อความเหมือนเดิม)
+       2026.10.02c - มือถือ: header เหลือแค่โลโก้ + แถวปุ่ม, ซ่อนชื่อหน้าและสวิตช์ "เก็บพิกัด"
+       2026.10.02b - มือถือ: header เป็น 2 แถว (โลโก้+ชื่อบรรทัดเดียว / แถวปุ่มเลื่อนแนวนอนได้) ซ่อนคำอธิบายรอง
+       2026.10.02a - รองรับมือถือ: app bar ขึ้นบรรทัดใหม่ไม่ล้นจอ, KPI/ตัวกรองเรียงเป็นคอลัมน์, popup เต็มความกว้าง, ตารางเลื่อนแนวนอน
        2026.10.01f - แถบคะแนนรายข้อ: ต่อท้าย Q5 ด้วยจำนวน response ทั้งหมดของเดือนนี้ (ไม่ขึ้นกับตัวกรอง)
        2026.10.01e - เพิ่มแถบคะแนนเฉลี่ยรายข้อ Q1-Q5 (ตามตัวกรอง) ใต้การ์ด KPI
        2026.10.01d - popup ข้อมูล IP: เอาแถว "พิกัด" (Coordinates + ลิงก์ Google Maps) ออก
@@ -162,6 +166,47 @@
   .star{position:relative;display:inline-block;color:var(--fc-border-strong);}
   .star::before{content:"★";position:absolute;inset:0;width:var(--p);overflow:hidden;color:var(--fc-accent);white-space:nowrap;}
   .ep-stat .stars{font-size:18px;}
+
+  /* ---------- มือถือ / จอแคบ ---------- */
+  html,body{max-width:100%;overflow-x:hidden;}
+  @media (max-width:820px){
+    .fc-appbar{display:grid !important;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--fc-s2) var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);}
+    .appbar-logo{height:20px !important;width:auto !important;max-width:none;}
+    .fc-appbar__brand{display:none !important;}   /* มือถือ: เหลือแค่โลโก้ */
+    .geo-switch > span > span{display:none;}       /* มือถือ: สวิตช์พิกัดเหลือแค่หมุด 📍 */
+    .fc-appbar__actions .lbl{display:none;}        /* มือถือ: ปุ่มเหลือแต่ไอคอน */
+    .fc-appbar__actions .fc-btn{padding:6px 10px;}
+    .fc-appbar__spacer{display:none !important;}
+    .fc-appbar__actions{grid-column:1 / -1;display:flex;flex-wrap:nowrap !important;overflow-x:auto;gap:var(--fc-s2);padding-bottom:2px;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .fc-appbar__actions::-webkit-scrollbar{display:none;}
+    .fc-appbar__actions > *{flex:0 0 auto;white-space:nowrap;}
+    .fc-appbar__actions .fc-btn--sm{padding:6px 10px;font-size:13px;}
+    .fc-container{padding:var(--fc-s3);}
+    .fc-card{padding:var(--fc-s3);}
+    .fc-card__head{flex-wrap:wrap;gap:var(--fc-s2);}
+    .kpi-photo{width:64px;height:64px;}
+    .kpi-name{font-size:17px;}
+    .fc-kpis{grid-template-columns:1fr 1fr;gap:var(--fc-s2);}
+    .fc-kpis > .fc-kpi:first-child{grid-column:1 / -1;}
+    .filters-bar{gap:var(--fc-s2);}
+    .filters-bar .qbtns{flex:1 1 100%;flex-wrap:wrap;}
+    .filters-bar .fc-field{flex:1 1 calc(50% - var(--fc-s2));min-width:0;}
+    .filters-bar .f-date,.filters-bar .f-sel{width:100%;}
+    .filters-bar .fc-btn{flex:1 1 calc(50% - var(--fc-s2));}
+    .fc-table-wrap--tall{max-height:60vh;}
+    .fc-modal{padding:var(--fc-s2);}
+    .fc-modal__box{width:100% !important;max-width:100% !important;max-height:92vh;overflow:auto;}
+    .ep-photo{width:96px;height:96px;}
+    .ep-head{gap:var(--fc-s3);}
+    .login-wrap{margin-top:var(--fc-s4);}
+    #appVer{display:none;}
+  }
+  @media (max-width:480px){
+    .fc-kpis{grid-template-columns:1fr;}
+    .filters-bar .fc-field,.filters-bar .fc-btn{flex:1 1 100%;}
+    .pager{font-size:13px;}
+  }
 </style>
 </head>
 <body class="fc">
@@ -181,10 +226,10 @@
       <span>📍 <span data-i18n="geoToggle">เก็บพิกัด</span></span>
     </label>
     <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
-    <button id="btnManageEng" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="manageEng">จัดการวิศวกร</button>
-    <button id="btnManageQ" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="manageQ">จัดการคำถาม</button>
-    <button id="btnChgPw" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" data-i18n="changePw">เปลี่ยนรหัสผ่าน</button>
-    <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" data-i18n="logout">ออกจากระบบ</button>
+    <button id="btnManageEng" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Engineers"><span class="ic">👷</span> <span class="lbl" data-i18n="manageEng">จัดการวิศวกร</span></button>
+    <button id="btnManageQ" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Questions"><span class="ic">📝</span> <span class="lbl" data-i18n="manageQ">จัดการคำถาม</span></button>
+    <button id="btnChgPw" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Password"><span class="ic">🔑</span> <span class="lbl" data-i18n="changePw">เปลี่ยนรหัสผ่าน</span></button>
+    <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" title="Logout"><span class="ic">🚪</span> <span class="lbl" data-i18n="logout">ออกจากระบบ</span></button>
   </div>
 </header>
 
@@ -428,7 +473,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.01f";
+const APP_VERSION = "2026.10.02d";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
