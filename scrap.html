@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.13 | Updated: 2026-09-25
+<!-- VERSION: v3.14 | Updated: 2026-10-05
+     Changes (v3.14):
+       - Export PDF: ย่อรูปให้พอดีขนาดที่แสดงจริง (~150 dpi, JPEG 0.7) ก่อนฝังลง PDF + เปิด compress ของ jsPDF — แก้ปัญหาไฟล์ใหญ่ (308 หน้า ≈ 200 MB)
      Changes (v3.13):
        - ขยายความกว้างการ์ด 'รายการที่บันทึกแล้ว' จาก 900px เป็น 1400px (96vw)
      Changes (v3.12):
@@ -363,7 +365,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.13';
+const APP_VERSION = 'v3.14';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -1386,6 +1388,30 @@ function getImageSize(dataUrl){
   });
 }
 
+// ย่อรูปให้พอดีกับขนาดที่แสดงจริงใน PDF (ประมาณ 150 dpi) ก่อนฝัง — รูปเต็ม 1280px ใหญ่เกินจำเป็นหลายเท่า ทำให้ไฟล์ PDF บวมเป็นร้อย MB
+// boxPt = ด้านที่ยาวที่สุดของกรอบรูปใน PDF (หน่วย pt); คืน dataURL JPEG ใหม่ (ถ้าย่อไม่ได้ คืนตัวเดิม)
+const PDF_IMG_DPI = 150;
+const PDF_IMG_QUALITY = 0.7;
+function shrinkForPdf(dataUrl, boxPt){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+      const maxPx = Math.round(boxPt / 72 * PDF_IMG_DPI);
+      const scale = Math.min(1, maxPx / Math.max(w, h));
+      const cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+      const cv = document.createElement('canvas');
+      cv.width = cw; cv.height = ch;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); // กัน PNG โปร่งใสกลายเป็นพื้นดำตอนแปลงเป็น JPEG
+      ctx.drawImage(img, 0, 0, cw, ch);
+      resolve({ dataUrl: cv.toDataURL('image/jpeg', PDF_IMG_QUALITY), w, h });
+    };
+    img.onerror = () => resolve({ dataUrl, w: 1, h: 1 });
+    img.src = dataUrl;
+  });
+}
+
 document.getElementById('btnExportPdf').onclick = async () => {
   const btnPdf = document.getElementById('btnExportPdf');
   let sourceRows;
@@ -1408,7 +1434,7 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
   try {
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({unit:'pt', format:'a4'});
+    const pdf = new jsPDF({unit:'pt', format:'a4', compress:true});
     const PAGE_BOTTOM = 780;
     const GAP = 10;
     // ขนาดรูปกำหนดต่อ 1 part: ทั้ง before และ after ไม่เกิน 2 รูป = รูปใหญ่ 2/แถว, ถ้ามีฝั่งใดเกิน 2 = รูปเล็กลง 4/แถว
@@ -1449,11 +1475,12 @@ document.getElementById('btnExportPdf').onclick = async () => {
         const x = 40 + col * (THUMB_W + GAP);
         idx++;
         try {
-          const { w, h } = await getImageSize(dataUrl);
+          const small = await shrinkForPdf(dataUrl, Math.max(THUMB_W, THUMB_H));
+          const { w, h } = small;
           const scale = Math.min(THUMB_W / w, THUMB_H / h);
           const dw = w * scale, dh = h * scale;
           const dx = x + (THUMB_W - dw) / 2, dy = yy; // กึ่งกลางแนวนอน แต่ชิดขอบบนแนวตั้ง
-          pdf.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
+          pdf.addImage(small.dataUrl, 'JPEG', dx, dy, dw, dh, undefined, 'FAST');
           pdf.setFontSize(8); pdf.setTextColor(120);
           pdf.text(label + ' ' + idx + '/' + photoDataUrls.length, dx, dy + dh + 8.5); // ป้ายเล็กใต้รูป ไม่ทับภาพหลักฐาน
           pdf.setTextColor(0);
