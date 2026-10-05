@@ -12,6 +12,11 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.05d - ปุ่มช่วงเวลา: เอา "เมื่อวาน" ออก, เพิ่ม "อาทิตย์ที่แล้ว" (จันทร์-อาทิตย์), เปลี่ยนชื่อ อาทิตย์นี้ / เดือนที่แล้ว
+       2026.10.05c - ปุ่ม "รีเซ็ตทั้งหมด" ในแถบตัวกรอง: คืนตัวกรอง/ค้นหา/การเรียง/จำนวนต่อหน้า/คอลัมน์เป็นค่าเริ่มต้น (ไม่แตะภาษา+ธีม)
+       2026.10.05b - All responses: ช่องค้นหา (ลูกค้า/Report/Order/คอมเมนต์/อีเมล/วิศวกร/แผนก/IP, หลายคำ=ตรงทุกคำ, Export ตามผลค้นหา);
+                     คอลัมน์ Location ซ่อนเป็นค่าเริ่มต้น (เปิดกลับได้ที่ ⚙️ คอลัมน์)
+       2026.10.05a - คอมเมนต์ต่างภาษา: ลิงก์ 🌐↗ เปิด Google Translate (ภาษาปลายทางตามภาษาหน้า) สำหรับเบราว์เซอร์ที่ไม่มี Translator API
        2026.10.02f - ตัดสินเสมอเพิ่มข้อ 4-5: เฉลี่ยเดือนก่อน (เฉพาะการ์ดเดือนนี้/ตาราง) -> เฉลี่ยรวมทั้งหมดตลอดกาล
        2026.10.02e - กติกาตัดสินเมื่อคะแนนเฉลี่ยเท่ากัน (การ์ดผู้นำ + ตารางอันดับ): survey มากกว่า -> Q5 ภาพรวมสูงกว่า -> ชื่อ
        2026.10.02d - มือถือ: สวิตช์พิกัดเหลือหมุด 📍, ปุ่ม จัดการวิศวกร/คำถาม/รหัสผ่าน/ออกจากระบบ เป็นไอคอน (จอคอมยังมีข้อความเหมือนเดิม)
@@ -142,6 +147,8 @@
   .kpi-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:var(--fc-zebra);border:2px solid var(--fc-border);}
   .cmt-orig{text-decoration:none;font-size:12px;opacity:.6;cursor:pointer;}
   .cmt-orig:hover{opacity:1;}
+  .cmt-gt{text-decoration:none;font-size:12px;white-space:nowrap;color:var(--fc-primary);}
+  .has-tr .cmt-gt{display:none;}
   .fc-col-drag{cursor:grab;padding:0 5px;color:var(--fc-text-mute);user-select:none;}
   .fc-col-drag:hover{color:var(--fc-text);}
   #detTable th.drag-over{background:var(--fc-row-hover);outline:2px dashed var(--fc-primary);outline-offset:-2px;}
@@ -266,10 +273,10 @@
       <div class="filters-bar">
         <div class="qbtns">
           <button class="fc-btn fc-btn--sm" id="qToday" data-i18n="today">วันนี้</button>
-          <button class="fc-btn fc-btn--sm" id="qYesterday" data-i18n="yesterday">เมื่อวาน</button>
-          <button class="fc-btn fc-btn--sm" id="qThisWeek" data-i18n="thisWeek">สัปดาห์นี้</button>
+          <button class="fc-btn fc-btn--sm" id="qThisWeek" data-i18n="thisWeek">อาทิตย์นี้</button>
+          <button class="fc-btn fc-btn--sm" id="qLastWeek" data-i18n="lastWeek">อาทิตย์ที่แล้ว</button>
           <button class="fc-btn fc-btn--sm" id="qMonth" data-i18n="thisMonth">เดือนนี้</button>
-          <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนก่อน</button>
+          <button class="fc-btn fc-btn--sm" id="qLastMonth" data-i18n="lastMonth">เดือนที่แล้ว</button>
           <button class="fc-btn fc-btn--sm" id="qYear" data-i18n="thisYear">ปีนี้</button>
           <button class="fc-btn fc-btn--sm" id="qAll" data-i18n="allTime">ทั้งหมด</button>
         </div>
@@ -287,6 +294,7 @@
           <input type="number" id="fMinN" class="fc-input f-min" value="1" min="1"></label>
         <button class="fc-btn fc-btn--primary" id="btnApply" data-i18n="apply">แสดงผล</button>
         <button class="fc-btn" id="btnExport" data-i18n="exportXlsx">Export Excel</button>
+        <button class="fc-btn fc-btn--ghost" id="btnResetAll" data-i18n="resetAll" title="">↺ รีเซ็ตทั้งหมด</button>
       </div>
     </div>
 
@@ -307,6 +315,10 @@
         <button class="fc-btn fc-btn--sm fc-right" id="btnDetCols" data-i18n="columnsBtn">⚙️ คอลัมน์</button>
         <button class="fc-btn fc-btn--sm fc-hidden" id="btnTranslate" data-i18n="translateBtn">🌐 แปลคอมเมนต์</button>
         <button class="fc-btn fc-btn--sm" id="btnExportDet" data-i18n="exportBtn">Export</button>
+      </div>
+      <div style="display:flex;gap:var(--fc-s2);align-items:center;margin:0 0 var(--fc-s2)">
+        <input type="search" id="detSearch" class="fc-input" style="flex:1;min-width:0;max-width:520px;min-height:34px;padding:6px 10px;font-size:14px" autocomplete="off">
+        <button class="fc-btn fc-btn--sm fc-hidden" id="detSearchClear" aria-label="Clear">✕</button>
       </div>
       <p class="fc-mut" style="margin:0 0 var(--fc-s2)" data-i18n="dragColHint">ลากไอคอน ⠿ ที่หัวคอลัมน์เพื่อย้ายลำดับ — ระบบจำลำดับไว้ให้อัตโนมัติ</p>
       <div id="detBox" class="fc-table-wrap fc-table-wrap--tall"><table class="fc-table fc-table--zebra" id="detTable"></table></div>
@@ -475,7 +487,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.02f";
+const APP_VERSION = "2026.10.05d";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -523,10 +535,10 @@ const I18N = {
   filterDept:{th:"แผนก",en:"Department",ja:"部署"},
   minN:{th:"ขั้นต่ำ (รายการ)",en:"Min responses",ja:"最小件数"},
   today:{th:"วันนี้",en:"Today",ja:"本日"},
-  yesterday:{th:"เมื่อวาน",en:"Yesterday",ja:"昨日"},
-  thisWeek:{th:"สัปดาห์นี้",en:"This week",ja:"今週"},
+  thisWeek:{th:"อาทิตย์นี้",en:"This week",ja:"今週"},
+  lastWeek:{th:"อาทิตย์ที่แล้ว",en:"Last week",ja:"先週"},
   thisMonth:{th:"เดือนนี้",en:"This month",ja:"今月"},
-  lastMonth:{th:"เดือนก่อน",en:"Last month",ja:"先月"},
+  lastMonth:{th:"เดือนที่แล้ว",en:"Last month",ja:"先月"},
   thisYear:{th:"ปีนี้",en:"This year",ja:"今年"},
   allTime:{th:"ทั้งหมด",en:"All time",ja:"全期間"},
   perPage:{th:"ต่อหน้า",en:"per page",ja:"件/ページ"},
@@ -583,6 +595,11 @@ const I18N = {
   columnsBtn:{th:"⚙️ คอลัมน์",en:"⚙️ Columns",ja:"⚙️ 列"},
   translateBtn:{th:"🌐 แปลคอมเมนต์",en:"🌐 Translate comments",ja:"🌐 コメントを翻訳"},
   showOriginal:{th:"ต้นฉบับ",en:"Original",ja:"原文"},
+  resetAll:{th:"↺ รีเซ็ตทั้งหมด",en:"↺ Reset all",ja:"↺ すべてリセット"},
+  resetAllDone:{th:"คืนค่าเริ่มต้นแล้ว",en:"Everything reset to defaults",ja:"初期設定に戻しました"},
+  detSearchPh:{th:"🔍 ค้นหา: ลูกค้า, Report No., Order No., คอมเมนต์, อีเมลลูกค้า, วิศวกร, แผนก, IP",en:"🔍 Search: customer, report no., order no., comment, customer email, engineer, dept, IP",ja:"🔍 検索：顧客、レポートNo.、オーダーNo.、コメント、顧客メール、エンジニア、部署、IP"},
+  detNoMatch:{th:"ไม่พบรายการที่ตรงกับคำค้น",en:"No responses match your search",ja:"検索に一致する回答はありません"},
+  gtTitle:{th:"แปลด้วย Google Translate (เปิดแท็บใหม่)",en:"Translate with Google Translate (opens new tab)",ja:"Google 翻訳で翻訳（新しいタブで開く）"},
   columnsModalHead:{th:"แสดง/ซ่อนคอลัมน์",en:"Show/hide columns",ja:"列の表示/非表示"},
   colsResetBtn:{th:"ค่าเริ่มต้น",en:"Reset",ja:"初期設定に戻す"},
   dragColHint:{th:"ลากไอคอน ⠿ ที่หัวคอลัมน์เพื่อย้ายลำดับ — ระบบจำลำดับไว้ให้อัตโนมัติ",en:"Drag the ⠿ icon on a column header to reorder — the order is remembered automatically",ja:"列見出しの⠿アイコンをドラッグして並び替え — 順序は自動的に保存されます"},
@@ -665,6 +682,7 @@ function t(key, vars){
 }
 function applyI18n(){
   document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  if ($('detSearch')) $('detSearch').placeholder = t('detSearchPh');
   document.documentElement.lang = lang;
 }
 
@@ -713,7 +731,16 @@ const trTranslators = new Map();   // "th>en" -> Translator
 const trCache = new Map();         // "th>en|ข้อความ" -> คำแปล
 let trNeedsDownload = false;
 
-function cmtSpan(text){ return `<span class="cmt-tr" data-orig="${esc(text)}">${esc(text)}</span>`; }
+// ลิงก์ไป Google Translate (ใช้ได้ทุกเบราว์เซอร์/มือถือ) — โชว์เฉพาะเบราว์เซอร์ที่ไม่มี Translator API ในตัว (ดู .has-tr)
+// หมายเหตุ: ข้อความคอมเมนต์จะถูกส่งไป Google ผ่านลิงก์ (ตัดไม่เกิน 1500 ตัวอักษร)
+function gtLink(text){
+  const src = detectLang(text);
+  if (!src || src === lang) return '';
+  const url = 'https://translate.google.com/?sl=auto&tl=' + encodeURIComponent(lang) + '&op=translate&text=' + encodeURIComponent(text.slice(0, 1500));
+  return ` <a class="cmt-gt" target="_blank" rel="noopener noreferrer" href="${esc(url)}" title="${esc(t('gtTitle'))}" onclick="event.stopPropagation()">🌐↗</a>`;
+}
+function cmtSpan(text){ return `<span class="cmt-tr" data-orig="${esc(text)}">${esc(text)}</span>${gtLink(text)}`; }
+if ('Translator' in self) document.documentElement.classList.add('has-tr');
 
 // ตรวจภาษาจากตัวอักษร (พอสำหรับ ไทย/ญี่ปุ่น/อังกฤษ) — ไม่ต้องพึ่ง LanguageDetector
 function detectLang(s){
@@ -836,8 +863,13 @@ function loadDetColOrder(){
   return order;
 }
 function saveDetColOrder(){ try { localStorage.setItem(DET_COL_ORDER_LS, JSON.stringify(detColOrder)); } catch {} }
+const DET_COL_HIDDEN_DEFAULT = ['geo_area'];   // ค่าเริ่มต้น: ซ่อนคอลัมน์ Location
 function loadDetColHidden(){
-  try { const h = JSON.parse(localStorage.getItem(DET_COL_HIDDEN_LS) || '[]'); return Array.isArray(h) ? h.filter(k => DET_COL_KEYS.includes(k) && k !== 'idx') : []; } catch { return []; }
+  try {
+    const raw = localStorage.getItem(DET_COL_HIDDEN_LS);
+    if (raw == null) return DET_COL_HIDDEN_DEFAULT.slice();
+    const h = JSON.parse(raw); return Array.isArray(h) ? h.filter(k => DET_COL_KEYS.includes(k) && k !== 'idx') : DET_COL_HIDDEN_DEFAULT.slice();
+  } catch { return DET_COL_HIDDEN_DEFAULT.slice(); }
 }
 function saveDetColHidden(){ try { localStorage.setItem(DET_COL_HIDDEN_LS, JSON.stringify(detColHidden)); } catch {} }
 
@@ -890,8 +922,18 @@ function wireColsModalUi(){
   // ครั้งแรกที่ Chrome ต้องดาวน์โหลดโมเดลภาษา ต้องมี user gesture — ปุ่มนี้คือ gesture นั้น
   $('btnTranslate').onclick = () => translateIn($('detBox'), true);
   $('colsClose').onclick = () => $('colsModal').classList.add('fc-hidden');
+  let searchTimer;
+  $('detSearch').oninput = () => {
+    $('detSearchClear').classList.toggle('fc-hidden', !$('detSearch').value);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { detQuery = $('detSearch').value; page = 0; renderDetail(); }, 200);
+  };
+  $('detSearchClear').onclick = () => {
+    $('detSearch').value = ''; detQuery = ''; page = 0;
+    $('detSearchClear').classList.add('fc-hidden'); renderDetail();
+  };
   $('colsReset').onclick = () => {
-    detColOrder = DET_COL_KEYS.slice(); detColHidden = [];
+    detColOrder = DET_COL_KEYS.slice(); detColHidden = DET_COL_HIDDEN_DEFAULT.slice();
     saveDetColOrder(); saveDetColHidden();
     renderColsModal(); renderDetail();
   };
@@ -1061,11 +1103,12 @@ async function startDash(){
   $('btnManageQ').onclick = () => { show('viewManageQ'); loadManageQuestions(); };
   $('btnBackToDash2').onclick = () => show('viewDash');
   $('btnApply').onclick = applyFilter;
+  $('btnResetAll').onclick = resetAll;
   $('btnExport').onclick = exportXlsx;
   $('btnExportRank').onclick = exportRanking;
   $('btnExportDet').onclick = exportDetail;
   $('qToday').onclick     = () => setRange('today');
-  $('qYesterday').onclick = () => setRange('yesterday');
+  $('qLastWeek').onclick  = () => setRange('lastweek');
   $('qThisWeek').onclick  = () => setRange('thisweek');
   $('qMonth').onclick = () => setRange('month');
   $('qLastMonth').onclick = () => setRange('lastmonth');
@@ -1172,14 +1215,36 @@ async function saveGeoSetting(){
   loadGeoSetting();
 }
 
+// คืนค่าเริ่มต้นทั้งหน้า: ตัวกรอง, ค้นหา, การเรียงลำดับ, จำนวนต่อหน้า, คอลัมน์ (ลำดับ/ซ่อน/ความกว้าง)
+// ไม่แตะ ภาษา และ ธีม (เป็นค่าส่วนตัวของผู้ใช้)
+function resetAll(){
+  $('fFrom').value = ''; $('fTo').value = '';
+  $('fDept').value = ''; $('fEngineer').value = '';
+  $('fShowResigned').checked = false;
+  $('fMinN').value = 1;
+  rebuildEngFilterOptions();
+  $('detSearch').value = ''; detQuery = ''; $('detSearchClear').classList.add('fc-hidden');
+  detSort = { key: 'submitted_at', dir: 'desc' };
+  rankSort = { key: 'avg', dir: 'desc' };
+  pageSize = 10; page = 0; rankPage = 0;
+  detColOrder = DET_COL_KEYS.slice(); detColHidden = DET_COL_HIDDEN_DEFAULT.slice();
+  try {
+    ['dashPageSize', 'dashDetCols', DET_COL_ORDER_LS, DET_COL_HIDDEN_LS].forEach(k => localStorage.removeItem(k));
+  } catch {}
+  applyFilter();
+  toast(t('resetAllDone'));
+}
+
 function setRange(kind){
   const now = new Date(), p = n => String(n).padStart(2,'0');
   const iso = d => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
   if (kind === 'all') { $('fFrom').value = ''; $('fTo').value = ''; }
   else if (kind === 'today') { $('fFrom').value = iso(now); $('fTo').value = iso(now); }
-  else if (kind === 'yesterday') {
-    const y = new Date(now); y.setDate(y.getDate() - 1);
-    $('fFrom').value = iso(y); $('fTo').value = iso(y);
+  else if (kind === 'lastweek') {                       // จันทร์-อาทิตย์ของสัปดาห์ก่อน
+    const day = (now.getDay() + 6) % 7;
+    const mon = new Date(now); mon.setDate(mon.getDate() - day - 7);
+    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    $('fFrom').value = iso(mon); $('fTo').value = iso(sun);
   }
   else if (kind === 'thisweek') {
     const day = (now.getDay() + 6) % 7;   // จันทร์ = 0
@@ -1923,16 +1988,28 @@ function mqVal(cls, key){
 }
 function wireManageQUi(){ /* ปุ่มต่อข้อ wire ใน renderManageQ() เอง */ }
 
+// ค้นหาใน All responses (ฝั่งเบราว์เซอร์ จากข้อมูลที่กรองอยู่) — หลายคำ = ต้องตรงทุกคำ, ไม่สนตัวพิมพ์เล็ก/ใหญ่
+let detQuery = '';
+function detFiltered(){
+  const terms = detQuery.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return rows;
+  return rows.filter(r => {
+    const hay = [r.customer_name, r.service_report_no, r.service_order_no, r.comment, r.customer_email,
+      r.fname, r.lname, r.team_names, r.department, r.client_ip, r.tel, r.title, r.geo_area].join(' ').toLowerCase();
+    return terms.every(x => hay.includes(x));
+  });
+}
 function renderDetail(){
   const box = $('detBox');
-  const total = rows.length;
-  $('detCount').textContent = total ? `${total}` : '';
-  if (!total) { box.innerHTML = `<div class="fc-empty">${t('noResults')}</div>`; $('pager').innerHTML = ''; return; }
+  const view0 = detFiltered();
+  const total = view0.length;
+  $('detCount').textContent = rows.length ? (detQuery.trim() ? `${total} / ${rows.length}` : `${rows.length}`) : '';
+  if (!total) { box.innerHTML = `<div class="fc-empty">${t(rows.length ? 'detNoMatch' : 'noResults')}</div>`; $('pager').innerHTML = ''; return; }
 
   const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
   if (page > maxPage) page = maxPage;
   const start = page * pageSize;
-  const sorted = sortArr(rows, detSort, 'det');
+  const sorted = sortArr(view0, detSort, 'det');
   const view = sorted.slice(start, start + pageSize);
   const S = detSort;
 
@@ -2069,7 +2146,7 @@ async function viewSignature(path, rp, so){
 }
 
 function detailRowsForXlsx(){
-  return sortArr(rows, detSort, 'det').map(r => ({
+  return sortArr(detFiltered(), detSort, 'det').map(r => ({
     submitted_at: fmtDateTime(r.submitted_at),
     engineer: `${r.fname||''} ${r.lname||''}`.trim(),
     team: r.team_names || '',
