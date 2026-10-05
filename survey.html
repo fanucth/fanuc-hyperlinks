@@ -10,6 +10,11 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.10.05b - เช็คสิทธิ์ผู้บริหารจาก DB (RPC am_i_exec) แทนรายชื่อในโค้ด เพื่อให้แก้สิทธิ์ได้จากหน้า "จัดการสิทธิ์" ใน dashboard
+                     (ยังมี EXEC_ALLOWLIST ในโค้ดเป็น fallback ถ้า RPC ใช้ไม่ได้)  [ต้องรัน migrate_exec_roles.sql]
+       2026.10.05a - login: คนที่เป็นทั้งผู้บริหาร (EXEC_ALLOWLIST) และวิศวกร (มีแถวใน engineers) เข้าได้ทั้งสองแท็บ
+                     (แท็บวิศวกร -> หน้าสร้าง QR, แท็บผู้บริหาร -> dashboard); exec ที่ไม่มีแถวใน engineers ทำงานเหมือนเดิม
+                     (session เดิมเปิดหน้านี้ใหม่: ตาม loginMode ที่จำไว้) — ไม่ต้องรัน SQL
        2026.10.01a - หน้าลูกค้า: ดึงคำถาม 5 ข้อ (3 ภาษา) จากตาราง survey_questions แทนค่า hardcode ใน
                      QUESTIONS — แก้ได้จากหน้า "จัดการคำถาม" ใน dashboard.html มีผลทันที (ถ้าดึงไม่ได้/
                      ตารางยังไม่มี fallback กลับไปใช้ค่า hardcode ด้านล่างแทน ไม่พัง)  [ต้องรัน
@@ -360,7 +365,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.10.01a";
+const APP_VERSION = "2026.10.05b";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -755,7 +760,13 @@ function setLoginMode(m){
   $('segEng').classList.toggle('active', m === 'engineer');
   $('segMgr').classList.toggle('active', m === 'manager');
 }
-function isExecEmail(email){
+// เป็นผู้บริหารไหม: ถามฐานข้อมูล (RPC am_i_exec = exec_allowlist ที่แก้ได้จากหน้า "จัดการสิทธิ์")
+// ถ้ายังไม่ได้รัน migrate_exec_roles.sql หรือเรียกไม่สำเร็จ -> fallback ใช้ EXEC_ALLOWLIST ในโค้ด
+async function isExecEmail(email){
+  try {
+    const { data, error } = await sb.rpc('am_i_exec');
+    if (!error && typeof data === 'boolean') return data;
+  } catch {}
   return EXEC_ALLOWLIST.map(x => x.toLowerCase()).includes((email || '').toLowerCase());
 }
 
@@ -771,15 +782,19 @@ function wireLogin(){
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      const exec = isExecEmail(data.session.user.email);
+      const exec = await isExecEmail(data.session.user.email);
       if (loginMode === 'manager') {
         if (exec) { location.href = 'dashboard.html'; return; }
         await sb.auth.signOut();
         return toast(t('notExecMsg'), true);
       }
-      if (exec) {                       // exec เผลอเลือกแท็บวิศวกร
-        await sb.auth.signOut();
-        return toast(t('pickManager'), true);
+      if (exec) {
+        // exec เลือกแท็บวิศวกร: ถ้าเป็นวิศวกรด้วย (มีแถวใน engineers) ให้เข้าโหมดวิศวกรได้ ไม่งั้นแจ้งให้ไปแท็บผู้บริหาร
+        const { data: engRow } = await sb.from('engineers').select('id').eq('email', email).maybeSingle();
+        if (!engRow) {
+          await sb.auth.signOut();
+          return toast(t('pickManager'), true);
+        }
       }
       hide('viewLogin');
       await routeStaff(data.session);
@@ -793,12 +808,16 @@ function wireLogin(){
 
 async function routeStaff(session){
   const email = (session.user.email || '').toLowerCase();
-  if (isExecEmail(email)) { location.href = 'dashboard.html'; return; }
-  $('btnLogout').classList.remove('hidden');
-  $('btnChgPw').classList.remove('hidden');
+  const exec = await isExecEmail(email);
+  // exec ที่ไม่ได้เลือกแท็บวิศวกร -> dashboard (เช็ค loginMode ก่อน จะได้ไม่ต้อง query engineers โดยไม่จำเป็น)
+  if (exec && loginMode !== 'engineer') { location.href = 'dashboard.html'; return; }
   // engineer: หา row ในตาราง engineers
   const { data: eng, error } = await sb.from('engineers').select('*').eq('email', email).maybeSingle();
   if (error) { toast(t('connFail',{err:error.message}), true); show('viewLogin'); return; }
+  // exec ที่ไม่ใช่วิศวกร (ไม่มีแถวใน engineers) -> dashboard เหมือนเดิม; exec ที่เป็นวิศวกรด้วย + เลือกแท็บวิศวกร -> อยู่หน้านี้
+  if (exec && !eng) { location.href = 'dashboard.html'; return; }
+  $('btnLogout').classList.remove('hidden');
+  $('btnChgPw').classList.remove('hidden');
   if (!eng) { toast(t('noEngineerRow'), true); show('viewLogin'); return; }
   startEngineer(eng);
 }

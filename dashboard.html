@@ -12,6 +12,12 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.05g - แก้สิทธิ์ได้เฉพาะ "ผู้ดูแลสิทธิ์" 2 บัญชี (ตาราง exec_role_admins, RPC can_edit_roles); ผู้บริหารคนอื่นเห็นหน้าแบบดูอย่างเดียว
+                     [รัน migrate_exec_roles.sql ซ้ำ — ปลอดภัย; ก่อนรัน ปุ่มแก้ไขจะถูกซ่อนไว้]
+       2026.10.05f - หน้า "จัดการสิทธิ์": แก้สิทธิ์ผู้บริหารได้ (ปุ่มแก้ไขต่อคน + "+ เพิ่มผู้บริหาร") ผ่าน RPC set_exec_role; เช็คสิทธิ์ login จาก DB (am_i_exec)
+                     กันถอนสิทธิ์ตัวเอง/ผู้บริหารคนสุดท้าย + log ใน exec_role_log  [ต้องรัน migrate_exec_roles.sql — ถ้ายังไม่รัน ดูได้อย่างเดียว]
+       2026.10.05e - เพิ่มหน้า "จัดการสิทธิ์" (ปุ่ม 🛡️ บน app bar, ดูอย่างเดียว): แยกวิศวกรอย่างเดียว / วิศวกร+ผู้บริหาร / ผู้บริหารอย่างเดียว
+                     จับคู่ตารางงาน engineers กับ EXEC_ALLOWLIST ด้วยอีเมล, ค้นหาชื่อ/อีเมล, กรองตามกลุ่ม (มีจำนวนในปุ่ม) — ไม่ต้องรัน SQL
        2026.10.05d - ปุ่มช่วงเวลา: เอา "เมื่อวาน" ออก, เพิ่ม "อาทิตย์ที่แล้ว" (จันทร์-อาทิตย์), เปลี่ยนชื่อ อาทิตย์นี้ / เดือนที่แล้ว
        2026.10.05c - ปุ่ม "รีเซ็ตทั้งหมด" ในแถบตัวกรอง: คืนตัวกรอง/ค้นหา/การเรียง/จำนวนต่อหน้า/คอลัมน์เป็นค่าเริ่มต้น (ไม่แตะภาษา+ธีม)
        2026.10.05b - All responses: ช่องค้นหา (ลูกค้า/Report/Order/คอมเมนต์/อีเมล/วิศวกร/แผนก/IP, หลายคำ=ตรงทุกคำ, Export ตามผลค้นหา);
@@ -237,6 +243,7 @@
     <button id="btnTheme" class="fc-btn fc-btn--ghost fc-btn--icon" title="Theme" aria-label="Toggle theme">🌙</button>
     <button id="btnManageEng" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Engineers"><span class="ic">👷</span> <span class="lbl" data-i18n="manageEng">จัดการวิศวกร</span></button>
     <button id="btnManageQ" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Questions"><span class="ic">📝</span> <span class="lbl" data-i18n="manageQ">จัดการคำถาม</span></button>
+    <button id="btnManageRoles" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Roles"><span class="ic">🛡️</span> <span class="lbl" data-i18n="manageRoles">จัดการสิทธิ์</span></button>
     <button id="btnChgPw" class="fc-btn fc-btn--ghost fc-btn--sm fc-hidden" title="Password"><span class="ic">🔑</span> <span class="lbl" data-i18n="changePw">เปลี่ยนรหัสผ่าน</span></button>
     <button id="btnLogout" class="fc-btn fc-btn--ghost fc-hidden" title="Logout"><span class="ic">🚪</span> <span class="lbl" data-i18n="logout">ออกจากระบบ</span></button>
   </div>
@@ -356,6 +363,32 @@
       <div id="mqBox"></div>
     </div>
   </section>
+
+  <!-- MANAGE ROLES (วิศวกรอย่างเดียว / วิศวกร+ผู้บริหาร / ผู้บริหารอย่างเดียว) -->
+  <section id="viewManageRoles" class="fc-hidden">
+    <div class="fc-card fc-card--tight">
+      <div class="filters-bar">
+        <button class="fc-btn fc-btn--sm" id="btnBackToDash3">← <span data-i18n="backToDash">กลับไปแดชบอร์ด</span></button>
+        <label class="fc-field" style="flex:1;min-width:200px"><span class="fc-field__label" data-i18n="mgSearch">ค้นหาชื่อ</span>
+          <input type="text" id="mrSearch" class="fc-input"></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;align-self:flex-end;padding-bottom:8px;cursor:pointer">
+          <input type="checkbox" id="mrShowResigned"> <span data-i18n="mgShowResigned">แสดงคนที่ลาออกแล้วด้วย</span></label>
+        <button class="fc-btn fc-btn--primary fc-btn--sm fc-hidden" id="btnAddExec" data-i18n="mrAddExec">+ เพิ่มผู้บริหาร</button>
+      </div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-card__head"><h2 class="fc-card__title" data-i18n="manageRoles">จัดการสิทธิ์</h2></div>
+      <p class="fc-mut" data-i18n="mrHint">ดูว่าใครเป็นวิศวกร / ผู้บริหาร / ทั้งสองอย่าง — คนที่เป็นทั้งสองอย่างเข้าได้ทั้งแท็บ "วิศวกร" และ "ผู้บริหาร" ที่หน้า login</p>
+      <div class="fc-seg" id="mrSeg" style="flex-wrap:wrap;margin:var(--fc-s2) 0 var(--fc-s3)">
+        <button type="button" class="fc-seg__btn" data-role="all" aria-selected="true"></button>
+        <button type="button" class="fc-seg__btn" data-role="eng" aria-selected="false"></button>
+        <button type="button" class="fc-seg__btn" data-role="both" aria-selected="false"></button>
+        <button type="button" class="fc-seg__btn" data-role="exec" aria-selected="false"></button>
+      </div>
+      <div id="mrBox" class="fc-table-wrap fc-table-wrap--tall"></div>
+      <p class="fc-note" style="margin-top:var(--fc-s3)" data-i18n="mrNote">หน้านี้ดูอย่างเดียว — รายชื่อผู้บริหารมาจาก EXEC_ALLOWLIST ในโค้ด (ต้องตรงกับตาราง exec_allowlist ในฐานข้อมูล) การเพิ่ม/ลบผู้บริหารต้องแก้ที่นั่น ส่วนวิศวกรเพิ่ม/แก้ได้ที่หน้า "จัดการวิศวกร"</p>
+    </div>
+  </section>
 </main>
 
 <div id="appVer"></div>
@@ -419,6 +452,31 @@
     <div class="fc-row" style="gap:var(--fc-s2)">
       <button class="fc-btn" id="addCancel" style="flex:1" data-i18n="cancel">ยกเลิก</button>
       <button class="fc-btn fc-btn--primary" id="addSave" style="flex:1" data-i18n="mgCreate">สร้างวิศวกร</button>
+    </div>
+  </div>
+</div>
+
+<!-- แก้สิทธิ์ผู้บริหาร (หน้า จัดการสิทธิ์) -->
+<div id="roleEditModal" class="fc-modal fc-hidden">
+  <div class="fc-modal__box" style="max-width:460px">
+    <h3 id="mrModalHead" data-i18n="mrEditHead">แก้ไขสิทธิ์</h3>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="mrColName">ชื่อ</span>
+      <input type="text" id="mrEditName" class="fc-input" disabled></label>
+    <label class="fc-field"><span class="fc-field__label" data-i18n="email">อีเมล</span>
+      <input type="text" id="mrEditEmail" class="fc-input" autocomplete="off"></label>
+    <div class="fc-field">
+      <span class="fc-field__label" data-i18n="mrExecAccess">สิทธิ์ผู้บริหาร (เข้า Dashboard)</span>
+      <div class="fc-seg">
+        <button type="button" class="fc-seg__btn" id="mrExecOff" data-i18n="mrExecOff">ไม่ใช่ผู้บริหาร</button>
+        <button type="button" class="fc-seg__btn" id="mrExecOn" data-i18n="mrExecOn">เป็นผู้บริหาร</button>
+      </div>
+    </div>
+    <p class="fc-note" id="mrEditResult"></p>
+    <p class="fc-note" id="mrEditNote"></p>
+    <p id="mrEditErr" class="fc-field__error" style="min-height:16px"></p>
+    <div class="fc-row" style="gap:var(--fc-s2)">
+      <button class="fc-btn" id="mrEditCancel" style="flex:1" data-i18n="cancel">ยกเลิก</button>
+      <button class="fc-btn fc-btn--primary" id="mrEditSave" style="flex:1" data-i18n="save">บันทึก</button>
     </div>
   </div>
 </div>
@@ -487,7 +545,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.05d";
+const APP_VERSION = "2026.10.05g";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -671,6 +729,32 @@ const I18N = {
   mgCreateFail:{th:"สร้างวิศวกรไม่สำเร็จ: {err}",en:"Failed to create engineer: {err}",ja:"エンジニアの作成に失敗しました: {err}"},
   manageQ:{th:"จัดการคำถาม",en:"Manage questions",ja:"質問管理"},
   mqHint:{th:"แก้คำถามที่ลูกค้าจะเห็นตอนตอบแบบสอบถาม — มีผลทันทีกับคนที่ตอบหลังจากบันทึก",en:"Edit the questions customers see on the survey — takes effect immediately for responses after saving",ja:"お客様に表示される質問を編集 — 保存後の回答から即時反映されます"},
+  manageRoles:{th:"จัดการสิทธิ์",en:"Manage roles",ja:"権限管理"},
+  mrHint:{th:"ดูและแก้ว่าใครเป็นวิศวกร / ผู้บริหาร / ทั้งสองอย่าง — คนที่เป็นทั้งสองอย่างเข้าได้ทั้งแท็บ \"วิศวกร\" และ \"ผู้บริหาร\" ที่หน้า login",en:"View and change who is an engineer, a manager, or both — people who are both can use either the \"Engineer\" or \"Management\" tab on the login page",ja:"エンジニア／管理者／兼任を確認・変更できます。兼任の方はログイン画面で「エンジニア」「管理者」どちらのタブも使えます"},
+  mrNote:{th:"แก้ได้เฉพาะ \"สิทธิ์ผู้บริหาร\" (เพิ่ม/ถอน) ส่วนการเป็นวิศวกรจัดการที่หน้า \"จัดการวิศวกร\" (เพิ่มคนใหม่ / ลาออก) — ทุกการเปลี่ยนสิทธิ์มีบันทึกประวัติใน DB (exec_role_log) ผู้ที่ถูกถอนสิทธิ์จะเข้า Dashboard ไม่ได้ในการ login ครั้งถัดไป",en:"Only the \"manager access\" can be changed here (add/remove). Being an engineer is managed in \"Manage engineers\" (add / resign). Every change is logged in the DB (exec_role_log). Someone whose manager access is removed cannot open the dashboard from their next login.",ja:"ここで変更できるのは「管理者権限」（付与/解除）のみです。エンジニアとしての登録は「エンジニア管理」（追加/退職）で行います。変更はすべてDB（exec_role_log）に記録され、権限を外された方は次回ログインからダッシュボードに入れません。"},
+  mrNoRpc:{th:"ยังแก้สิทธิ์ไม่ได้ — ต้องรัน migrate_exec_roles.sql ใน Supabase ก่อน (ตอนนี้แสดงจากรายชื่อในโค้ด ดูอย่างเดียว)",en:"Editing is not available yet — run migrate_exec_roles.sql in Supabase first (showing the list from the code, view only).",ja:"まだ変更できません。先に Supabase で migrate_exec_roles.sql を実行してください（現在はコード内のリストを表示・閲覧のみ）。"},
+  mrViewOnly:{th:"ดูอย่างเดียว — เฉพาะผู้ดูแลสิทธิ์ที่กำหนดไว้ (2 บัญชี) เท่านั้นที่แก้สิทธิ์ได้ (ถ้าเพิ่งอัปเดต ให้รัน migrate_exec_roles.sql อีกครั้งใน Supabase)",en:"View only — only the designated role admins (2 accounts) can change roles. (If you just updated, run migrate_exec_roles.sql again in Supabase.)",ja:"閲覧専用です。権限を変更できるのは指定された権限管理者（2アカウント）のみです。（更新直後は Supabase で migrate_exec_roles.sql を再実行してください）"},
+  mrAddExec:{th:"+ เพิ่มผู้บริหาร",en:"+ Add manager",ja:"+ 管理者を追加"},
+  mrEditHead:{th:"แก้ไขสิทธิ์",en:"Edit role",ja:"権限の編集"},
+  mrAddHead:{th:"เพิ่มผู้บริหาร",en:"Add manager",ja:"管理者を追加"},
+  mrExecAccess:{th:"สิทธิ์ผู้บริหาร (เข้า Dashboard)",en:"Manager access (dashboard)",ja:"管理者権限（ダッシュボード）"},
+  mrExecOn:{th:"เป็นผู้บริหาร",en:"Manager",ja:"管理者"},
+  mrExecOff:{th:"ไม่ใช่ผู้บริหาร",en:"Not a manager",ja:"管理者ではない"},
+  mrResultLabel:{th:"หลังบันทึกจะเป็น:",en:"After saving:",ja:"保存後:"},
+  mrRoleNone:{th:"ไม่มีสิทธิ์ใดๆ",en:"No role",ja:"権限なし"},
+  mrAddNote:{th:"ต้องเป็นอีเมลที่มีบัญชี login ในระบบอยู่แล้ว (ถ้ายังไม่มีบัญชี ให้สร้างก่อน) — ระบบนี้ยังไม่สร้างบัญชีผู้บริหารให้",en:"The email must already have a login account (create one first if not) — this page does not create manager accounts.",ja:"ログインアカウントが既にあるメールのみ指定できます（無い場合は先に作成）。この画面ではアカウントは作成されません。"},
+  mrSelfNote:{th:"นี่คือบัญชีของคุณเอง — ถอนสิทธิ์ผู้บริหารของตัวเองไม่ได้ (กันล็อกตัวเองออก)",en:"This is your own account — you cannot remove your own manager access.",ja:"ご自身のアカウントです。自分の管理者権限は外せません。"},
+  mrResignedNote:{th:"คนนี้ลาออกแล้ว (login ถูกบล็อกอยู่)",en:"This person has resigned (login is blocked).",ja:"退職済みです（ログインはブロック中）。"},
+  mrInvalidEmail:{th:"กรอกอีเมลให้ถูกต้อง",en:"Please enter a valid email",ja:"正しいメールを入力してください"},
+  mrSaved:{th:"บันทึกสิทธิ์แล้ว",en:"Role saved",ja:"権限を保存しました"},
+  mrSaveFail:{th:"บันทึกสิทธิ์ไม่สำเร็จ: {err}",en:"Failed to save role: {err}",ja:"権限の保存に失敗しました: {err}"},
+  mrAll:{th:"ทั้งหมด",en:"All",ja:"すべて"},
+  mrEngOnly:{th:"วิศวกรอย่างเดียว",en:"Engineer only",ja:"エンジニアのみ"},
+  mrBoth:{th:"วิศวกร + ผู้บริหาร",en:"Engineer + Manager",ja:"兼任（両方）"},
+  mrExecOnly:{th:"ผู้บริหารอย่างเดียว",en:"Manager only",ja:"管理者のみ"},
+  mrColName:{th:"ชื่อ",en:"Name",ja:"氏名"},
+  mrColRole:{th:"สิทธิ์",en:"Role",ja:"権限"},
+  mrNoEngRow:{th:"ไม่มีในตาราง engineers",en:"Not in engineers table",ja:"engineers テーブルに未登録"},
   mqSaved:{th:"บันทึกคำถามแล้ว",en:"Question saved",ja:"質問を保存しました"},
   mqFillAll:{th:"กรอกให้ครบทั้ง 3 ภาษา",en:"Please fill in all 3 languages",ja:"3言語すべて入力してください"},
 };
@@ -944,7 +1028,7 @@ function toast(msg, err){
   el.className = 'fc-toast is-show' + (err ? ' fc-toast--err' : '');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3200);
 }
-function show(id){ ['viewLogin','viewDash','viewManageEng','viewManageQ'].forEach(v => $(v).classList.toggle('fc-hidden', v !== id)); }
+function show(id){ ['viewLogin','viewDash','viewManageEng','viewManageQ','viewManageRoles'].forEach(v => $(v).classList.toggle('fc-hidden', v !== id)); }
 
 /* ---------- theme ---------- */
 function setTheme(m){
@@ -969,6 +1053,7 @@ async function boot(){
     lang = e.target.value; localStorage.setItem('dashLang', lang);
     applyI18n();
     if (!$('viewDash').classList.contains('fc-hidden')) render();
+    if (!$('viewManageRoles').classList.contains('fc-hidden')) renderManageRoles();
   };
   $('btnLogout').onclick = async () => {
     try { await sb.auth.signOut({ scope: 'local' }); } catch {}
@@ -980,6 +1065,7 @@ async function boot(){
   wireManageEngUi();
   wireColsModalUi();
   wireManageQUi();
+  wireManageRolesUi();
   $('engModalClose').onclick = () => $('engModal').classList.add('fc-hidden');
   $('ipInfoClose').onclick = () => $('ipInfoModal').classList.add('fc-hidden');
 
@@ -987,13 +1073,20 @@ async function boot(){
   if (location.hash.includes('type=recovery')) { show('viewLogin'); wireLogin(); return; }
 
   const { data:{ session } } = await sb.auth.getSession();
-  if (session && isExecEmail(session.user.email)) { ME = (session.user.email||'').toLowerCase(); return startDash(); }
+  if (session && await isExecEmail(session.user.email)) { ME = (session.user.email||'').toLowerCase(); return startDash(); }
   if (session) await sb.auth.signOut();
   show('viewLogin');
   wireLogin();
 }
 
-function isExecEmail(email){ return EXEC_ALLOWLIST.includes((email || '').toLowerCase()); }
+// เป็นผู้บริหารไหม: ถาม DB (RPC am_i_exec) — ถ้ายังไม่ได้รัน migrate_exec_roles.sql / เรียกไม่สำเร็จ ใช้ EXEC_ALLOWLIST ในโค้ดแทน
+async function isExecEmail(email){
+  try {
+    const { data, error } = await sb.rpc('am_i_exec');
+    if (!error && typeof data === 'boolean') return data;
+  } catch {}
+  return EXEC_ALLOWLIST.includes((email || '').toLowerCase());
+}
 
 /* ---------- เปลี่ยน / ลืมรหัสผ่าน ---------- */
 let pwRecovery = false;
@@ -1044,7 +1137,7 @@ function wireLogin(){
     try {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (!isExecEmail(data.user.email)) { await sb.auth.signOut(); return toast(t('notExec'), true); }
+      if (!(await isExecEmail(data.user.email))) { await sb.auth.signOut(); return toast(t('notExec'), true); }
       ME = (data.user.email || '').toLowerCase();
       startDash();
     } catch (e) {
@@ -1102,6 +1195,9 @@ async function startDash(){
   $('btnManageQ').classList.remove('fc-hidden');
   $('btnManageQ').onclick = () => { show('viewManageQ'); loadManageQuestions(); };
   $('btnBackToDash2').onclick = () => show('viewDash');
+  $('btnManageRoles').classList.remove('fc-hidden');
+  $('btnManageRoles').onclick = () => { show('viewManageRoles'); loadManageRoles(); };
+  $('btnBackToDash3').onclick = () => show('viewDash');
   $('btnApply').onclick = applyFilter;
   $('btnResetAll').onclick = resetAll;
   $('btnExport').onclick = exportXlsx;
@@ -1941,6 +2037,149 @@ async function saveNewEngineer(){
   } finally {
     $('addSave').disabled = false;
   }
+}
+
+/* ---------- จัดการสิทธิ์ (ดูอย่างเดียว): วิศวกรอย่างเดียว / วิศวกร+ผู้บริหาร / ผู้บริหารอย่างเดียว ----------
+   วิศวกร = แถวในตาราง engineers, ผู้บริหาร = อีเมลใน EXEC_ALLOWLIST; จับคู่ด้วยอีเมล (ตัวพิมพ์เล็ก) */
+let MR_ROWS = [];
+let mrFilter = 'all';
+let mrCanEdit = false;      // true เมื่อเป็นผู้ดูแลสิทธิ์ (can_edit_roles) และรัน migrate_exec_roles.sql แล้ว
+let mrListOk = false;       // true เมื่อ RPC list_execs ใช้ได้
+let mrEditing = null;       // แถวที่กำลังแก้ (null = เพิ่มผู้บริหารใหม่)
+let mrWantExec = false;
+const MR_ORDER = { eng: 0, both: 1, exec: 2 };
+
+// ผู้บริหารที่ไม่มีแถวใน engineers ไม่มีชื่อ -> เดาจากอีเมล ito.masayuki@... -> "Ito Masayuki"
+function nameFromEmail(em){
+  return (em || '').split('@')[0].split(/[._-]+/).filter(Boolean)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+async function loadManageRoles(){
+  const box = $('mrBox');
+  skeleton(box);
+  const { data, error } = await sb.from('engineers').select('*').order('fname');
+  if (error) { box.innerHTML = `<div class="fc-empty">${esc(error.message)}</div>`; return; }
+  // รายชื่อผู้บริหารจาก DB (RPC list_execs); ใช้ไม่ได้ -> fallback รายชื่อในโค้ด + ปิดการแก้ไข
+  let execEmails;
+  const { data: ex, error: exErr } = await sb.rpc('list_execs');
+  mrListOk = !exErr && Array.isArray(ex);
+  if (mrListOk) execEmails = ex.map(r => String(r.email || '').toLowerCase());
+  else execEmails = EXEC_ALLOWLIST.map(x => x.toLowerCase());
+  // แก้ได้เฉพาะ "ผู้ดูแลสิทธิ์" (2 บัญชีใน exec_role_admins); can_edit_roles ใช้ไม่ได้/ไม่ใช่ผู้ดูแล = ดูอย่างเดียว
+  mrCanEdit = false;
+  if (mrListOk) {
+    const { data: canEdit, error: ceErr } = await sb.rpc('can_edit_roles');
+    mrCanEdit = !ceErr && canEdit === true;
+  }
+  $('btnAddExec').classList.toggle('fc-hidden', !mrCanEdit);
+  const execSet = new Set(execEmails);
+  const seen = new Set();
+  MR_ROWS = (data || []).map(e => {
+    const em = (e.email || '').toLowerCase();
+    seen.add(em);
+    return { name: `${e.fname || ''} ${e.lname || ''}`.trim(), email: em, dept: e.department || '', title: e.title || '',
+             active: e.active !== false, role: execSet.has(em) ? 'both' : 'eng', noEngRow: false };
+  });
+  execEmails.forEach(em => {
+    if (seen.has(em)) return;
+    MR_ROWS.push({ name: nameFromEmail(em), email: em, dept: '', title: '', active: true, role: 'exec', noEngRow: true });
+  });
+  MR_ROWS.sort((a, b) => MR_ORDER[a.role] - MR_ORDER[b.role] || a.name.localeCompare(b.name));
+  renderManageRoles();
+}
+
+function renderManageRoles(){
+  const box = $('mrBox');
+  const q = ($('mrSearch').value || '').trim().toLowerCase();
+  const showResigned = $('mrShowResigned').checked;
+  const base = MR_ROWS.filter(r => (showResigned || r.active) && (!q || `${r.name} ${r.email}`.toLowerCase().includes(q)));
+  const cnt = { all: base.length, eng: 0, both: 0, exec: 0 };
+  base.forEach(r => cnt[r.role]++);
+  const label = { all: t('mrAll'), eng: t('mrEngOnly'), both: t('mrBoth'), exec: t('mrExecOnly') };
+  $('mrSeg').querySelectorAll('.fc-seg__btn').forEach(b => {
+    b.textContent = `${label[b.dataset.role]} (${cnt[b.dataset.role]})`;
+    b.setAttribute('aria-selected', b.dataset.role === mrFilter ? 'true' : 'false');
+  });
+  const list = mrFilter === 'all' ? base : base.filter(r => r.role === mrFilter);
+  const note = mrCanEdit ? '' : `<p class="fc-note" style="margin:0 0 var(--fc-s3);color:var(--fc-danger)">${t(mrListOk ? 'mrViewOnly' : 'mrNoRpc')}</p>`;
+  if (!list.length) { box.innerHTML = note + `<div class="fc-empty">${t('noResults')}</div>`; return; }
+  const badge = { eng: 'fc-badge--info', both: 'fc-badge--ok', exec: 'fc-badge--warn' };
+  const roleName = { eng: t('mrEngOnly'), both: t('mrBoth'), exec: t('mrExecOnly') };
+  box.innerHTML = note + `<table class="fc-table fc-table--zebra fc-table--grid fc-table--hover">
+    <thead><tr>
+      <th>${t('mrColName')}</th><th>${t('email')}</th><th>${t('colDept')}</th><th>${t('mgTitle')}</th>
+      <th class="fc-c">${t('mrColRole')}</th><th class="fc-c">${t('colStatus')}</th>${mrCanEdit ? `<th class="fc-c">${t('colEdit')}</th>` : ''}
+    </tr></thead>
+    <tbody>${list.map(r => `
+      <tr>
+        <td>${esc(r.name || '—')}</td>
+        <td style="font-size:12.5px;color:var(--fc-text-dim)">${esc(r.email)}</td>
+        <td>${esc(r.dept)}</td>
+        <td>${esc(r.title)}</td>
+        <td class="fc-c"><span class="fc-badge ${badge[r.role]}">${roleName[r.role]}</span></td>
+        <td class="fc-c">${r.noEngRow
+          ? `<span class="fc-mut" style="font-size:12px">${t('mrNoEngRow')}</span>`
+          : (r.active ? `<span class="fc-badge fc-badge--ok">${t('mgActive')}</span>`
+                      : `<span class="fc-badge fc-badge--danger">${t('resignedBadge')}</span>`)}</td>
+        ${mrCanEdit ? `<td class="fc-c"><a href="#" class="mr-edit-link" data-email="${esc(r.email)}">${t('colEdit')}</a></td>` : ''}
+      </tr>`).join('')}</tbody></table>`;
+  box.querySelectorAll('.mr-edit-link').forEach(a => {
+    a.onclick = ev => { ev.preventDefault(); openRoleEdit(a.dataset.email); };
+  });
+}
+
+// แสดงสิทธิ์ที่จะได้หลังบันทึก (ตามสถานะวิศวกรปัจจุบัน + ตัวเลือกผู้บริหาร)
+function updateRoleEditUi(){
+  $('mrExecOn').setAttribute('aria-selected', mrWantExec ? 'true' : 'false');
+  $('mrExecOff').setAttribute('aria-selected', mrWantExec ? 'false' : 'true');
+  const isEng = mrEditing ? !mrEditing.noEngRow : false;
+  const res = isEng ? (mrWantExec ? t('mrBoth') : t('mrEngOnly')) : (mrWantExec ? t('mrExecOnly') : t('mrRoleNone'));
+  $('mrEditResult').textContent = `${t('mrResultLabel')} ${res}`;
+}
+
+function openRoleEdit(email){
+  const r = email ? MR_ROWS.find(x => x.email === email) : null;
+  mrEditing = r || null;
+  mrWantExec = r ? (r.role === 'exec' || r.role === 'both') : true;
+  $('mrModalHead').textContent = r ? t('mrEditHead') : t('mrAddHead');
+  $('mrEditName').value = r ? (r.name || '') : '';
+  $('mrEditEmail').value = r ? r.email : '';
+  $('mrEditEmail').disabled = !!r;
+  $('mrEditErr').textContent = '';
+  const me = (ME || '').toLowerCase();
+  const isSelf = !!r && r.email === me;
+  // ถอนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก) — ปุ่ม "ไม่ใช่ผู้บริหาร" ใช้ไม่ได้
+  $('mrExecOff').disabled = isSelf;
+  $('mrEditNote').textContent = isSelf ? t('mrSelfNote')
+    : (r && !r.active ? t('mrResignedNote') : (!r ? t('mrAddNote') : ''));
+  updateRoleEditUi();
+  $('roleEditModal').classList.remove('fc-hidden');
+}
+
+async function saveRoleEdit(){
+  const email = (mrEditing ? mrEditing.email : $('mrEditEmail').value).trim().toLowerCase();
+  if (!email || !email.includes('@')) { $('mrEditErr').textContent = t('mrInvalidEmail'); return; }
+  $('mrEditSave').disabled = true;
+  const { error } = await sb.rpc('set_exec_role', { p_email: email, p_make_exec: mrWantExec });
+  $('mrEditSave').disabled = false;
+  if (error) { $('mrEditErr').textContent = t('mrSaveFail', { err: error.message }); return; }
+  $('roleEditModal').classList.add('fc-hidden');
+  toast(t('mrSaved'));
+  loadManageRoles();
+}
+
+function wireManageRolesUi(){
+  $('mrSearch').oninput = renderManageRoles;
+  $('mrShowResigned').onchange = renderManageRoles;
+  $('mrSeg').querySelectorAll('.fc-seg__btn').forEach(b => {
+    b.onclick = () => { mrFilter = b.dataset.role; renderManageRoles(); };
+  });
+  $('btnAddExec').onclick = () => openRoleEdit(null);
+  $('mrExecOn').onclick  = () => { mrWantExec = true;  updateRoleEditUi(); };
+  $('mrExecOff').onclick = () => { if (!$('mrExecOff').disabled) { mrWantExec = false; updateRoleEditUi(); } };
+  $('mrEditCancel').onclick = () => $('roleEditModal').classList.add('fc-hidden');
+  $('mrEditSave').onclick = saveRoleEdit;
 }
 
 /* ---------- จัดการคำถาม (survey_questions — exec แก้ได้ 3 ภาษา, survey.html ดึงไปแสดงจริง) ---------- */
