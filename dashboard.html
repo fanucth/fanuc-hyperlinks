@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.06a - ลิงก์ 🌐↗ แปลคอมเมนต์ (Google Translate) โชว์เสมอ — เดิมซ่อนเมื่อเบราว์เซอร์มี Translator API (เช่น Chrome บน https) ทำให้ one.fanucth.co.th ไม่เห็นลิงก์ แต่ 247 (http) เห็น
        2026.10.05g - แก้สิทธิ์ได้เฉพาะ "ผู้ดูแลสิทธิ์" 2 บัญชี (ตาราง exec_role_admins, RPC can_edit_roles); ผู้บริหารคนอื่นเห็นหน้าแบบดูอย่างเดียว
                      [รัน migrate_exec_roles.sql ซ้ำ — ปลอดภัย; ก่อนรัน ปุ่มแก้ไขจะถูกซ่อนไว้]
        2026.10.05f - หน้า "จัดการสิทธิ์": แก้สิทธิ์ผู้บริหารได้ (ปุ่มแก้ไขต่อคน + "+ เพิ่มผู้บริหาร") ผ่าน RPC set_exec_role; เช็คสิทธิ์ login จาก DB (am_i_exec)
@@ -154,7 +155,6 @@
   .cmt-orig{text-decoration:none;font-size:12px;opacity:.6;cursor:pointer;}
   .cmt-orig:hover{opacity:1;}
   .cmt-gt{text-decoration:none;font-size:12px;white-space:nowrap;color:var(--fc-primary);}
-  .has-tr .cmt-gt{display:none;}
   .fc-col-drag{cursor:grab;padding:0 5px;color:var(--fc-text-mute);user-select:none;}
   .fc-col-drag:hover{color:var(--fc-text);}
   #detTable th.drag-over{background:var(--fc-row-hover);outline:2px dashed var(--fc-primary);outline-offset:-2px;}
@@ -545,7 +545,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.05g";
+const APP_VERSION = "2026.10.06a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -815,7 +815,7 @@ const trTranslators = new Map();   // "th>en" -> Translator
 const trCache = new Map();         // "th>en|ข้อความ" -> คำแปล
 let trNeedsDownload = false;
 
-// ลิงก์ไป Google Translate (ใช้ได้ทุกเบราว์เซอร์/มือถือ) — โชว์เฉพาะเบราว์เซอร์ที่ไม่มี Translator API ในตัว (ดู .has-tr)
+// ลิงก์ไป Google Translate (ใช้ได้ทุกเบราว์เซอร์/มือถือ) — โชว์ทุกที่ ไม่ว่าเบราว์เซอร์จะมี Translator API ในตัวหรือไม่
 // หมายเหตุ: ข้อความคอมเมนต์จะถูกส่งไป Google ผ่านลิงก์ (ตัดไม่เกิน 1500 ตัวอักษร)
 function gtLink(text){
   const src = detectLang(text);
