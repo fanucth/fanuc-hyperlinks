@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.06b - ลิงก์ 🌐↗ โชว์กับทุกคอมเมนต์ แม้ภาษาเดียวกับหน้า (ไทย->แปลเป็นญี่ปุ่น, ญี่ปุ่น->อังกฤษ) เดิมซ่อนจึงไม่เห็นเมื่อหน้าเป็นภาษาไทย
        2026.10.06a - ลิงก์ 🌐↗ แปลคอมเมนต์ (Google Translate) โชว์เสมอ — เดิมซ่อนเมื่อเบราว์เซอร์มี Translator API (เช่น Chrome บน https) ทำให้ one.fanucth.co.th ไม่เห็นลิงก์ แต่ 247 (http) เห็น
        2026.10.05g - แก้สิทธิ์ได้เฉพาะ "ผู้ดูแลสิทธิ์" 2 บัญชี (ตาราง exec_role_admins, RPC can_edit_roles); ผู้บริหารคนอื่นเห็นหน้าแบบดูอย่างเดียว
                      [รัน migrate_exec_roles.sql ซ้ำ — ปลอดภัย; ก่อนรัน ปุ่มแก้ไขจะถูกซ่อนไว้]
@@ -545,7 +546,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.06a";
+const APP_VERSION = "2026.10.06b";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -819,8 +820,10 @@ let trNeedsDownload = false;
 // หมายเหตุ: ข้อความคอมเมนต์จะถูกส่งไป Google ผ่านลิงก์ (ตัดไม่เกิน 1500 ตัวอักษร)
 function gtLink(text){
   const src = detectLang(text);
-  if (!src || src === lang) return '';
-  const url = 'https://translate.google.com/?sl=auto&tl=' + encodeURIComponent(lang) + '&op=translate&text=' + encodeURIComponent(text.slice(0, 1500));
+  if (!src) return '';
+  // ภาษาปลายทาง = ภาษาของหน้า; ถ้าคอมเมนต์เป็นภาษาเดียวกับหน้าอยู่แล้ว ให้แปลเป็นญี่ปุ่น (อังกฤษ ถ้าหน้าเป็นญี่ปุ่น)
+  const tl = src !== lang ? lang : (lang === 'ja' ? 'en' : 'ja');
+  const url = 'https://translate.google.com/?sl=auto&tl=' + encodeURIComponent(tl) + '&op=translate&text=' + encodeURIComponent(text.slice(0, 1500));
   return ` <a class="cmt-gt" target="_blank" rel="noopener noreferrer" href="${esc(url)}" title="${esc(t('gtTitle'))}" onclick="event.stopPropagation()">🌐↗</a>`;
 }
 function cmtSpan(text){ return `<span class="cmt-tr" data-orig="${esc(text)}">${esc(text)}</span>${gtLink(text)}`; }
