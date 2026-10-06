@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.10.06c - แถบคะแนนรายข้อ: ต่อท้ายด้วย "เฉลี่ยต่อวัน (เดือนนี้)" = response เดือนนี้ ÷ จำนวนวันที่ผ่านมาของเดือน (นับวันปฏิทินรวมวันนี้)
        2026.10.06b - ลิงก์ 🌐↗ โชว์กับทุกคอมเมนต์ แม้ภาษาเดียวกับหน้า (ไทย->แปลเป็นญี่ปุ่น, ญี่ปุ่น->อังกฤษ) เดิมซ่อนจึงไม่เห็นเมื่อหน้าเป็นภาษาไทย
        2026.10.06a - ลิงก์ 🌐↗ แปลคอมเมนต์ (Google Translate) โชว์เสมอ — เดิมซ่อนเมื่อเบราว์เซอร์มี Translator API (เช่น Chrome บน https) ทำให้ one.fanucth.co.th ไม่เห็นลิงก์ แต่ 247 (http) เห็น
        2026.10.05g - แก้สิทธิ์ได้เฉพาะ "ผู้ดูแลสิทธิ์" 2 บัญชี (ตาราง exec_role_admins, RPC can_edit_roles); ผู้บริหารคนอื่นเห็นหน้าแบบดูอย่างเดียว
@@ -546,7 +547,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.06b";
+const APP_VERSION = "2026.10.06c";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -675,6 +676,7 @@ const I18N = {
   q3:{th:"การอธิบายงาน",en:"Explanation",ja:"説明"},
   q4:{th:"มืออาชีพ",en:"Professional",ja:"プロ意識"},
   q5:{th:"ภาพรวม",en:"Overall",ja:"総合"},
+  qPerDay:{th:"เฉลี่ยต่อวัน (เดือนนี้)",en:"Avg per day (this month)",ja:"1日平均（今月）"},
   qMonthCnt:{th:"เดือนนี้ทั้งหมด (response)",en:"This month (responses)",ja:"今月の回答数"},
   q3Full:{th:"การอธิบายปัญหาและงานที่ทำ ชัดเจน เข้าใจง่าย",en:"Clear explanation of the problem and work performed",ja:"問題と作業内容の説明の分かりやすさ"},
   q3WordingNote:{th:"⚠️ 11 ก.ย. 2026 เปลี่ยนคำถามข้อ 3 จาก \"ความชัดเจนเรื่องค่าใช้จ่าย/ใบเสนอราคา\" เป็น \"ความชัดเจนในการอธิบายงาน\" — คำตอบก่อนหน้านี้ตอบคำถามฉบับเดิม",en:"⚠️ 2026-09-11: Q3 wording changed from cost/quotation clarity to explanation clarity — responses before this date answered the old question",ja:"⚠️ 2026年9月11日 質問3の内容を「費用・見積りの説明」から「作業内容の説明」に変更 — それ以前の回答は旧質問への回答です"},
@@ -1520,7 +1522,10 @@ function renderQAvg(){
     const v = rows.reduce((s,r)=>s+r[k],0) / rows.length;
     const lbl = i === 2 ? `<span title="${esc(t('q3Full'))}">${t('q3')}</span>` : t('q' + (i+1));
     return `<span style="white-space:nowrap">Q${i+1} ${lbl} <b>${v.toFixed(2)}</b></span>`;
-  }).join('') + (monthCount != null ? `<span style="white-space:nowrap">| ${t('qMonthCnt')} <b>${monthCount}</b></span>` : '');
+  }).join('') + (monthCount != null
+    ? `<span style="white-space:nowrap">| ${t('qMonthCnt')} <b>${monthCount}</b></span>`
+      + `<span style="white-space:nowrap">| ${t('qPerDay')} <b>${(monthCount / new Date().getDate()).toFixed(1)}</b></span>`
+    : '');
   box.innerHTML = `<div class="fc-kpi" style="padding:6px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;align-items:center">${items}</div>`;
 }
 
