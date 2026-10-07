@@ -185,7 +185,9 @@
   .login-sub{margin:0 0 20px;color:var(--sub);font-size:13px;}
   .login-box label{margin-top:2px;}
   .login-error{color:#ffb4a8;background:rgba(255,90,60,.12);border:1px solid rgba(255,90,60,.35);border-radius:8px;padding:9px 11px;font-size:12.5px;margin-top:2px;margin-bottom:10px;}
+  input[type=number]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
@@ -239,6 +241,16 @@
       <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
       <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
     </div>
+    <label style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+      <span data-i18n="qtyLabel">จำนวนที่จะทำลาย (QTY):</span>
+      <input type="number" id="disposalQty" min="0" max="999" placeholder="0" style="width:80px; padding:6px;">
+      <span style="font-size:12px; color:#666;" id="qtyHint"></span>
+    </label>
+    <label style="margin-top:8px; display:block;">
+      <span data-i18n="excelFileLabel">📁 ไฟล์ Excel (Final Disposal Qty):</span>
+      <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin-top:4px;">
+      <span style="font-size:12px; color:#666;" id="excelStatus"></span>
+    </label>
   </div>
 
   <div class="card" id="photoCard">
@@ -365,7 +377,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.14';
+const APP_VERSION = 'v3.15';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -392,6 +404,8 @@ const TRANSLATIONS = {
   scanNoteText:      { th:'ถือขนานกับบาร์โค้ด วางให้อยู่ในกรอบแนวนอน • ห่าง 15–25 ซม.', en:'Hold parallel to the barcode, keep it inside the horizontal frame • 15–25 cm away', ja:'バーコードに平行に持ち、横長の枠内に収めてください • 15〜25cm離す' },
   orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
   itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
+  qtyLabel:          { th:'จำนวนที่จะทำลาย (QTY):', en:'Disposal Qty:', ja:'廃棄数量:' },
+  excelFileLabel:    { th:'📁 ไฟล์ Excel (Final Disposal Qty):', en:'📁 Excel file (Final Disposal Qty):', ja:'📁 Excel ファイル（最終廃棄数量）:' },
   btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
   sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
   sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ • iPhone/iPad: เลือก “Save Image” ในเมนูแชร์เพื่อเก็บลง Photos', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it • iPhone/iPad: choose “Save Image” in the share menu to store it in Photos', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除 • iPhone/iPad：共有メニューで「画像を保存」を選ぶと写真アプリに保存されます' },
@@ -977,16 +991,77 @@ document.getElementById('btnCancelEdit').onclick = () => {
 };
 
 /* ============================================================
-   ส่วนที่ 5: บันทึกรายการ
+   ส่วนที่ 5: บันทึกรายการ + ตรวจสอบ QTY
    ============================================================ */
+let excelData = {};  // { 'A06B-...' : finalQty, ... }
+
+const disposalQtyInput = document.getElementById('disposalQty');
+const excelFileInput = document.getElementById('excelFile');
+const qtyHintSpan = document.getElementById('qtyHint');
+const excelStatusSpan = document.getElementById('excelStatus');
+
+excelFileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+    excelData = {};
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row[1]) {  // column B = Product ID
+        const itemCode = String(row[1]).trim().toUpperCase();
+        const finalQty = parseInt(row[2]) || 0;  // column C = Final Disposal Qty
+        excelData[itemCode] = finalQty;
+      }
+    }
+    excelStatusSpan.textContent = `✓ โหลดแล้ว (${Object.keys(excelData).length} รายการ)`;
+    excelStatusSpan.style.color = '#3ddc84';
+  } catch (err) {
+    excelStatusSpan.textContent = `❌ อ่านไฟล์ไม่สำเร็จ: ${err.message}`;
+    excelStatusSpan.style.color = 'var(--accent2)';
+  }
+};
+
+itemCodeInput.oninput = () => {
+  const code = itemCodeInput.value.trim().toUpperCase();
+  if (excelData[code]) {
+    const finalQty = excelData[code];
+    qtyHintSpan.textContent = `(Final Disposal Qty: ${finalQty})`;
+    qtyHintSpan.style.color = '#666';
+  } else {
+    qtyHintSpan.textContent = '';
+  }
+};
+
 const btnSave = document.getElementById('btnSave');
 
 btnSave.onclick = async () => {
-  const code = itemCodeInput.value.trim();
+  const code = itemCodeInput.value.trim().toUpperCase();
   if(!code){ toast(t('needItemCode'), true); return; }
   if(currentBefore.length === 0 && currentAfter.length === 0){
     toast(t(editingRecord ? 'editNeedPhoto' : 'needAtLeastOnePhoto'), true); return;
   }
+
+  // ตรวจสอบ QTY
+  const qtyInput = disposalQtyInput.value.trim();
+  if (!qtyInput) { toast('❌ กรุณากรอกจำนวน QTY', true); return; }
+  const inputQty = parseInt(qtyInput);
+
+  if (Object.keys(excelData).length > 0) {
+    if (!excelData[code]) {
+      toast(`❌ รหัส ${code} ไม่พบในไฟล์ Excel`, true); return;
+    }
+    const finalQty = excelData[code];
+    if (inputQty !== finalQty) {
+      toast(`❌ QTY ไม่ตรงกัน!\nคุณกรอก: ${inputQty}\nควรเป็น: ${finalQty}`, true); return;
+    }
+  }
+  toast(`✓ QTY = ${inputQty} ยืนยัน`);
+
+  // ส่วนการบันทึกเดิม
 
   const editTarget = editingRecord;
   const now = new Date();
