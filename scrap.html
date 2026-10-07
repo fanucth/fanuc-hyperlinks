@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.14 | Updated: 2026-10-05
+<!-- VERSION: v3.16 | Updated: 2026-10-07
+     Changes (v3.16):
+       - แก้เพิ่มรูปทีหลังสำหรับ Item No. ที่มี # แล้วขึ้น "The resource already exists"
+       - Storage path ใช้ record UUID ที่ปลอดภัยและไม่ซ้ำแทน Item No.; ไม่กระทบ Item No. ในฐานข้อมูลหรือรูปเดิม
      Changes (v3.14):
        - Export PDF: ย่อรูปให้พอดีขนาดที่แสดงจริง (~150 dpi, JPEG 0.7) ก่อนฝังลง PDF + เปิด compress ของ jsPDF — แก้ปัญหาไฟล์ใหญ่ (308 หน้า ≈ 200 MB)
      Changes (v3.13):
@@ -377,7 +380,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.15';
+const APP_VERSION = 'v3.16';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -1748,8 +1751,13 @@ function dataUrlToBlob(dataUrl){
 
 // อัพโหลดรูปเดียวขึ้น Storage คืนค่า "path" (ไม่ใช่ public URL แล้ว ตั้งแต่ v3.1 ที่ bucket เป็น private)
 // ตอนแสดงผลต้องขอ signed URL จาก path นี้ทุกครั้งผ่าน getSignedPhotoUrl()
-async function uploadOne(itemCode, dataUrl, phase, idx){
-  const path = `${itemCode}/${phase}_${Date.now()}_${idx}.jpg`;
+async function uploadOne(recordId, dataUrl, phase, idx){
+  // ห้ามใช้ item_code เป็น Storage path: อักขระ # จะถูกมองเป็น URL fragment
+  // ทำให้ path หลัง # หายและรูปหลายใบชนชื่อเดียวกัน ใช้ UUID ของ record แทนซึ่งปลอดภัยและไม่ซ้ำ
+  const uniqueId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const path = `${recordId}/${phase}_${uniqueId}_${idx}.jpg`;
   const blob = dataUrlToBlob(dataUrl);
   const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
     contentType: 'image/jpeg', upsert: false
@@ -1759,8 +1767,8 @@ async function uploadOne(itemCode, dataUrl, phase, idx){
 }
 
 // อัพโหลดรูปทั้งหมดของเฟสหนึ่ง (before หรือ after) แบบขนาน
-async function uploadPhaseAll(itemCode, photos, phase){
-  return Promise.all(photos.map((dataUrl, idx) => uploadOne(itemCode, dataUrl, phase, idx)));
+async function uploadPhaseAll(recordId, photos, phase){
+  return Promise.all(photos.map((dataUrl, idx) => uploadOne(recordId, dataUrl, phase, idx)));
 }
 
 // บันทึก 1 รายการ (record) + รูปทั้งหมด (photos) ตามโครงสร้าง 1-to-many
@@ -1785,8 +1793,8 @@ async function uploadToCloud(record){
   if (recErr) throw recErr;
 
   const [beforeUrls, afterUrls] = await Promise.all([
-    uploadPhaseAll(record.code, record.before, 'before'),
-    uploadPhaseAll(record.code, record.after,  'after')
+    uploadPhaseAll(inserted.id, record.before, 'before'),
+    uploadPhaseAll(inserted.id, record.after,  'after')
   ]);
 
   const photoRows = [
@@ -1806,8 +1814,8 @@ async function appendPhotosToCloud(existingRecord, beforePhotos, afterPhotos){
   if (!user) throw new Error('Please sign in first');
 
   const [beforeUrls, afterUrls] = await Promise.all([
-    uploadPhaseAll(existingRecord.item_code, beforePhotos, 'before'),
-    uploadPhaseAll(existingRecord.item_code, afterPhotos,  'after')
+    uploadPhaseAll(existingRecord.id, beforePhotos, 'before'),
+    uploadPhaseAll(existingRecord.id, afterPhotos,  'after')
   ]);
 
   const photoRows = [
