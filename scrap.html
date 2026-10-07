@@ -428,10 +428,11 @@ const TRANSLATIONS = {
   emptyList:         { th:'ยังไม่มีรายการ', en:'No records yet', ja:'記録がありません' },
   storageNoteLocal:  { th:'ขณะนี้ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้เท่านั้น เมื่อใส่ค่า Supabase config ในไฟล์แล้ว ระบบจะอัปโหลดขึ้น Cloud Storage อัตโนมัติทุกครั้งที่บันทึก', en:'Data is currently stored only in this browser. Once Supabase config is set, the system will automatically upload to Cloud Storage on every save.', ja:'現在データはこのブラウザにのみ保存されています。Supabaseの設定を行うと、保存の度に自動でクラウドへアップロードされます。' },
   storageNoteCloud:  { th:'ระบบอัปโหลดภาพขึ้น Supabase Storage อัตโนมัติทุกครั้งที่กดบันทึก', en:'Photos are automatically uploaded to Supabase Storage every time you save.', ja:'保存の度に写真は自動的にSupabase Storageへアップロードされます。' },
-  colCode:   { th:'รหัส', en:'Code', ja:'品番' },
-  colBefore: { th:'ก่อน', en:'Before', ja:'廃棄前' },
-  colAfter:  { th:'หลัง', en:'After', ja:'廃棄後' },
-  colStatus: { th:'สถานะ', en:'Status', ja:'状態' },
+  colCode:           { th:'รหัส', en:'Code', ja:'品番' },
+  colBefore:         { th:'ก่อน', en:'Before', ja:'廃棄前' },
+  colAfter:          { th:'หลัง', en:'After', ja:'廃棄後' },
+  colFinalDisposal:  { th:'Final Disposal', en:'Final Disposal', ja:'最終廃棄数量' },
+  colStatus:         { th:'สถานะ', en:'Status', ja:'状態' },
   colBy:     { th:'โดย', en:'By', ja:'記録者' },
   colTime:   { th:'เวลา', en:'Time', ja:'日時' },
   statusComplete: { th:'ครบก่อน/หลัง', en:'Complete', ja:'完了' },
@@ -1069,6 +1070,7 @@ btnSave.onclick = async () => {
     code,
     before: currentBefore.slice(),   // copy array ไว้ก่อนเคลียร์
     after: currentAfter.slice(),
+    disposalQty: inputQty,           // เก็บ QTY ที่ผู้ใช้กรอก
     savedAt: now.toLocaleString('th-TH'),
     savedAtISO: now.toISOString()
   };
@@ -1114,12 +1116,12 @@ function renderTable(){
   document.getElementById('countTotal').textContent = records.length;
   const wrap = document.getElementById('tableWrap');
   if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
   records.forEach(r => {
     const nBefore = (r.before || []).length;
     const nAfter = (r.after || []).length;
     const done = nBefore > 0 && nAfter > 0;
-    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td style="text-align:center; font-weight:600;">${r.disposalQty || '-'}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
@@ -1187,7 +1189,7 @@ function renderCloudTable(){
   renderPager();
   const wrap = document.getElementById('tableWrap');
   if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th></th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th></tr>`;
+  let html = `<table><tr><th>${t('colCode')}</th><th></th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th></tr>`;
   cloudRecords.forEach(r => {
     const photos  = r.scrap_photos || [];
     const nBefore = photos.filter(p => p.phase === 'before').length;
@@ -1202,6 +1204,7 @@ function renderCloudTable(){
         ${isScrapAdmin ? `<button class="btn-view btn-code" data-id="${r.id}">${t('editCodeBtn')}</button>` : ''}
       </div></td>
       <td>${nBefore}</td><td>${nAfter}</td>
+      <td style="text-align:center; font-weight:600;">${r.disposal_qty || '-'}</td>
       <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
       <td>${r.created_by_email || '-'}</td><td>${dt}</td>
     </tr>`;
@@ -1775,6 +1778,7 @@ async function uploadToCloud(record){
   const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
     item_code: record.code,
     status,
+    disposal_qty: record.disposalQty || null,
     created_by: user.id,
     created_by_email: user.email
   }).select().single();
