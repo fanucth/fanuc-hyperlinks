@@ -1,6 +1,6 @@
 -- =====================================================================
--- Scrap v3.18: Master Final Disposal Qty
--- รันทั้งไฟล์ใน Supabase SQL Editor ของโปรเจกต์ scrap ก่อน deploy scrap.html v3.18
+-- Scrap v3.19: Master Final Disposal Qty + strict QTY validation
+-- สำหรับติดตั้งใหม่ ให้รันทั้งไฟล์ก่อน deploy scrap.html v3.19
 -- รันซ้ำได้อย่างปลอดภัย ไม่ลบข้อมูลเดิม
 -- =====================================================================
 
@@ -46,9 +46,11 @@ create table if not exists scrap_qty_import_log (
 );
 alter table scrap_qty_import_log enable row level security;
 
--- ให้หน้าเว็บตรวจเพียงว่า QTY ตรงหรือไม่ โดยไม่คืนค่ามาตรฐานให้ผู้กรอก
+-- ตรวจ QTY และคืนค่าที่ถูกต้องเฉพาะตอนกรอกไม่ตรง เพื่อให้ผู้ใช้พิมพ์แก้เอง
+drop function if exists check_scrap_final_qty(text, integer);
+
 create or replace function check_scrap_final_qty(p_item_code text, p_qty integer)
-returns text
+returns jsonb
 language plpgsql
 stable
 security definer
@@ -61,9 +63,16 @@ begin
   from scrap_final_qty_master
   where item_code = normalize_scrap_item_code(p_item_code);
 
-  if not found then return 'not_found'; end if;
-  if p_qty = v_expected then return 'match'; end if;
-  return 'mismatch';
+  if not found then
+    return jsonb_build_object('status', 'not_found');
+  end if;
+  if p_qty = v_expected then
+    return jsonb_build_object('status', 'match');
+  end if;
+  return jsonb_build_object(
+    'status', 'mismatch',
+    'expected_qty', v_expected
+  );
 end;
 $$;
 
@@ -153,12 +162,6 @@ as $$
 declare
   v_expected integer;
 begin
-  -- ช่วงหลังรัน migration แต่ยังไม่ได้นำเข้า Excel: ไม่บล็อกระบบเดิม
-  -- เมื่อ Master มีข้อมูลอย่างน้อย 1 แถว การตรวจจะเริ่มบังคับอัตโนมัติ
-  if not exists (select 1 from scrap_final_qty_master limit 1) then
-    return new;
-  end if;
-
   select final_disposal_qty into v_expected
   from scrap_final_qty_master
   where item_code = normalize_scrap_item_code(new.item_code);

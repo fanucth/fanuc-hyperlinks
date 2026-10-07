@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.18 | Updated: 2026-10-07
+<title>Scrap Photo Capture - v3.19</title>
+<!-- VERSION: v3.19 | Updated: 2026-10-07
+     Changes (v3.19):
+       - เมื่อ QTY ไม่ตรง แสดง QTY ที่ถูกต้องให้ผู้ใช้พิมพ์เอง โดยไม่กรอกค่าให้อัตโนมัติ
+       - ถ้า Item No. ไม่มีใน Final Disposal Master จะบล็อกการบันทึกทั้งหน้าเว็บและฐานข้อมูล
      Changes (v3.18):
        - เพิ่มปุ่ม Admin "นำเข้า QTY ลงรายการเดิม" เพื่อบันทึก Excel เป็น Master QTY ใน Supabase
        - หลังนำเข้า ระบบเติม disposal_qty ให้รายการเดิมที่ Item No. ตรงกันโดยอัตโนมัติ
@@ -152,6 +155,9 @@
   .toast.show{opacity:1;}
   .toast.err{background:var(--accent2);color:#fff;}
   .note{font-size:11.5px;color:var(--sub);line-height:1.5;margin-top:2px;}
+  .field-feedback{min-height:21px;margin:4px 0 0;font-size:12px;line-height:1.75;font-weight:600;}
+  .field-feedback.error{color:#ff8873;}
+  .field-feedback.success{color:var(--ok);}
   .row2{display:flex;gap:8px;}
   .row2 .btn{flex:1;}
   .code-row{display:flex;gap:8px;align-items:stretch;}
@@ -252,11 +258,11 @@
       <input type="text" id="itemCode" data-i18n-placeholder="itemCodePlaceholder" placeholder="เช่น A06B-1407-B153">
       <button class="btn-clear" id="btnClearCode" data-i18n-title="btnClearTitle" title="ล้างรหัสชิ้นงาน">✕</button>
     </div>
-    <label style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-      <span data-i18n="qtyLabel">จำนวนที่จะทำลาย (QTY):</span>
-      <input type="number" id="disposalQty" min="0" max="999" placeholder="0" style="width:80px; padding:6px;">
-      <span style="font-size:12px; color:#666;" id="qtyHint"></span>
-    </label>
+    <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+      <label for="disposalQty" data-i18n="qtyLabel">จำนวนที่จะทำลาย (QTY):</label>
+      <input type="number" id="disposalQty" min="0" max="999" inputmode="numeric" placeholder="0" aria-describedby="qtyHint" aria-invalid="false" style="width:80px; padding:6px;">
+    </div>
+    <p class="field-feedback" id="qtyHint" role="status" aria-live="polite"></p>
     <p class="note" data-i18n="qtyDbNote" style="margin-top:8px;">กรอก QTY เอง ระบบจะตรวจเทียบกับฐานข้อมูลเมื่อกดบันทึก</p>
   </div>
 
@@ -391,7 +397,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.18';
+const APP_VERSION = 'v3.19';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -429,8 +435,9 @@ const TRANSLATIONS = {
   qtyImportNoRows:   { th:'ไม่พบข้อมูล Product ID / Final Disposal Qty ที่ใช้ได้ในไฟล์', en:'No valid Product ID / Final Disposal Qty rows found in the file', ja:'有効なProduct ID / Final Disposal Qtyがありません' },
   qtyImportBadHeaders:{ th:'รูปแบบ Excel ไม่ถูกต้อง: คอลัมน์ B ต้องเป็น Product ID และคอลัมน์ C ต้องเป็น Final Disposal Qty', en:'Invalid Excel format: column B must be Product ID and column C must be Final Disposal Qty', ja:'Excel形式が不正です：B列はProduct ID、C列はFinal Disposal Qtyが必要です' },
   qtyRequired:       { th:'กรุณากรอกจำนวน QTY', en:'Please enter QTY', ja:'数量を入力してください' },
-  qtyMasterMissing:  { th:'ไม่พบ Item No. นี้ในฐานข้อมูล Master QTY กรุณาแจ้ง Admin ให้นำเข้าไฟล์ล่าสุด', en:'This Item No. is not in the Master QTY database. Ask an admin to import the latest file.', ja:'この品番は数量マスターにありません。管理者に最新版の取込を依頼してください。' },
+  qtyMasterMissing:  { th:'ไม่พบ Item No. นี้ใน Final Disposal List จึงไม่สามารถบันทึกได้ กรุณาแจ้ง Admin ให้นำเข้าไฟล์ล่าสุด', en:'This Item No. is not in the Final Disposal List, so it cannot be saved. Ask an admin to import the latest file.', ja:'この品番は最終廃棄リストにないため保存できません。管理者に最新版の取込を依頼してください。' },
   qtyMismatch:       { th:'QTY ไม่ตรงกับฐานข้อมูล กรุณาตรวจสอบและกรอกใหม่', en:'QTY does not match the database. Please check and enter it again.', ja:'数量がデータベースと一致しません。確認して再入力してください。' },
+  qtyMismatchExpected:{ th:'QTY ไม่ตรง กรุณากรอก {qty} แล้วกดบันทึกอีกครั้ง', en:'QTY does not match. Enter {qty}, then save again.', ja:'数量が一致しません。{qty} を入力して、もう一度保存してください。' },
   qtyDbCheckFail:    { th:'ตรวจสอบ QTY กับฐานข้อมูลไม่สำเร็จ: {err}', en:'Could not validate QTY against the database: {err}', ja:'データベースとの数量照合に失敗しました：{err}' },
   qtyConfirmed:      { th:'✓ QTY ถูกต้อง', en:'✓ QTY confirmed', ja:'✓ 数量確認済み' },
   btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
@@ -990,7 +997,7 @@ function resetCaptureForm(){
   capturingMode = null;
   itemCodeInput.value = '';
   disposalQtyInput.value = '';
-  qtyHintSpan.textContent = '';
+  setQtyHint();
   renderGallery('before');
   renderGallery('after');
   updateEditUi();
@@ -1029,6 +1036,12 @@ const disposalQtyInput = document.getElementById('disposalQty');
 const qtyHintSpan = document.getElementById('qtyHint');
 const qtyImportFileInput = document.getElementById('qtyImportFile');
 const qtyImportStatus = document.getElementById('qtyImportStatus');
+
+function setQtyHint(message = '', state = ''){
+  qtyHintSpan.textContent = message;
+  qtyHintSpan.className = `field-feedback${state ? ` ${state}` : ''}`;
+  disposalQtyInput.setAttribute('aria-invalid', state === 'error' ? 'true' : 'false');
+}
 
 function normalizeQtyItemCode(value){
   return String(value || '').trim().toUpperCase().replaceAll('/', '#');
@@ -1101,7 +1114,8 @@ qtyImportFileInput.onchange = async () => {
   }
 };
 
-itemCodeInput.oninput = () => { qtyHintSpan.textContent = ''; };
+itemCodeInput.oninput = () => { setQtyHint(); };
+disposalQtyInput.oninput = () => { setQtyHint(); };
 
 const btnSave = document.getElementById('btnSave');
 
@@ -1114,22 +1128,51 @@ btnSave.onclick = async () => {
 
   // ตรวจสอบ QTY
   const qtyInput = disposalQtyInput.value.trim();
-  if (qtyInput === '') { toast(t('qtyRequired'), true); return; }
+  if (qtyInput === '') {
+    setQtyHint(t('qtyRequired'), 'error');
+    toast(t('qtyRequired'), true);
+    disposalQtyInput.focus();
+    return;
+  }
   const inputQty = Number(qtyInput);
-  if (!Number.isInteger(inputQty) || inputQty < 0) { toast(t('qtyRequired'), true); return; }
+  if (!Number.isInteger(inputQty) || inputQty < 0) {
+    setQtyHint(t('qtyRequired'), 'error');
+    toast(t('qtyRequired'), true);
+    disposalQtyInput.focus();
+    return;
+  }
 
-  // ผู้ใช้กรอกเองเสมอ แล้วถามฐานข้อมูลเฉพาะผล ตรง/ไม่ตรง โดยไม่เปิดเผยค่ามาตรฐาน
+  // ผู้ใช้กรอกเองเสมอ ระบบเปิดเผยค่ามาตรฐานเฉพาะตอนกรอกผิด แต่ไม่เติมช่องให้เอง
   if (CLOUD_MODE) {
     const { data: qtyCheck, error: qtyCheckError } = await sb.rpc('check_scrap_final_qty', {
       p_item_code: code,
       p_qty: inputQty
     });
     if (qtyCheckError) {
-      toast(t('qtyDbCheckFail', { err: qtyCheckError.message }), true); return;
+      const message = t('qtyDbCheckFail', { err: qtyCheckError.message });
+      setQtyHint(message, 'error');
+      toast(message, true);
+      return;
     }
-    if (qtyCheck === 'not_found') { toast(t('qtyMasterMissing'), true); return; }
-    if (qtyCheck !== 'match') { toast(t('qtyMismatch'), true); return; }
+    const checkResult = typeof qtyCheck === 'string' ? { status: qtyCheck } : (qtyCheck || {});
+    if (checkResult.status === 'not_found') {
+      setQtyHint(t('qtyMasterMissing'), 'error');
+      toast(t('qtyMasterMissing'), true);
+      return;
+    }
+    if (checkResult.status !== 'match') {
+      const expected = Number(checkResult.expected_qty);
+      const message = Number.isInteger(expected)
+        ? t('qtyMismatchExpected', { qty: expected })
+        : t('qtyMismatch');
+      setQtyHint(message, 'error');
+      toast(message, true);
+      disposalQtyInput.focus();
+      disposalQtyInput.select();
+      return;
+    }
   }
+  setQtyHint(t('qtyConfirmed'), 'success');
   toast(t('qtyConfirmed'));
 
   // ส่วนการบันทึกเดิม
