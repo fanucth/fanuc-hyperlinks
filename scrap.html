@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.17 | Updated: 2026-10-07
+<!-- VERSION: v3.18 | Updated: 2026-10-07
+     Changes (v3.18):
+       - เพิ่มปุ่ม Admin "นำเข้า QTY ลงรายการเดิม" เพื่อบันทึก Excel เป็น Master QTY ใน Supabase
+       - หลังนำเข้า ระบบเติม disposal_qty ให้รายการเดิมที่ Item No. ตรงกันโดยอัตโนมัติ
+       - ผู้ใช้ต้องกรอก QTY เอง และระบบตรวจเทียบ Master QTY ในฐานข้อมูลก่อนยอมให้บันทึก
      Changes (v3.17):
        - แก้โหมดเพิ่มรูปทีหลังให้บันทึก Final Disposal Qty ลง record เดิมและโหลดค่าเดิมมาแสดงตอนแก้ไข
        - อนุญาตให้แก้และบันทึก QTY ของ record เดิมได้โดยไม่ต้องเพิ่มรูปใหม่
@@ -253,11 +257,7 @@
       <input type="number" id="disposalQty" min="0" max="999" placeholder="0" style="width:80px; padding:6px;">
       <span style="font-size:12px; color:#666;" id="qtyHint"></span>
     </label>
-    <label style="margin-top:8px; display:block;">
-      <span data-i18n="excelFileLabel">📁 ไฟล์ Excel (Final Disposal Qty):</span>
-      <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin-top:4px;">
-      <span style="font-size:12px; color:#666;" id="excelStatus"></span>
-    </label>
+    <p class="note" data-i18n="qtyDbNote" style="margin-top:8px;">กรอก QTY เอง ระบบจะตรวจเทียบกับฐานข้อมูลเมื่อกดบันทึก</p>
   </div>
 
   <div class="card" id="photoCard">
@@ -300,6 +300,13 @@
       <button class="btn-view" id="btnPrevPage" data-i18n="prevPage">◀ ก่อนหน้า</button>
       <span id="pagerInfo"></span>
       <button class="btn-view" id="btnNextPage" data-i18n="nextPage">ถัดไป ▶</button>
+    </div>
+    <div id="adminQtyImport" style="display:none; margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:8px;">
+      <b data-i18n="qtyImportTitle">🛡️ จัดการ Master Final Disposal Qty (Admin)</b>
+      <p class="note" data-i18n="qtyImportHelp" style="margin:4px 0 8px;">นำเข้า Excel เพื่ออัปเดตฐานข้อมูล QTY และเติม QTY ให้รายการเดิมที่ Item No. ตรงกัน</p>
+      <input type="file" id="qtyImportFile" accept=".xlsx,.xls" style="display:none;">
+      <button class="btn btn-secondary" id="btnImportQty" data-i18n="qtyImportButton">📥 นำเข้า QTY ลงรายการเดิม</button>
+      <span id="qtyImportStatus" style="display:block; margin-top:8px; font-size:12px; color:var(--sub);"></span>
     </div>
     <div class="row2" style="margin-top:10px;">
       <button class="btn btn-secondary" id="btnExportExcel">📊 Export Excel</button>
@@ -384,7 +391,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.17';
+const APP_VERSION = 'v3.18';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -412,7 +419,20 @@ const TRANSLATIONS = {
   orEnterManually:   { th:'หรือกรอกรหัสชิ้นงานเอง (กรณีป้ายชำรุด/สแกนไม่ติด)', en:'Or enter the item code manually (if label is damaged / scan fails)', ja:'または品番を手入力（ラベル破損・スキャン不可の場合）' },
   itemCodePlaceholder:{ th:'เช่น A06B-1407-B153', en:'e.g. A06B-1407-B153', ja:'例: A06B-1407-B153' },
   qtyLabel:          { th:'จำนวนที่จะทำลาย (QTY):', en:'Disposal Qty:', ja:'廃棄数量:' },
-  excelFileLabel:    { th:'📁 ไฟล์ Excel (Final Disposal Qty):', en:'📁 Excel file (Final Disposal Qty):', ja:'📁 Excel ファイル（最終廃棄数量）:' },
+  qtyDbNote:         { th:'กรอก QTY เอง ระบบจะตรวจเทียบกับฐานข้อมูลเมื่อกดบันทึก', en:'Enter QTY manually. The system checks it against the database when saving.', ja:'数量を手入力してください。保存時にデータベースと照合します。' },
+  qtyImportTitle:    { th:'🛡️ จัดการ Master Final Disposal Qty (Admin)', en:'🛡️ Manage Master Final Disposal Qty (Admin)', ja:'🛡️ 最終廃棄数量マスター管理（管理者）' },
+  qtyImportHelp:     { th:'นำเข้า Excel เพื่ออัปเดตฐานข้อมูล QTY และเติม QTY ให้รายการเดิมที่ Item No. ตรงกัน', en:'Import Excel to update the QTY database and fill matching existing records.', ja:'Excelを取り込み、数量DBと一致する既存記録を更新します。' },
+  qtyImportButton:   { th:'📥 นำเข้า QTY ลงรายการเดิม', en:'📥 Import QTY into existing records', ja:'📥 既存記録に数量を取り込む' },
+  qtyImportReading:  { th:'⏳ กำลังอ่านและนำเข้าไฟล์...', en:'⏳ Reading and importing file...', ja:'⏳ ファイルを読み込み中...' },
+  qtyImportSuccess:  { th:'นำเข้า Master {master} รหัส • อัปเดตรายการเดิม {updated} รายการ • รหัสซ้ำในไฟล์ {duplicates}', en:'Imported {master} master items • Updated {updated} existing records • {duplicates} duplicate codes in file', ja:'マスター{master}件取込 • 既存{updated}件更新 • ファイル内重複{duplicates}件' },
+  qtyImportFail:     { th:'นำเข้า QTY ไม่สำเร็จ: {err}', en:'QTY import failed: {err}', ja:'数量の取込に失敗しました：{err}' },
+  qtyImportNoRows:   { th:'ไม่พบข้อมูล Product ID / Final Disposal Qty ที่ใช้ได้ในไฟล์', en:'No valid Product ID / Final Disposal Qty rows found in the file', ja:'有効なProduct ID / Final Disposal Qtyがありません' },
+  qtyImportBadHeaders:{ th:'รูปแบบ Excel ไม่ถูกต้อง: คอลัมน์ B ต้องเป็น Product ID และคอลัมน์ C ต้องเป็น Final Disposal Qty', en:'Invalid Excel format: column B must be Product ID and column C must be Final Disposal Qty', ja:'Excel形式が不正です：B列はProduct ID、C列はFinal Disposal Qtyが必要です' },
+  qtyRequired:       { th:'กรุณากรอกจำนวน QTY', en:'Please enter QTY', ja:'数量を入力してください' },
+  qtyMasterMissing:  { th:'ไม่พบ Item No. นี้ในฐานข้อมูล Master QTY กรุณาแจ้ง Admin ให้นำเข้าไฟล์ล่าสุด', en:'This Item No. is not in the Master QTY database. Ask an admin to import the latest file.', ja:'この品番は数量マスターにありません。管理者に最新版の取込を依頼してください。' },
+  qtyMismatch:       { th:'QTY ไม่ตรงกับฐานข้อมูล กรุณาตรวจสอบและกรอกใหม่', en:'QTY does not match the database. Please check and enter it again.', ja:'数量がデータベースと一致しません。確認して再入力してください。' },
+  qtyDbCheckFail:    { th:'ตรวจสอบ QTY กับฐานข้อมูลไม่สำเร็จ: {err}', en:'Could not validate QTY against the database: {err}', ja:'データベースとの数量照合に失敗しました：{err}' },
+  qtyConfirmed:      { th:'✓ QTY ถูกต้อง', en:'✓ QTY confirmed', ja:'✓ 数量確認済み' },
   btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
   sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
   sectionPhotoNote:  { th:'ต้องมีรหัสชิ้นงานก่อนจึงจะถ่ายภาพได้ • ถ่ายได้หลายรูป กดปุ่มซ้ำเพื่อเพิ่ม • แตะ ✕ บนรูปเพื่อลบ • iPhone/iPad: เลือก “Save Image” ในเมนูแชร์เพื่อเก็บลง Photos', en:'Item code required before capturing • Take multiple photos by tapping + again • Tap ✕ on a photo to delete it • iPhone/iPad: choose “Save Image” in the share menu to store it in Photos', ja:'品番の入力後に撮影可能 • +を押して複数枚追加可能 • 写真の✕で削除 • iPhone/iPad：共有メニューで「画像を保存」を選ぶと写真アプリに保存されます' },
@@ -1002,50 +1022,86 @@ document.getElementById('btnCancelEdit').onclick = () => {
 };
 
 /* ============================================================
-   ส่วนที่ 5: บันทึกรายการ + ตรวจสอบ QTY
+   ส่วนที่ 5: บันทึกรายการ + ตรวจสอบ QTY กับ Master ในฐานข้อมูล
+   Excel ใช้เฉพาะ Admin นำเข้า Master; ผู้ใช้ทั่วไปต้องกรอก QTY เอง
    ============================================================ */
-let excelData = {};  // { 'A06B-...' : finalQty, ... }
-
 const disposalQtyInput = document.getElementById('disposalQty');
-const excelFileInput = document.getElementById('excelFile');
 const qtyHintSpan = document.getElementById('qtyHint');
-const excelStatusSpan = document.getElementById('excelStatus');
+const qtyImportFileInput = document.getElementById('qtyImportFile');
+const qtyImportStatus = document.getElementById('qtyImportStatus');
 
-excelFileInput.onchange = async (e) => {
-  const file = e.target.files[0];
+function normalizeQtyItemCode(value){
+  return String(value || '').trim().toUpperCase().replaceAll('/', '#');
+}
+
+async function readQtyImportFile(file){
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data);
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+  const headerB = String((rows[0] || [])[1] || '').trim().toLowerCase();
+  const headerC = String((rows[0] || [])[2] || '').trim().toLowerCase();
+  if (headerB !== 'product id' || headerC !== 'final disposal qty') {
+    throw new Error(t('qtyImportBadHeaders'));
+  }
+
+  // ใช้ Map เพื่อให้ Item No. ซ้ำเหลือค่าแถวสุดท้าย และรายงานจำนวนซ้ำให้ Admin ทราบ
+  const byCode = new Map();
+  let duplicates = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const code = normalizeQtyItemCode((rows[i] || [])[1]);
+    const rawQty = (rows[i] || [])[2];
+    if (!code || rawQty === '' || rawQty === null || rawQty === undefined) continue;
+    const qty = Number(rawQty);
+    if (!Number.isInteger(qty) || qty < 0) continue;
+    if (byCode.has(code)) duplicates++;
+    byCode.set(code, qty);
+  }
+  if (byCode.size === 0) throw new Error(t('qtyImportNoRows'));
+  return {
+    rows: [...byCode].map(([item_code, qty]) => ({ item_code, qty })),
+    duplicates
+  };
+}
+
+document.getElementById('btnImportQty').onclick = () => qtyImportFileInput.click();
+qtyImportFileInput.onchange = async () => {
+  const file = qtyImportFileInput.files[0];
   if (!file) return;
+  const btn = document.getElementById('btnImportQty');
+  btn.disabled = true;
+  qtyImportStatus.textContent = t('qtyImportReading');
+  qtyImportStatus.style.color = 'var(--sub)';
   try {
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-    excelData = {};
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (row[1]) {  // column B = Product ID
-        const itemCode = String(row[1]).trim().toUpperCase();
-        const finalQty = parseInt(row[2]) || 0;  // column C = Final Disposal Qty
-        excelData[itemCode] = finalQty;
-      }
-    }
-    excelStatusSpan.textContent = `✓ โหลดแล้ว (${Object.keys(excelData).length} รายการ)`;
-    excelStatusSpan.style.color = '#3ddc84';
+    if (!isScrapAdmin) throw new Error('Admin only');
+    const parsed = await readQtyImportFile(file);
+    const { data, error } = await sb.rpc('import_scrap_final_qty', {
+      p_rows: parsed.rows,
+      p_filename: file.name
+    });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    const message = t('qtyImportSuccess', {
+      master: result?.imported_master ?? parsed.rows.length,
+      updated: result?.updated_records ?? 0,
+      duplicates: parsed.duplicates
+    });
+    qtyImportStatus.textContent = '✓ ' + message;
+    qtyImportStatus.style.color = 'var(--ok)';
+    toast(message);
+    await refreshCloudRecords();
   } catch (err) {
-    excelStatusSpan.textContent = `❌ อ่านไฟล์ไม่สำเร็จ: ${err.message}`;
-    excelStatusSpan.style.color = 'var(--accent2)';
+    const message = t('qtyImportFail', { err: err.message || err });
+    qtyImportStatus.textContent = '❌ ' + message;
+    qtyImportStatus.style.color = 'var(--accent2)';
+    toast(message, true);
+  } finally {
+    btn.disabled = false;
+    qtyImportFileInput.value = '';
   }
 };
 
-itemCodeInput.oninput = () => {
-  const code = itemCodeInput.value.trim().toUpperCase();
-  if (excelData[code]) {
-    const finalQty = excelData[code];
-    qtyHintSpan.textContent = `(Final Disposal Qty: ${finalQty})`;
-    qtyHintSpan.style.color = '#666';
-  } else {
-    qtyHintSpan.textContent = '';
-  }
-};
+itemCodeInput.oninput = () => { qtyHintSpan.textContent = ''; };
 
 const btnSave = document.getElementById('btnSave');
 
@@ -1058,19 +1114,23 @@ btnSave.onclick = async () => {
 
   // ตรวจสอบ QTY
   const qtyInput = disposalQtyInput.value.trim();
-  if (!qtyInput) { toast('❌ กรุณากรอกจำนวน QTY', true); return; }
-  const inputQty = parseInt(qtyInput);
+  if (qtyInput === '') { toast(t('qtyRequired'), true); return; }
+  const inputQty = Number(qtyInput);
+  if (!Number.isInteger(inputQty) || inputQty < 0) { toast(t('qtyRequired'), true); return; }
 
-  if (Object.keys(excelData).length > 0) {
-    if (!Object.prototype.hasOwnProperty.call(excelData, code)) {
-      toast(`❌ รหัส ${code} ไม่พบในไฟล์ Excel`, true); return;
+  // ผู้ใช้กรอกเองเสมอ แล้วถามฐานข้อมูลเฉพาะผล ตรง/ไม่ตรง โดยไม่เปิดเผยค่ามาตรฐาน
+  if (CLOUD_MODE) {
+    const { data: qtyCheck, error: qtyCheckError } = await sb.rpc('check_scrap_final_qty', {
+      p_item_code: code,
+      p_qty: inputQty
+    });
+    if (qtyCheckError) {
+      toast(t('qtyDbCheckFail', { err: qtyCheckError.message }), true); return;
     }
-    const finalQty = excelData[code];
-    if (inputQty !== finalQty) {
-      toast(`❌ QTY ไม่ตรงกัน!\nคุณกรอก: ${inputQty}\nควรเป็น: ${finalQty}`, true); return;
-    }
+    if (qtyCheck === 'not_found') { toast(t('qtyMasterMissing'), true); return; }
+    if (qtyCheck !== 'match') { toast(t('qtyMismatch'), true); return; }
   }
-  toast(`✓ QTY = ${inputQty} ยืนยัน`);
+  toast(t('qtyConfirmed'));
 
   // ส่วนการบันทึกเดิม
 
@@ -1239,6 +1299,7 @@ async function loadAdminFlag(){
     const { data, error } = await sb.rpc('is_scrap_admin');
     isScrapAdmin = !error && data === true;
   } catch (e) { isScrapAdmin = false; }
+  document.getElementById('adminQtyImport').style.display = isScrapAdmin ? 'block' : 'none';
 }
 
 // แก้รหัสชิ้นงานที่ใส่ผิด (เฉพาะ admin) — DB trigger บล็อกคนอื่นอีกชั้น และเก็บ log ใน scrap_code_log
@@ -1706,7 +1767,11 @@ async function initSupabase(){
 
   sb.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_IN') { showAppScreen(); toast(t('loginSuccessToast')); loadAdminFlag().then(refreshCloudRecords); }
-    if (event === 'SIGNED_OUT') { isScrapAdmin = false; showLoginScreen(); }
+    if (event === 'SIGNED_OUT') {
+      isScrapAdmin = false;
+      document.getElementById('adminQtyImport').style.display = 'none';
+      showLoginScreen();
+    }
   });
 }
 
