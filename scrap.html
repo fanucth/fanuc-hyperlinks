@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Scrap Photo Capture - v3.2</title>
-<!-- VERSION: v3.16 | Updated: 2026-10-07
+<!-- VERSION: v3.17 | Updated: 2026-10-07
+     Changes (v3.17):
+       - แก้โหมดเพิ่มรูปทีหลังให้บันทึก Final Disposal Qty ลง record เดิมและโหลดค่าเดิมมาแสดงตอนแก้ไข
+       - อนุญาตให้แก้และบันทึก QTY ของ record เดิมได้โดยไม่ต้องเพิ่มรูปใหม่
+       - ค่า QTY = 0 จาก Excel/ฐานข้อมูลถือเป็นค่าที่ถูกต้องและแสดงเป็น 0 แทนเครื่องหมาย -
      Changes (v3.16):
        - แก้เพิ่มรูปทีหลังสำหรับ Item No. ที่มี # แล้วขึ้น "The resource already exists"
        - Storage path ใช้ record UUID ที่ปลอดภัยและไม่ซ้ำแทน Item No.; ไม่กระทบ Item No. ในฐานข้อมูลหรือรูปเดิม
@@ -380,7 +384,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.16';
+const APP_VERSION = 'v3.17';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -424,7 +428,7 @@ const TRANSLATIONS = {
   editModeTitle:     { th:'กำลังเพิ่มรูปให้: {code}', en:'Adding photos to: {code}', ja:'写真を追加中：{code}' },
   editModeSummary:   { th:'รูปเดิม: ก่อน {before} / หลัง {after} • รูปที่ถ่ายเพิ่มจะแสดงด้านล่าง', en:'Existing photos: {before} before / {after} after • Newly captured photos appear below', ja:'既存写真：廃棄前{before}枚 / 廃棄後{after}枚 • 追加写真は下に表示されます' },
   cancelEditButton:  { th:'ยกเลิกแก้ไข', en:'Cancel edit', ja:'編集をキャンセル' },
-  saveAddedPhotosButton:{ th:'💾 บันทึกรูปที่เพิ่ม', en:'💾 Save added photos', ja:'💾 追加写真を保存' },
+  saveAddedPhotosButton:{ th:'💾 บันทึกรูป / QTY', en:'💾 Save photos / QTY', ja:'💾 写真 / 数量を保存' },
   sectionListTitle:  { th:'3) รายการที่บันทึกแล้ว', en:'3) Saved records', ja:'3) 保存済みの記録' },
   searchPlaceholder: { th:'ค้นหาจากรหัสชิ้นงาน...', en:'Search by item code...', ja:'品番で検索...' },
   refreshTitle:      { th:'รีเฟรชรายการ', en:'Refresh list', ja:'一覧を更新' },
@@ -965,6 +969,8 @@ function resetCaptureForm(){
   currentAfter = [];
   capturingMode = null;
   itemCodeInput.value = '';
+  disposalQtyInput.value = '';
+  qtyHintSpan.textContent = '';
   renderGallery('before');
   renderGallery('after');
   updateEditUi();
@@ -981,6 +987,7 @@ async function startEditRecord(record){
   currentAfter = [];
   capturingMode = null;
   itemCodeInput.value = record.item_code;
+  disposalQtyInput.value = record.disposal_qty ?? '';
   renderGallery('before');
   renderGallery('after');
   updateEditUi();
@@ -1045,8 +1052,8 @@ const btnSave = document.getElementById('btnSave');
 btnSave.onclick = async () => {
   const code = itemCodeInput.value.trim().toUpperCase();
   if(!code){ toast(t('needItemCode'), true); return; }
-  if(currentBefore.length === 0 && currentAfter.length === 0){
-    toast(t(editingRecord ? 'editNeedPhoto' : 'needAtLeastOnePhoto'), true); return;
+  if(!editingRecord && currentBefore.length === 0 && currentAfter.length === 0){
+    toast(t('needAtLeastOnePhoto'), true); return;
   }
 
   // ตรวจสอบ QTY
@@ -1055,7 +1062,7 @@ btnSave.onclick = async () => {
   const inputQty = parseInt(qtyInput);
 
   if (Object.keys(excelData).length > 0) {
-    if (!excelData[code]) {
+    if (!Object.prototype.hasOwnProperty.call(excelData, code)) {
       toast(`❌ รหัส ${code} ไม่พบในไฟล์ Excel`, true); return;
     }
     const finalQty = excelData[code];
@@ -1085,7 +1092,7 @@ btnSave.onclick = async () => {
   try {
     if (CLOUD_MODE) {
       if (editTarget) {
-        await appendPhotosToCloud(editTarget, record.before, record.after);
+        await appendPhotosToCloud(editTarget, record.before, record.after, record.disposalQty);
       } else {
         await uploadToCloud(record);
       }
@@ -1124,7 +1131,7 @@ function renderTable(){
     const nBefore = (r.before || []).length;
     const nAfter = (r.after || []).length;
     const done = nBefore > 0 && nAfter > 0;
-    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td style="text-align:center; font-weight:600;">${r.disposalQty || '-'}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td style="text-align:center; font-weight:600;">${r.disposalQty ?? '-'}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
@@ -1207,7 +1214,7 @@ function renderCloudTable(){
         ${isScrapAdmin ? `<button class="btn-view btn-code" data-id="${r.id}">${t('editCodeBtn')}</button>` : ''}
       </div></td>
       <td>${nBefore}</td><td>${nAfter}</td>
-      <td style="text-align:center; font-weight:600;">${r.disposal_qty || '-'}</td>
+      <td style="text-align:center; font-weight:600;">${r.disposal_qty ?? '-'}</td>
       <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
       <td>${r.created_by_email || '-'}</td><td>${dt}</td>
     </tr>`;
@@ -1786,7 +1793,7 @@ async function uploadToCloud(record){
   const { data: inserted, error: recErr } = await sb.from(TABLE_RECORDS).insert({
     item_code: record.code,
     status,
-    disposal_qty: record.disposalQty || null,
+    disposal_qty: record.disposalQty ?? null,
     created_by: user.id,
     created_by_email: user.email
   }).select().single();
@@ -1809,7 +1816,7 @@ async function uploadToCloud(record){
 
 // เพิ่มรูปเข้า record เดิม กรณีบันทึกไปแล้วแต่ถ่ายรูปไม่ครบ
 // ไม่สร้าง scrap_records แถวใหม่ เพื่อให้ประวัติและ Export ยังเป็น item เดิมเพียงรายการเดียว
-async function appendPhotosToCloud(existingRecord, beforePhotos, afterPhotos){
+async function appendPhotosToCloud(existingRecord, beforePhotos, afterPhotos, disposalQty){
   const { data: { user } } = await sb.auth.getUser();
   if (!user) throw new Error('Please sign in first');
 
@@ -1832,7 +1839,7 @@ async function appendPhotosToCloud(existingRecord, beforePhotos, afterPhotos){
   const totalAfter  = existingPhotos.filter(p => p.phase === 'after').length + afterUrls.length;
   const status = (totalBefore > 0 && totalAfter > 0) ? 'complete' : 'partial';
   const { error: statusErr } = await sb.from(TABLE_RECORDS)
-    .update({ status })
+    .update({ status, disposal_qty: disposalQty ?? null })
     .eq('id', existingRecord.id);
 
   // รูปถูกบันทึกแล้ว จึงไม่ควรให้ผู้ใช้กดซ้ำจนเกิดรูปซ้ำเพียงเพราะ update status ล้มเหลว
