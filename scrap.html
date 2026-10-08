@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.19</title>
-<!-- VERSION: v3.19 | Updated: 2026-10-07
+<title>Scrap Photo Capture - v3.20</title>
+<!-- VERSION: v3.20 | Updated: 2026-10-08
+     Changes (v3.20):
+       - ห้ามบันทึก Item No. ซ้ำกับรายการที่มีอยู่แล้ว (เช็คที่หน้าเว็บ + trigger ในฐานข้อมูล) — ต้องรัน migrate_scrap_block_duplicate_item_v320.sql
      Changes (v3.19):
        - เมื่อ QTY ไม่ตรง แสดง QTY ที่ถูกต้องให้ผู้ใช้พิมพ์เอง โดยไม่กรอกค่าให้อัตโนมัติ
        - ถ้า Item No. ไม่มีใน Final Disposal Master จะบล็อกการบันทึกทั้งหน้าเว็บและฐานข้อมูล
@@ -397,7 +399,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.19';
+const APP_VERSION = 'v3.20';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -439,6 +441,7 @@ const TRANSLATIONS = {
   qtyMismatch:       { th:'QTY ไม่ตรงกับฐานข้อมูล กรุณาตรวจสอบและกรอกใหม่', en:'QTY does not match the database. Please check and enter it again.', ja:'数量がデータベースと一致しません。確認して再入力してください。' },
   qtyMismatchExpected:{ th:'QTY ไม่ตรง กรุณากรอก {qty} แล้วกดบันทึกอีกครั้ง', en:'QTY does not match. Enter {qty}, then save again.', ja:'数量が一致しません。{qty} を入力して、もう一度保存してください。' },
   qtyDbCheckFail:    { th:'ตรวจสอบ QTY กับฐานข้อมูลไม่สำเร็จ: {err}', en:'Could not validate QTY against the database: {err}', ja:'データベースとの数量照合に失敗しました：{err}' },
+  dupItemCode:       { th:'Item No. นี้ถูกบันทึกไว้แล้ว บันทึกซ้ำไม่ได้ — ถ้าต้องการเพิ่มรูป ให้กดปุ่ม "เพิ่มรูป" ที่รายการเดิม', en:'This Item No. is already recorded and cannot be saved again. To add photos, use the "Add photos" button on the existing record.', ja:'この品番はすでに登録されているため、重複して保存できません。写真を追加する場合は既存記録の「写真を追加」を使ってください。' },
   qtyConfirmed:      { th:'✓ QTY ถูกต้อง', en:'✓ QTY confirmed', ja:'✓ 数量確認済み' },
   btnClearTitle:     { th:'ล้างรหัสชิ้นงาน', en:'Clear item code', ja:'品番をクリア' },
   sectionPhotoTitle: { th:'2) ถ่ายภาพหลักฐาน', en:'2) Capture evidence photos', ja:'2) 証拠写真を撮影' },
@@ -1126,6 +1129,19 @@ btnSave.onclick = async () => {
     toast(t('needAtLeastOnePhoto'), true); return;
   }
 
+  // ห้ามบันทึก Item No. ซ้ำ (โหมดเพิ่มรูปของรายการเดิมไม่เช็ค)
+  if (CLOUD_MODE && !editingRecord) {
+    const variants = [...new Set([code, code.replaceAll('/', '#')])];
+    const { data: dup, error: dupErr } = await sb.from(TABLE_RECORDS)
+      .select('id').in('item_code', variants).limit(1);
+    if (dupErr) { toast(t('cloudUploadFail', { err: dupErr.message }), true); return; }
+    if (dup && dup.length > 0) {
+      setQtyHint(t('dupItemCode'), 'error');
+      toast(t('dupItemCode'), true);
+      return;
+    }
+  }
+
   // ตรวจสอบ QTY
   const qtyInput = disposalQtyInput.value.trim();
   if (qtyInput === '') {
@@ -1217,7 +1233,12 @@ btnSave.onclick = async () => {
       after: record.after.length
     }));
   } catch (e) {
-    toast(t('cloudUploadFail', { err: e.message }), true);
+    if (String(e.message).includes('DUPLICATE_ITEM_CODE')) {
+      setQtyHint(t('dupItemCode'), 'error');
+      toast(t('dupItemCode'), true);
+    } else {
+      toast(t('cloudUploadFail', { err: e.message }), true);
+    }
   } finally {
     btnSave.disabled = false;
     updateEditUi();
