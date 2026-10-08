@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.20</title>
-<!-- VERSION: v3.20 | Updated: 2026-10-08
+<title>Scrap Photo Capture - v3.21</title>
+<!-- VERSION: v3.21 | Updated: 2026-10-08
+     Changes (v3.21):
+       - เลิกตรวจ QTY กับ Final Disposal List (ยอดยังไม่ตรง) — ยังบังคับกรอก QTY ที่จะทำลายเหมือนเดิม
+       - คอลัมน์ในตารางเปลี่ยนเป็น 'QTY ที่จะทำลาย' แสดงค่าที่ผู้ใช้กรอก; ซ่อนปุ่ม Admin นำเข้า Master
+       - ต้องรัน migrate_scrap_remove_final_qty_check_v321.sql
      Changes (v3.20):
        - ห้ามบันทึก Item No. ซ้ำกับรายการที่มีอยู่แล้ว (เช็คที่หน้าเว็บ + trigger ในฐานข้อมูล) — ต้องรัน migrate_scrap_block_duplicate_item_v320.sql
      Changes (v3.19):
@@ -399,7 +403,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.20';
+const APP_VERSION = 'v3.21';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -468,7 +472,7 @@ const TRANSLATIONS = {
   colCode:           { th:'รหัส', en:'Code', ja:'品番' },
   colBefore:         { th:'ก่อน', en:'Before', ja:'廃棄前' },
   colAfter:          { th:'หลัง', en:'After', ja:'廃棄後' },
-  colFinalDisposal:  { th:'Final Disposal', en:'Final Disposal', ja:'最終廃棄数量' },
+  colFinalDisposal:  { th:'QTY ที่จะทำลาย', en:'Disposal Qty', ja:'廃棄数量' },
   colStatus:         { th:'สถานะ', en:'Status', ja:'状態' },
   colBy:     { th:'โดย', en:'By', ja:'記録者' },
   colTime:   { th:'เวลา', en:'Time', ja:'日時' },
@@ -1158,38 +1162,7 @@ btnSave.onclick = async () => {
     return;
   }
 
-  // ผู้ใช้กรอกเองเสมอ ระบบเปิดเผยค่ามาตรฐานเฉพาะตอนกรอกผิด แต่ไม่เติมช่องให้เอง
-  if (CLOUD_MODE) {
-    const { data: qtyCheck, error: qtyCheckError } = await sb.rpc('check_scrap_final_qty', {
-      p_item_code: code,
-      p_qty: inputQty
-    });
-    if (qtyCheckError) {
-      const message = t('qtyDbCheckFail', { err: qtyCheckError.message });
-      setQtyHint(message, 'error');
-      toast(message, true);
-      return;
-    }
-    const checkResult = typeof qtyCheck === 'string' ? { status: qtyCheck } : (qtyCheck || {});
-    if (checkResult.status === 'not_found') {
-      setQtyHint(t('qtyMasterMissing'), 'error');
-      toast(t('qtyMasterMissing'), true);
-      return;
-    }
-    if (checkResult.status !== 'match') {
-      const expected = Number(checkResult.expected_qty);
-      const message = Number.isInteger(expected)
-        ? t('qtyMismatchExpected', { qty: expected })
-        : t('qtyMismatch');
-      setQtyHint(message, 'error');
-      toast(message, true);
-      disposalQtyInput.focus();
-      disposalQtyInput.select();
-      return;
-    }
-  }
-  setQtyHint(t('qtyConfirmed'), 'success');
-  toast(t('qtyConfirmed'));
+  setQtyHint();
 
   // ส่วนการบันทึกเดิม
 
@@ -1363,7 +1336,7 @@ async function loadAdminFlag(){
     const { data, error } = await sb.rpc('is_scrap_admin');
     isScrapAdmin = !error && data === true;
   } catch (e) { isScrapAdmin = false; }
-  document.getElementById('adminQtyImport').style.display = isScrapAdmin ? 'block' : 'none';
+  document.getElementById('adminQtyImport').style.display = 'none';
 }
 
 // แก้รหัสชิ้นงานที่ใส่ผิด (เฉพาะ admin) — DB trigger บล็อกคนอื่นอีกชั้น และเก็บ log ใน scrap_code_log
