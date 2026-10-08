@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.21</title>
-<!-- VERSION: v3.21 | Updated: 2026-10-08
+<title>Scrap Photo Capture - v3.22</title>
+<!-- VERSION: v3.22 | Updated: 2026-10-08
+     Changes (v3.22):
+       - เพิ่มปุ่ม 'แก้ QTY' ในตารางรายการที่บันทึกแล้ว สำหรับแก้ QTY ที่จะทำลายกรณีใส่ผิด
      Changes (v3.21):
        - เลิกตรวจ QTY กับ Final Disposal List (ยอดยังไม่ตรง) — ยังบังคับกรอก QTY ที่จะทำลายเหมือนเดิม
        - คอลัมน์ในตารางเปลี่ยนเป็น 'QTY ที่จะทำลาย' แสดงค่าที่ผู้ใช้กรอก; ซ่อนปุ่ม Admin นำเข้า Master
@@ -403,7 +405,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.21';
+const APP_VERSION = 'v3.22';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -453,6 +455,10 @@ const TRANSLATIONS = {
   beforeLabel:       { th:'📷 ก่อนทำลาย', en:'📷 Before destruction', ja:'📷 廃棄前' },
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
+  editQtyBtn:        { th:'🔢 แก้ QTY', en:'🔢 Fix QTY', ja:'🔢 数量修正' },
+  editQtyPrompt:     { th:'แก้ QTY ที่จะทำลาย ({code})\nค่าเดิม: {qty}\nใส่จำนวนที่ถูกต้อง:', en:'Fix disposal qty ({code})\nCurrent: {qty}\nEnter the correct quantity:', ja:'廃棄数量を修正 ({code})\n現在: {qty}\n正しい数量を入力:' },
+  qtyUpdated:        { th:'แก้ QTY ของ {code} จาก {old} เป็น {new} แล้ว', en:'Changed qty of {code} from {old} to {new}', ja:'{code} の数量を {old} から {new} に変更しました' },
+  qtyUpdateFail:     { th:'แก้ QTY ไม่สำเร็จ: {err}', en:'Could not change qty: {err}', ja:'数量を変更できません: {err}' },
   editCodeBtn:       { th:'🔧 แก้รหัส', en:'🔧 Fix code', ja:'🔧 コード修正' },
   editCodePrompt:    { th:'แก้รหัสชิ้นงาน (รหัสเดิม: {code})\nใส่รหัสที่ถูกต้อง:', en:'Fix item code (current: {code})\nEnter the correct code:', ja:'品目コードを修正 (現在: {code})\n正しいコードを入力:' },
   confirmEditCode:   { th:'ยืนยันเปลี่ยนรหัส\n{old}  →  {new}', en:'Confirm change\n{old}  →  {new}', ja:'変更を確認\n{old}  →  {new}' },
@@ -1308,6 +1314,7 @@ function renderCloudTable(){
       <td><div class="table-actions">
         <button class="btn-view" data-id="${r.id}">${t('viewPhotosBtn')}</button>
         <button class="btn-view btn-edit" data-id="${r.id}">${t('editPhotosBtn')}</button>
+        <button class="btn-view btn-qty" data-id="${r.id}">${t('editQtyBtn')}</button>
         ${isScrapAdmin ? `<button class="btn-view btn-code" data-id="${r.id}">${t('editCodeBtn')}</button>` : ''}
       </div></td>
       <td>${nBefore}</td><td>${nAfter}</td>
@@ -1320,7 +1327,7 @@ function renderCloudTable(){
   wrap.innerHTML = html;
 
   wrap.querySelectorAll('.btn-view').forEach(btn => {
-    if (btn.classList.contains('btn-edit') || btn.classList.contains('btn-code')) return;
+    if (btn.classList.contains('btn-edit') || btn.classList.contains('btn-code') || btn.classList.contains('btn-qty')) return;
     btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
   });
   wrap.querySelectorAll('.btn-edit').forEach(btn => {
@@ -1329,6 +1336,34 @@ function renderCloudTable(){
   wrap.querySelectorAll('.btn-code').forEach(btn => {
     btn.onclick = () => editRecordCode(cloudRecords.find(r => r.id === btn.dataset.id));
   });
+  wrap.querySelectorAll('.btn-qty').forEach(btn => {
+    btn.onclick = () => editRecordQty(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+}
+
+// แก้ QTY ที่จะทำลายกรณีใส่ผิด — ทุกคนที่ login แก้ได้ (RLS ไม่อัปเดตให้ จะได้ 0 แถวและแจ้งเตือน)
+async function editRecordQty(record){
+  if (!record) return;
+  const input = window.prompt(
+    t('editQtyPrompt', { code: record.item_code, qty: record.disposal_qty ?? '-' }),
+    record.disposal_qty ?? ''
+  );
+  if (input === null) return;
+  const text = input.trim();
+  const newQty = Number(text);
+  if (text === '' || !Number.isInteger(newQty) || newQty < 0 || newQty > 999) {
+    toast(t('qtyRequired'), true);
+    return;
+  }
+  if (newQty === record.disposal_qty) return;
+  const { data, error } = await sb.from(TABLE_RECORDS)
+    .update({ disposal_qty: newQty }).eq('id', record.id).select();
+  if (error || !data || data.length === 0) {
+    toast(t('qtyUpdateFail', { err: error ? error.message : 'no permission' }), true);
+    return;
+  }
+  toast(t('qtyUpdated', { code: record.item_code, old: record.disposal_qty ?? '-', new: newQty }));
+  await refreshCloudRecords();
 }
 
 async function loadAdminFlag(){
