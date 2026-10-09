@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="fanuc-ui.css">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
@@ -38,7 +39,11 @@
 
   /* hero */
   .hero{display:flex;align-items:center;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;}
-  .avatar{width:64px;height:64px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
+  .thumb{width:32px;height:32px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-th-bg);color:var(--fc-text-dim);
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .who{display:flex;align-items:center;gap:var(--fc-s3);}
+  .avatar{width:96px;height:96px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
     display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
   .hero__eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
   .hero__name{font-size:28px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
@@ -117,6 +122,40 @@
   .result[hidden]{display:none;}
   .hidden{display:none !important;}
 
+  /* home map */
+  .stack{display:grid;gap:var(--fc-s5);}
+  #pinMap,#ovMap{isolation:isolate;border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
+  #pinMap{height:380px;}
+  .mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:var(--fc-s5);align-items:start;}
+  #ovMap{height:calc(100vh - 230px);min-height:480px;}
+  .side{display:grid;gap:var(--fc-s4);max-height:calc(100vh - 230px);min-height:480px;overflow:auto;align-content:start;}
+  #mapSummary{display:grid;gap:var(--fc-s3);}
+  .side h4{font-size:12px;font-weight:600;color:var(--fc-text-mute);margin:0 0 var(--fc-s2);}
+  .bar{display:grid;grid-template-columns:96px 1fr 28px;gap:var(--fc-s2);align-items:center;font-size:12px;margin-bottom:var(--fc-s1);}
+  .bar b{text-align:right;font-variant-numeric:tabular-nums;}
+  .bar__track{height:8px;background:var(--fc-th-bg);border-radius:4px;overflow:hidden;}
+  .bar__track i{display:block;height:100%;background:var(--fc-primary);}
+  .plist{border:1px solid var(--fc-border);border-radius:var(--fc-radius);max-height:260px;overflow:auto;}
+  .plist__row{display:flex;justify-content:space-between;width:100%;padding:var(--fc-s2) var(--fc-s3);background:transparent;border:0;border-bottom:1px solid var(--fc-border);
+    font:inherit;font-size:14px;color:var(--fc-text);cursor:pointer;text-align:left;}
+  .plist__row:last-child{border-bottom:0;}
+  .plist__row:hover{background:var(--fc-row-hover);}
+  .leaflet-container{font-family:inherit;}
+  @media (max-width:900px){ .mapgrid{grid-template-columns:minmax(0,1fr);} #ovMap{height:60vh;min-height:360px;} .side{max-height:none;min-height:0;} }
+
+  /* manage users */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--fc-s3);}
+  .form-grid .fc-field{margin-bottom:var(--fc-s3);}
+  .roles{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s3) var(--fc-s4);margin:var(--fc-s2) 0;}
+  .roles legend{font-size:12px;font-weight:600;color:var(--fc-text-mute);padding:0 var(--fc-s2);}
+  .check{display:flex;gap:var(--fc-s2);align-items:flex-start;padding:var(--fc-s1) 0;font-size:14px;cursor:pointer;}
+  .check input{margin-top:4px;accent-color:var(--fc-primary);}
+  .pwbox{display:flex;align-items:center;justify-content:space-between;gap:var(--fc-s3);background:var(--fc-bg);border:1px solid var(--fc-border-strong);
+    border-radius:var(--fc-radius);padding:var(--fc-s3) var(--fc-s4);margin-bottom:var(--fc-s3);}
+  .pwbox code{font-family:var(--fc-font-mono);font-size:16px;font-weight:600;user-select:all;overflow-wrap:anywhere;}
+  .bar-btn:disabled{opacity:.4;cursor:not-allowed;}
+  @media (max-width:640px){ .form-grid{grid-template-columns:1fr;} }
+
   /* responsive: bill rows become cards on phones */
   @media (max-width:900px){
     .grid{grid-template-columns:minmax(0,1fr);}
@@ -159,6 +198,9 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6ZM9 4v14M15 6v14"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
 
@@ -172,7 +214,9 @@
     </div>
   </div>
   <div class="bar-actions">
-    <span class="admin-tag hidden" id="adminTag">Fuel admin</span>
+    <span class="admin-tag hidden" id="adminTag"></span>
+    <button class="bar-btn bar-btn--accent hidden" id="btnMap"><svg class="ico"><use href="#i-map"/></svg><span class="lbl">Home map</span></button>
+    <button class="bar-btn bar-btn--accent hidden" id="btnUsers"><svg class="ico"><use href="#i-users"/></svg><span class="lbl">Manage users</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnImport"><svg class="ico"><use href="#i-upload"/></svg><span class="lbl">Import bills</span></button>
     <button class="bar-btn hidden" id="btnChgPw"><svg class="ico"><use href="#i-key"/></svg><span class="lbl">Change password</span></button>
     <button class="bar-btn" id="btnTheme" aria-label="Toggle light / dark mode"><svg class="ico" id="themeIco"><use href="#i-moon"/></svg></button>
@@ -235,10 +279,19 @@
     </div>
 
     <div class="grid" id="mainGrid">
+      <div class="stack">
       <aside class="panel">
         <div class="panel__head"><h3 class="panel__title">My profile</h3></div>
         <div class="panel__body"><div class="kv" id="pKv"></div></div>
       </aside>
+      <section class="panel" id="homePanel">
+        <div class="panel__head">
+          <svg class="ico ico--lg" style="color:var(--fc-primary)"><use href="#i-pin"/></svg>
+          <div><h3 class="panel__title">My home location</h3><p class="panel__sub">Optional · used for disaster response</p></div>
+        </div>
+        <div class="panel__body" id="homeBody"><div class="fc-skeleton" style="height:64px"></div></div>
+      </section>
+      </div>
 
       <section class="panel" id="fuelPanel">
         <div class="panel__head">
@@ -267,6 +320,63 @@
           </div>
         </div>
       </section>
+    </div>
+  </section>
+
+  <!-- Home map overview (homemap viewers only) -->
+  <section id="viewMap" class="hidden">
+    <div class="panel">
+      <div class="panel__head">
+        <div><h3 class="panel__title">Home map</h3>
+          <p class="panel__sub">Where employees live across Thailand — anonymous overview. Opening a name is logged.</p></div>
+        <div style="display:flex;gap:var(--fc-s2);flex-wrap:wrap" class="push">
+          <button class="bar-btn" id="btnMapFit"><svg class="ico"><use href="#i-map"/></svg><span>Fit Thailand</span></button>
+          <button class="bar-btn hidden" id="btnMapLog"><svg class="ico"><use href="#i-receipt"/></svg><span>Access log</span></button>
+          <button class="bar-btn" id="btnMapBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+        </div>
+      </div>
+      <div class="panel__body">
+        <div class="mapgrid">
+          <div id="ovMap"></div>
+          <aside class="side">
+            <div id="mapSummary"></div>
+            <div>
+              <h4>Layers</h4>
+              <label class="check"><input type="checkbox" id="lyProv" checked> <span>Province shading (employees per province)</span></label>
+              <label class="check"><input type="checkbox" id="lyDots" checked> <span>Home pins (anonymous)</span></label>
+            </div>
+            <div><h4>By region</h4><div id="mapRegions"></div></div>
+            <div><h4>By province — click to zoom</h4><div class="plist" id="mapProvinces"></div></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Manage users (platform admin only) -->
+  <section id="viewUsers" class="hidden">
+    <div class="panel">
+      <div class="panel__head">
+        <div><h3 class="panel__title">Manage users</h3>
+          <p class="panel__sub">Add employees, edit details, reset passwords and control access</p></div>
+        <button class="bar-btn push" id="btnUsersBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+      </div>
+      <div class="panel__body">
+        <div class="filters" style="margin-bottom:var(--fc-s4)">
+          <label class="fc-field" style="flex:1;min-width:220px"><span class="fc-field__label">Search</span>
+            <input type="search" id="uSearch" class="fc-input" placeholder="Name, email, department, employee ID…"></label>
+          <label class="fc-field"><span class="fc-field__label">Status</span>
+            <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
+          <button class="fc-btn fc-btn--primary" id="btnAddUser" style="margin-bottom:var(--fc-s3)">Add employee</button>
+        </div>
+        <p class="summary" id="usersSummary"></p>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Employee</th><th>Department</th><th>Cost center</th><th>Status</th><th>Admin roles</th><th></th></tr></thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -310,6 +420,80 @@
   </section>
 </main>
 
+<!-- Pin my home location -->
+<div class="fc-modal hidden" id="pinModal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+  <form class="fc-modal__box" id="pinForm" style="max-width:760px;max-height:94vh;overflow:auto">
+    <h3 id="pinTitle">Pin my home location</h3>
+    <p class="fc-note" style="margin-top:0">Click the map or drag the pin onto your home. You can zoom in for accuracy.
+      <button type="button" class="fc-btn fc-btn--sm" id="pinGps" style="margin-left:var(--fc-s2)">Use my current location</button></p>
+    <div id="pinMap"></div>
+    <div id="pinInfo" style="margin:var(--fc-s3) 0"></div>
+    <label class="check" style="margin-bottom:var(--fc-s2)"><input type="checkbox" id="pinConsent"> <span>I agree that FANUC Thai Limited stores the home location I pin here.
+      It is used only to locate and assist employees during floods or other disasters and to plan emergency support. Only people the company has explicitly authorised can view it,
+      and every time someone opens an individual's details it is recorded. Sharing is voluntary. I can change or delete my location at any time, and it is deleted automatically if I leave the company.</span></label>
+    <div class="fc-field__error" id="pinErr" role="alert" style="margin:var(--fc-s2) 0"></div>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="pinCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="pinSave" disabled>Save location</button>
+    </div>
+  </form>
+</div>
+
+<!-- Access log -->
+<div class="fc-modal hidden" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+  <div class="fc-modal__box" style="max-width:760px;max-height:90vh;overflow:auto">
+    <h3 id="logTitle">Home map access log</h3>
+    <p class="fc-note" style="margin-top:0">Latest 200 times someone opened the overview or a person's details.</p>
+    <div class="tbl-wrap" style="max-height:50vh"><table class="tbl"><thead><tr><th>When</th><th>Viewer</th><th>Action</th><th>Person</th></tr></thead><tbody id="logBody"></tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:var(--fc-s4)"><button class="fc-btn" id="logClose" type="button">Close</button></div>
+  </div>
+</div>
+
+<!-- Add / edit employee -->
+<div class="fc-modal hidden" id="userModal" role="dialog" aria-modal="true" aria-labelledby="ueTitle">
+  <form class="fc-modal__box" id="userForm" style="max-width:640px;max-height:92vh;overflow:auto">
+    <h3 id="ueTitle">Add employee</h3>
+    <p class="fc-note" id="ueHint" style="margin-top:0"></p>
+    <div class="form-grid">
+      <label class="fc-field"><span class="fc-field__label">First name *</span><input class="fc-input" id="ue_fname" autocomplete="off"></label>
+      <label class="fc-field"><span class="fc-field__label">Last name *</span><input class="fc-input" id="ue_lname" autocomplete="off"></label>
+      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Company email * (used to sign in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
+      <label class="fc-field"><span class="fc-field__label">Employee ID</span><input class="fc-input" id="ue_employee_no" autocomplete="off" placeholder="F12345"></label>
+      <label class="fc-field"><span class="fc-field__label">Joined</span><input class="fc-input" id="ue_hire_date" type="date"></label>
+      <label class="fc-field"><span class="fc-field__label">Department</span><input class="fc-input" id="ue_department" autocomplete="off" placeholder="Service - Robot"></label>
+      <label class="fc-field"><span class="fc-field__label">Title</span><input class="fc-input" id="ue_title" autocomplete="off"></label>
+      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Cost center</span>
+        <input class="fc-input" id="ue_cost_center" list="ccList" autocomplete="off" placeholder="Type a code or name, e.g. FTH1SA2 or Sales - Robot">
+        <datalist id="ccList"></datalist>
+        <span class="fc-mut" id="ccHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
+      <label class="fc-field"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
+      <label class="fc-field"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
+    </div>
+    <fieldset id="ueRoles" class="roles hidden">
+      <legend>Admin roles</legend>
+      <label class="check"><input type="checkbox" id="ue_r_platform"> <span><b>Platform admin</b> — can manage users and roles</span></label>
+      <label class="check"><input type="checkbox" id="ue_r_homemap"> <span><b>Home map viewer</b> — can see the anonymous overview of employee home locations</span></label>
+      <label class="check"><input type="checkbox" id="ue_r_fuel"> <span><b>Fuel admin</b> — can import and manage fuel bills for all employees</span></label>
+    </fieldset>
+    <div class="fc-field__error" id="ueErr" role="alert" style="margin:var(--fc-s2) 0"></div>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="ueCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="ueSave">Create employee</button>
+    </div>
+  </form>
+</div>
+
+<!-- Result (temporary password shown once) -->
+<div class="fc-modal hidden" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="urTitle">
+  <div class="fc-modal__box">
+    <h3 id="urTitle">Done</h3>
+    <p class="fc-note" style="margin-top:0" id="urEmail"></p>
+    <div id="urPwRow" class="pwbox hidden"><code id="urPw"></code><button class="fc-btn fc-btn--sm" id="urCopy" type="button">Copy</button></div>
+    <p class="fc-note" id="urNote"></p>
+    <div style="display:flex;justify-content:flex-end"><button class="fc-btn fc-btn--primary" id="urClose" type="button">Done</button></div>
+  </div>
+</div>
+
 <!-- Password dialog: first sign-in, recovery link, or voluntary change -->
 <div class="fc-modal hidden" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
   <form class="fc-modal__box" id="pwForm">
@@ -331,6 +515,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="fuel-import.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="users-admin.js"></script>
+<script src="homemap.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -349,18 +536,22 @@ const money = n => Number(n || 0).toLocaleString('en-US', {minimumFractionDigits
 const dmy = d => { if (!d) return '-'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
 
 let toastTimer;
-let IS_FUEL_ADMIN = false, CAN_SEE_FUEL = false;
+let IS_FUEL_ADMIN = false, IS_PLATFORM_ADMIN = false, CAN_SEE_FUEL = false;
 function toast(msg, err){
   const el = $('toast'); el.textContent = msg;
   el.className = 'fc-toast is-show' + (err ? ' fc-toast--err' : '');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3600);
 }
 function show(id){
-  ['viewLoading','viewLogin','viewNoEmp','viewMain','viewImport'].forEach(v => $(v).classList.toggle('hidden', v !== id));
-  const inApp = id === 'viewMain' || id === 'viewNoEmp' || id === 'viewImport';
+  ['viewLoading','viewLogin','viewNoEmp','viewMain','viewImport','viewUsers','viewMap'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap'].includes(id);
   $('btnImport').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
-  $('adminTag').classList.toggle('hidden', !(IS_FUEL_ADMIN && inApp));
-  $('btnChgPw').classList.toggle('hidden', id !== 'viewMain' && id !== 'viewImport');
+  $('btnUsers').classList.toggle('hidden', !(IS_PLATFORM_ADMIN && id === 'viewMain'));
+  $('btnMap').classList.toggle('hidden', !(IS_HOMEMAP_VIEWER && id === 'viewMain'));
+  $('btnMapLog').classList.toggle('hidden', !IS_PLATFORM_ADMIN);
+  $('adminTag').textContent = IS_PLATFORM_ADMIN ? 'Platform admin' : 'Fuel admin';
+  $('adminTag').classList.toggle('hidden', !((IS_PLATFORM_ADMIN || IS_FUEL_ADMIN) && inApp));
+  $('btnChgPw').classList.toggle('hidden', !['viewMain','viewImport','viewUsers','viewMap'].includes(id));
   $('btnLogout').classList.toggle('hidden', !inApp);
   $('barSep').classList.toggle('hidden', !inApp);
 }
@@ -417,7 +608,7 @@ $('linkForgot').onclick = async e => {
   if (error) return toast(error.message, true);
   toast('A password reset link was sent to your email');
 };
-async function logout(){ try { await sb.auth.signOut(); } catch {} IS_FUEL_ADMIN = false; CAN_SEE_FUEL = false; show('viewLogin'); }
+async function logout(){ try { await sb.auth.signOut(); } catch {} IS_FUEL_ADMIN = false; IS_PLATFORM_ADMIN = false; IS_HOMEMAP_VIEWER = false; CAN_SEE_FUEL = false; show('viewLogin'); }
 $('btnLogout').onclick = logout;
 $('btnNoEmpOut').onclick = logout;
 $('btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
@@ -451,7 +642,12 @@ async function boot(){
   renderProfile(emp);
   const adm = await sb.rpc('is_fuel_admin');
   IS_FUEL_ADMIN = !adm.error && adm.data === true;
+  const pad = await sb.rpc('is_platform_admin');
+  IS_PLATFORM_ADMIN = !pad.error && pad.data === true;
+  const hv = await sb.rpc('has_role', { p_app: 'homemap', p_role: 'viewer' });
+  IS_HOMEMAP_VIEWER = !hv.error && hv.data === true;
   show('viewMain');
+  renderMyLocation();
   if (CAN_SEE_FUEL) await reloadBills();
 }
 
@@ -469,19 +665,25 @@ function renderProfile(e){
   $('pName').textContent = `${e.fname} ${e.lname}`;
   const av = $('avatar');
   av.textContent = (e.fname || '?').charAt(0).toUpperCase();
-  if (e.photo_path) {
-    const img = document.createElement('img');
-    img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+  // Photo: bucket "engineer-photos" (public). Use photo_path; if it is empty try the upload naming "Fname.L.jpg"
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const f1 = String(e.fname || '').trim().split(/\s+/)[0], l1 = String(e.lname || '').trim().charAt(0);
+  const tries = e.photo_path ? [e.photo_path] : (f1 && l1 ? [`${cap(f1)}.${l1.toUpperCase()}.jpg`, `${f1.toLowerCase()}.${l1.toLowerCase()}.jpg`] : []);
+  (function next(i){
+    if (i >= tries.length) return;
+    const img = new Image();
+    img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
     img.onload = () => { av.textContent = ''; av.appendChild(img); };
-    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(e.photo_path)}`;
-  }
+    img.onerror = () => next(i + 1);
+    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(tries[i])}`;
+  })(0);
   $('pChips').innerHTML =
     (e.department ? `<span class="chip">${ic('building')}${esc(e.department)}</span>` : '') +
     (e.title ? `<span class="chip">${ic('briefcase')}${esc(e.title)}</span>` : '');
 
   const rows = [
     ['id', 'Employee ID', e.employee_no], ['building', 'Department', e.department], ['briefcase', 'Title', e.title],
-    ['coin', 'Cost center', e.cost_center_name], ['mail', 'Email', e.email], ['phone', 'Phone', e.tel],
+    ['coin', 'Cost center', e.cost_center_name ? e.cost_center_name + (e.cost_center_id ? ' (' + e.cost_center_id + ')' : '') : null], ['mail', 'Email', e.email], ['phone', 'Phone', e.tel],
     ['hash', 'Extension', e.ext], ['cal', 'Joined', e.hire_date ? dmy(e.hire_date) : null],
   ];
   $('pKv').innerHTML = rows.map(([i, k, v]) => `<div class="kv__row"><span class="kv__ico">${ic(i)}</span>
@@ -540,6 +742,8 @@ function renderFuel(){
 
 try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch { setTheme('light'); }
 wireImport();
+wireUsers();
+wireHomemap();
 boot();
 </script>
 </body>
