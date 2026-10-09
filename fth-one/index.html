@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTH One — My Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fanuc-ui.css">
+<style>
+  /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
+  body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;}
+  .fc-container{max-width:1200px;padding:var(--fc-s5) var(--fc-s4) var(--fc-s7);}
+  h1,h2,h3{font-family:'Kanit','Inter',sans-serif;}
+
+  .ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .ico--lg{width:20px;height:20px;}
+
+  /* app bar */
+  .fc-appbar{padding:var(--fc-s2) var(--fc-s5);}
+  .brand{display:flex;align-items:center;gap:var(--fc-s3);}
+  .brand img{height:28px;display:block;}
+  .brand__div{width:1px;height:28px;background:var(--fc-border-strong);}
+  .brand__name{font-family:'Kanit',sans-serif;font-weight:600;font-size:20px;line-height:1.2;margin:0;}
+  .brand__sub{font-size:12px;color:var(--fc-text-mute);display:block;line-height:1.2;}
+  .bar-actions{display:flex;align-items:center;gap:var(--fc-s1);margin-left:auto;}
+  .bar-btn{display:inline-flex;align-items:center;gap:var(--fc-s2);min-height:36px;padding:var(--fc-s2) var(--fc-s3);
+    font:inherit;font-weight:500;color:var(--fc-text-dim);background:transparent;border:1px solid transparent;
+    border-radius:var(--fc-radius);cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
+  .bar-btn:hover{background:var(--fc-zebra);color:var(--fc-text);}
+  .bar-btn:focus-visible,.fc-btn:focus-visible{outline:none;box-shadow:var(--fc-focus);}
+  .bar-btn--accent{color:var(--fc-text);border-color:var(--fc-border-strong);background:var(--fc-surface);}
+  .bar-btn--accent:hover{border-color:var(--fc-primary);color:var(--fc-primary);}
+  .bar-sep{width:1px;height:20px;background:var(--fc-border);margin:0 var(--fc-s1);}
+  .admin-tag{font-size:12px;font-weight:600;color:var(--fc-info);background:var(--fc-info-bg);padding:2px var(--fc-s2);border-radius:var(--fc-radius);}
+
+  /* hero */
+  .hero{display:flex;align-items:center;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;}
+  .avatar{width:64px;height:64px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
+    display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
+  .hero__eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
+  .hero__name{font-size:28px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
+  .chips{display:flex;gap:var(--fc-s2);flex-wrap:wrap;margin-top:var(--fc-s2);}
+  .chip{display:inline-flex;align-items:center;gap:var(--fc-s1);font-size:12px;font-weight:600;color:var(--fc-text-dim);
+    background:var(--fc-surface);border:1px solid var(--fc-border);padding:2px var(--fc-s3);border-radius:var(--fc-radius);}
+
+  /* layout */
+  .grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:var(--fc-s5);align-items:start;}
+  .grid--single{grid-template-columns:minmax(0,560px);}
+  .panel{background:var(--fc-surface);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
+  .panel__head{display:flex;align-items:center;gap:var(--fc-s3);padding:var(--fc-s4) var(--fc-s5);border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
+  .panel__title{font-size:20px;font-weight:600;line-height:1.35;margin:0;}
+  .panel__sub{font-size:14px;color:var(--fc-text-dim);margin:0;}
+  .panel__body{padding:var(--fc-s5);}
+  .push{margin-left:auto;}
+
+  /* profile details */
+  .kv{margin:0;display:grid;gap:0;}
+  .kv__row{display:flex;gap:var(--fc-s3);padding:var(--fc-s3) 0;border-bottom:1px solid var(--fc-border);align-items:flex-start;}
+  .kv__row:last-child{border-bottom:0;padding-bottom:0;}
+  .kv__row:first-child{padding-top:0;}
+  .kv__ico{color:var(--fc-text-mute);margin-top:2px;}
+  .kv__label{font-size:12px;font-weight:600;color:var(--fc-text-mute);display:block;}
+  .kv__val{font-size:14px;font-weight:500;color:var(--fc-text);overflow-wrap:anywhere;}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--fc-s3);margin-bottom:var(--fc-s5);}
+  .kpi{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s4);background:var(--fc-bg);position:relative;}
+  .kpi--main{background:var(--fc-surface);border-color:var(--fc-border-strong);box-shadow:inset 0 3px 0 var(--fc-accent);}
+  .kpi__label{font-size:12px;font-weight:600;color:var(--fc-text-dim);}
+  .kpi__value{font-family:'Kanit','Inter',sans-serif;font-weight:600;font-size:28px;line-height:1.35;font-variant-numeric:tabular-nums;margin-top:var(--fc-s1);}
+  .kpi__unit{font-size:12px;font-weight:500;color:var(--fc-text-mute);margin-left:var(--fc-s1);}
+  .kpi__sub{font-size:12px;color:var(--fc-text-mute);}
+
+  /* filters */
+  .filters{display:flex;gap:var(--fc-s3);align-items:flex-end;flex-wrap:wrap;}
+  .filters .fc-field{margin:0;}
+  .filters .fc-field__label{font-size:12px;}
+  .fc-input{font-size:14px;}
+
+  /* fuel table */
+  .tbl-wrap{border:1px solid var(--fc-border);border-radius:var(--fc-radius);overflow:auto;max-height:68vh;}
+  table.tbl{width:100%;border-collapse:collapse;font-size:14px;}
+  .tbl th{position:sticky;top:0;z-index:1;background:var(--fc-th-bg);color:var(--fc-text);font-size:12px;font-weight:600;
+    text-align:left;padding:var(--fc-s3);white-space:nowrap;border-bottom:1px solid var(--fc-border-strong);}
+  .tbl td{padding:var(--fc-s3);border-bottom:1px solid var(--fc-border);white-space:nowrap;vertical-align:middle;}
+  .tbl tbody tr:last-child td{border-bottom:0;}
+  .tbl tbody tr:hover td{background:var(--fc-row-hover);}
+  .tbl .num{text-align:right;font-variant-numeric:tabular-nums;font-family:'Inter',sans-serif;}
+  .tbl th.num{text-align:right;}
+  .tbl td.total{font-weight:700;}
+  .tbl td.remark{white-space:normal;min-width:140px;color:var(--fc-text-dim);}
+  .dash{color:var(--fc-text-mute);}
+  .fc-badge{font-size:12px;}
+
+  .cta-note{display:flex;gap:var(--fc-s3);align-items:flex-start;color:var(--fc-text-dim);font-size:14px;}
+
+  /* login */
+  .login{max-width:400px;margin:var(--fc-s7) auto;}
+  .login__top{text-align:center;margin-bottom:var(--fc-s5);}
+  .login__top img{height:36px;margin-bottom:var(--fc-s4);}
+  .login__title{font-size:28px;line-height:1.35;margin:0 0 var(--fc-s1);}
+  .login .panel__body{padding:var(--fc-s5);}
+  .fc-btn{font-weight:600;}
+  .full{width:100%;}
+  .link{color:var(--fc-primary);font-weight:600;text-decoration:none;}
+  .link:hover{text-decoration:underline;}
+
+  /* import */
+  .steps{display:flex;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;font-size:14px;color:var(--fc-text-dim);}
+  .step{display:flex;align-items:center;gap:var(--fc-s2);}
+  .step b{width:24px;height:24px;border-radius:50%;background:var(--fc-th-bg);color:var(--fc-text);display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+  .summary{font-size:14px;margin:0 0 var(--fc-s3);display:flex;gap:var(--fc-s2);flex-wrap:wrap;align-items:center;}
+  .result{display:flex;gap:var(--fc-s3);align-items:center;flex-wrap:wrap;margin-bottom:var(--fc-s4);}
+  .result[hidden]{display:none;}
+  .hidden{display:none !important;}
+
+  /* responsive: bill rows become cards on phones */
+  @media (max-width:900px){
+    .grid{grid-template-columns:minmax(0,1fr);}
+    .grid--single{grid-template-columns:minmax(0,1fr);}
+    .fc-appbar{padding:var(--fc-s2) var(--fc-s3);}
+    .brand__div,.brand__sub{display:none;}
+    .bar-btn span.lbl{display:none;}
+  }
+  @media (max-width:640px){
+    .kpis{grid-template-columns:minmax(0,1fr);}
+    .hero__name{font-size:20px;}
+    .tbl-wrap{border:0;max-height:none;}
+    .tbl.cards thead{display:none;}
+    .tbl.cards,.tbl.cards tbody,.tbl.cards tr,.tbl.cards td{display:block;width:100%;}
+    .tbl.cards tr{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s3);margin-bottom:var(--fc-s3);background:var(--fc-surface);}
+    .tbl.cards td{display:flex;justify-content:space-between;gap:var(--fc-s3);border:0;padding:var(--fc-s1) 0;white-space:normal;text-align:right;}
+    .tbl.cards td::before{content:attr(data-l);font-size:12px;font-weight:600;color:var(--fc-text-mute);text-align:left;}
+    .tbl.cards td.hide-empty:empty{display:none;}
+    .tbl.cards tbody tr:hover td{background:transparent;}
+  }
+  @media print{ .fc-appbar .bar-actions{display:none;} }
+</style>
+</head>
+<body class="fc">
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-id" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 16c.6-1.4 1.6-2 2.5-2s1.9.6 2.5 2M14 10h4M14 14h3"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M14 9h5a1 1 0 0 1 1 1v11M2 21h20M8 8h2M8 12h2M8 16h2"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8m0 8v1.5"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-fuel" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3M7 8h4"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9m-3 3 3 3m-6-3 2 2"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
+</svg>
+
+<header class="fc-appbar">
+  <div class="brand">
+    <img src="fanuc-logo.png" alt="FANUC">
+    <span class="brand__div" aria-hidden="true"></span>
+    <div>
+      <h1 class="brand__name">FTH One</h1>
+      <span class="brand__sub">Employee self-service</span>
+    </div>
+  </div>
+  <div class="bar-actions">
+    <span class="admin-tag hidden" id="adminTag">Fuel admin</span>
+    <button class="bar-btn bar-btn--accent hidden" id="btnImport"><svg class="ico"><use href="#i-upload"/></svg><span class="lbl">Import bills</span></button>
+    <button class="bar-btn hidden" id="btnChgPw"><svg class="ico"><use href="#i-key"/></svg><span class="lbl">Change password</span></button>
+    <button class="bar-btn" id="btnTheme" aria-label="Toggle light / dark mode"><svg class="ico" id="themeIco"><use href="#i-moon"/></svg></button>
+    <span class="bar-sep hidden" id="barSep"></span>
+    <button class="bar-btn hidden" id="btnLogout"><svg class="ico"><use href="#i-out"/></svg><span class="lbl">Sign out</span></button>
+  </div>
+</header>
+
+<main class="fc-container">
+
+  <section id="viewLoading"><div class="fc-skeleton" style="height:96px;margin-bottom:24px"></div><div class="fc-skeleton" style="height:280px"></div></section>
+
+  <!-- Sign in -->
+  <section id="viewLogin" class="hidden">
+    <form class="login" id="loginForm">
+      <div class="login__top">
+        <img src="fanuc-logo.png" alt="FANUC">
+        <h2 class="login__title">Sign in</h2>
+        <p class="panel__sub">Use your company email to view your profile.</p>
+      </div>
+      <div class="panel"><div class="panel__body">
+        <label class="fc-field">
+          <span class="fc-field__label">Company email</span>
+          <input type="email" id="loginEmail" class="fc-input" autocomplete="username" placeholder="name@fth.fanuc.com" required>
+        </label>
+        <label class="fc-field">
+          <span class="fc-field__label">Password</span>
+          <input type="password" id="loginPass" class="fc-input" autocomplete="current-password" required>
+          <span class="fc-field__error" id="loginErr" role="alert"></span>
+        </label>
+        <button class="fc-btn fc-btn--primary full" id="btnLogin" type="submit">Sign in</button>
+        <p style="text-align:center;margin:var(--fc-s4) 0 0"><a href="#" id="linkForgot" class="link">Forgot password?</a></p>
+      </div></div>
+      <p class="fc-note" style="text-align:center;margin-top:var(--fc-s4)">No account yet? Please contact the IT department.</p>
+    </form>
+  </section>
+
+  <!-- Signed in but not an active employee -->
+  <section id="viewNoEmp" class="hidden">
+    <div class="login">
+      <div class="panel"><div class="panel__body">
+        <div class="fc-empty" style="padding:var(--fc-s4)">
+          <div class="fc-empty__title">Account not linked to an employee</div>
+          <p>You are signed in, but no active employee record matches this email. Please ask IT to check your account.</p>
+          <button class="fc-btn" id="btnNoEmpOut">Sign out</button>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- Profile + fuel bills -->
+  <section id="viewMain" class="hidden">
+    <div class="hero">
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+      <div>
+        <div class="hero__eyebrow">Welcome back</div>
+        <h2 class="hero__name" id="pName"></h2>
+        <div class="chips" id="pChips"></div>
+      </div>
+    </div>
+
+    <div class="grid" id="mainGrid">
+      <aside class="panel">
+        <div class="panel__head"><h3 class="panel__title">My profile</h3></div>
+        <div class="panel__body"><div class="kv" id="pKv"></div></div>
+      </aside>
+
+      <section class="panel" id="fuelPanel">
+        <div class="panel__head">
+          <svg class="ico ico--lg" style="color:var(--fc-primary)"><use href="#i-fuel"/></svg>
+          <div>
+            <h3 class="panel__title">My fuel bills</h3>
+            <p class="panel__sub">Gasoline, tollgate and other claims, by billing month</p>
+          </div>
+        </div>
+        <div class="panel__body">
+          <div class="kpis" id="fuelKpis"></div>
+          <div class="filters" style="margin-bottom:var(--fc-s4)">
+            <label class="fc-field"><span class="fc-field__label">Year</span><select id="fYear" class="fc-input"></select></label>
+            <label class="fc-field"><span class="fc-field__label">Month</span><select id="fMonth" class="fc-input"></select></label>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl cards" id="fuelTable">
+              <thead><tr>
+                <th>Billing month</th><th>Bill date</th><th class="num">Total</th><th>Status</th>
+                <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th>
+                <th class="num">Parking</th><th class="num">Adjustment</th>
+                <th>Car plate</th><th>Cost center</th><th>Type</th><th>Remark</th>
+              </tr></thead>
+              <tbody id="fuelBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- Import (fuel admin only) -->
+  <section id="viewImport" class="hidden">
+    <div class="panel">
+      <div class="panel__head">
+        <h3 class="panel__title">Import fuel bills from Excel</h3>
+        <button class="bar-btn push" id="btnImpBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+      </div>
+      <div class="panel__body">
+        <div class="steps">
+          <span class="step"><b>1</b> Choose the monthly Gasoline file</span>
+          <span class="step"><b>2</b> Review the matched rows</span>
+          <span class="step"><b>3</b> Import</span>
+        </div>
+        <p class="fc-note" style="margin-top:0">The “Summarized” sheet is read automatically. Several billing months in one file are supported;
+          each block is detected from its heading. Employees see their bills as soon as you import.</p>
+        <div class="filters" style="margin:var(--fc-s4) 0">
+          <label class="fc-field"><span class="fc-field__label">Excel file (.xlsx)</span>
+            <input type="file" id="impFile" class="fc-input" accept=".xlsx,.xlsm"></label>
+          <label class="fc-field"><span class="fc-field__label">Billing month (only if the file does not state it)</span>
+            <input type="month" id="impMonth" class="fc-input"></label>
+        </div>
+        <div class="fc-field__error" id="impErr" role="alert" style="margin-bottom:var(--fc-s3)"></div>
+        <div id="impResult" class="result hidden"></div>
+        <div id="impPreview" class="hidden">
+          <p class="summary" id="impSummary"></p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Month</th><th>Name in file</th><th>Employee</th><th>Cost center</th><th>Type</th><th>Car plate</th>
+                <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th><th class="num">Parking</th>
+                <th class="num">Adjustment</th><th class="num">Total</th><th>Status</th></tr></thead>
+              <tbody id="impBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:var(--fc-s4)"><button class="fc-btn fc-btn--primary" id="btnDoImport" disabled>Import</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Password dialog: first sign-in, recovery link, or voluntary change -->
+<div class="fc-modal hidden" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+  <form class="fc-modal__box" id="pwForm">
+    <h3 id="pwTitle">Change password</h3>
+    <p class="fc-note" id="pwHint" style="margin-top:0"></p>
+    <label class="fc-field"><span class="fc-field__label">New password (at least 8 characters)</span>
+      <input type="password" id="pwNew" class="fc-input" autocomplete="new-password" required></label>
+    <label class="fc-field"><span class="fc-field__label">Confirm new password</span>
+      <input type="password" id="pwNew2" class="fc-input" autocomplete="new-password" required>
+      <span class="fc-field__error" id="pwErr" role="alert"></span></label>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="pwCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="pwSave">Save password</button>
+    </div>
+  </form>
+</div>
+
+<div class="fc-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="fuel-import.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
+const SUPABASE_CONFIG = {
+  url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
+};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// Fuel bills are shown only to Sales* and Service* departments (also enforced in the database — see 003 SQL)
+const FUEL_DEPT_RE = /^\s*(sales|service)/i;
+
+const $ = id => document.getElementById(id);
+const sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const dmy = d => { if (!d) return '-'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
+
+let toastTimer;
+let IS_FUEL_ADMIN = false, CAN_SEE_FUEL = false;
+function toast(msg, err){
+  const el = $('toast'); el.textContent = msg;
+  el.className = 'fc-toast is-show' + (err ? ' fc-toast--err' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3600);
+}
+function show(id){
+  ['viewLoading','viewLogin','viewNoEmp','viewMain','viewImport'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  const inApp = id === 'viewMain' || id === 'viewNoEmp' || id === 'viewImport';
+  $('btnImport').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
+  $('adminTag').classList.toggle('hidden', !(IS_FUEL_ADMIN && inApp));
+  $('btnChgPw').classList.toggle('hidden', id !== 'viewMain' && id !== 'viewImport');
+  $('btnLogout').classList.toggle('hidden', !inApp);
+  $('barSep').classList.toggle('hidden', !inApp);
+}
+function setTheme(m){
+  document.documentElement.dataset.theme = m;
+  try { localStorage.setItem('fthTheme', m); } catch {}
+  $('themeIco').innerHTML = `<use href="#i-${m === 'dark' ? 'sun' : 'moon'}"/>`;
+}
+
+/* ---------- password dialog ---------- */
+let pwForced = false;   // true = first sign-in / recovery: the dialog cannot be dismissed
+function openPwModal(forced, title, hint){
+  pwForced = forced;
+  $('pwTitle').textContent = title;
+  $('pwHint').textContent = hint || '';
+  $('pwNew').value = ''; $('pwNew2').value = ''; $('pwErr').textContent = '';
+  $('pwCancel').classList.toggle('hidden', forced);
+  $('pwModal').classList.remove('hidden');
+  $('pwNew').focus();
+}
+$('pwCancel').onclick = () => $('pwModal').classList.add('hidden');
+$('btnChgPw').onclick = () => openPwModal(false, 'Change password');
+$('pwForm').onsubmit = async e => {
+  e.preventDefault();
+  const a = $('pwNew').value, b = $('pwNew2').value;
+  if (a.length < 8) { $('pwErr').textContent = 'Password is too short — use at least 8 characters.'; return; }
+  if (a !== b)      { $('pwErr').textContent = 'The two passwords do not match — retype the confirmation.'; return; }
+  $('pwSave').disabled = true;
+  const { error } = await sb.auth.updateUser({ password: a, data: { must_change_password: false } });
+  $('pwSave').disabled = false;
+  if (error) { $('pwErr').textContent = 'Could not save: ' + error.message; return; }
+  $('pwModal').classList.add('hidden');
+  toast('Password updated');
+  if (pwForced) { pwForced = false; boot(); }
+};
+
+/* ---------- sign in ---------- */
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  $('loginErr').textContent = '';
+  $('btnLogin').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('loginEmail').value.trim().toLowerCase(), password: $('loginPass').value });
+  $('btnLogin').disabled = false;
+  if (error) { $('loginErr').textContent = 'Incorrect email or password. Check and try again, or use “Forgot password?”.'; return; }
+  $('loginPass').value = '';
+  boot();
+};
+$('linkForgot').onclick = async e => {
+  e.preventDefault();
+  const email = $('loginEmail').value.trim().toLowerCase();
+  if (!email) { $('loginErr').textContent = 'Enter your email above first, then click “Forgot password?” again.'; $('loginEmail').focus(); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  if (error) return toast(error.message, true);
+  toast('A password reset link was sent to your email');
+};
+async function logout(){ try { await sb.auth.signOut(); } catch {} IS_FUEL_ADMIN = false; CAN_SEE_FUEL = false; show('viewLogin'); }
+$('btnLogout').onclick = logout;
+$('btnNoEmpOut').onclick = logout;
+$('btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+sb.auth.onAuthStateChange(ev => {
+  if (ev === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true, 'Set a new password', 'Choose a new password to continue.'); }
+});
+
+/* ---------- load data ---------- */
+let BILLS = [];
+let MY_EMP_ID = null;
+async function boot(){
+  show('viewLoading');
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return show('viewLogin');
+  const { data: { user }, error: uErr } = await sb.auth.getUser();   // fresh metadata from the server
+  if (uErr || !user) { await sb.auth.signOut().catch(() => {}); return show('viewLogin'); }
+
+  if (user.user_metadata?.must_change_password) {
+    show('viewLogin');
+    return openPwModal(true, 'Set your own password', 'First sign-in: please choose your own password. The one you were given will stop working.');
+  }
+
+  // RLS returns only your own row (and only for active employees)
+  const { data: emp, error } = await sb.from('employees').select('*').eq('auth_user_id', user.id).maybeSingle();
+  if (error) { toast('Could not load your profile: ' + error.message, true); return show('viewLogin'); }
+  if (!emp) return show('viewNoEmp');
+
+  MY_EMP_ID = emp.id;
+  CAN_SEE_FUEL = FUEL_DEPT_RE.test(emp.department || '');
+  renderProfile(emp);
+  const adm = await sb.rpc('is_fuel_admin');
+  IS_FUEL_ADMIN = !adm.error && adm.data === true;
+  show('viewMain');
+  if (CAN_SEE_FUEL) await reloadBills();
+}
+
+async function reloadBills(){
+  if (!CAN_SEE_FUEL) return;
+  const r = await sb.from('fuel_bills').select('*').eq('employee_id', MY_EMP_ID).order('bill_date', { ascending: false });
+  if (r.error) { toast('Could not load fuel bills: ' + r.error.message, true); BILLS = []; }
+  else BILLS = r.data || [];
+  setupFilters();
+  renderFuel();
+}
+
+const ic = n => `<svg class="ico"><use href="#i-${n}"/></svg>`;
+function renderProfile(e){
+  $('pName').textContent = `${e.fname} ${e.lname}`;
+  const av = $('avatar');
+  av.textContent = (e.fname || '?').charAt(0).toUpperCase();
+  if (e.photo_path) {
+    const img = document.createElement('img');
+    img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    img.onload = () => { av.textContent = ''; av.appendChild(img); };
+    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(e.photo_path)}`;
+  }
+  $('pChips').innerHTML =
+    (e.department ? `<span class="chip">${ic('building')}${esc(e.department)}</span>` : '') +
+    (e.title ? `<span class="chip">${ic('briefcase')}${esc(e.title)}</span>` : '');
+
+  const rows = [
+    ['id', 'Employee ID', e.employee_no], ['building', 'Department', e.department], ['briefcase', 'Title', e.title],
+    ['coin', 'Cost center', e.cost_center_name], ['mail', 'Email', e.email], ['phone', 'Phone', e.tel],
+    ['hash', 'Extension', e.ext], ['cal', 'Joined', e.hire_date ? dmy(e.hire_date) : null],
+  ];
+  $('pKv').innerHTML = rows.map(([i, k, v]) => `<div class="kv__row"><span class="kv__ico">${ic(i)}</span>
+    <div><span class="kv__label">${esc(k)}</span><span class="kv__val">${v ? esc(v) : '<span class="dash">—</span>'}</span></div></div>`).join('');
+
+  // Fuel bills are for Sales* / Service* departments only — everyone else just sees their profile
+  $('fuelPanel').classList.toggle('hidden', !CAN_SEE_FUEL);
+  $('mainGrid').classList.toggle('grid--single', !CAN_SEE_FUEL);
+}
+
+function setupFilters(){
+  const years = [...new Set(BILLS.map(b => String(b.bill_date).slice(0, 4)))].sort().reverse();
+  $('fYear').innerHTML = '<option value="">All years</option>' + years.map(y => `<option>${esc(y)}</option>`).join('');
+  $('fMonth').innerHTML = '<option value="">All months</option>' + MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+  $('fYear').onchange = $('fMonth').onchange = renderFuel;
+}
+
+function renderFuel(){
+  const y = $('fYear').value, m = $('fMonth').value;
+  const list = BILLS.filter(b => {
+    const [by, bm] = String(b.bill_date).split('-');
+    return (!y || by === y) && (!m || Number(bm) === Number(m));
+  });
+  const total = list.reduce((s, b) => s + Number(b.total || 0), 0);
+  const pending = list.filter(b => b.pay_status !== 'paid').reduce((s, b) => s + Number(b.total || 0), 0);
+  const n = k => `${k} bill${k === 1 ? '' : 's'}`;
+
+  $('fuelKpis').innerHTML = [
+    ['Total claimed', money(total), n(list.length), true],
+    ['Pending payment', money(pending), n(list.filter(b => b.pay_status !== 'paid').length)],
+    ['Paid', money(total - pending), n(list.filter(b => b.pay_status === 'paid').length)],
+  ].map(([l, v, s, main]) => `<div class="kpi${main ? ' kpi--main' : ''}"><div class="kpi__label">${l}</div>
+    <div class="kpi__value">${v}<span class="kpi__unit">THB</span></div><div class="kpi__sub">${s}</div></div>`).join('');
+
+  if (!list.length) {
+    $('fuelBody').innerHTML = `<tr><td colspan="13" style="display:table-cell"><div class="fc-empty">
+      <div class="fc-empty__title">${BILLS.length ? 'No bills in this period' : 'No fuel bills yet'}</div>
+      <p>${BILLS.length ? 'Try a different year or month, or choose “All years” and “All months”.'
+                        : 'Bills appear here after the monthly import. If one is missing after month-end, please contact the team that processes fuel claims.'}</p></div></td></tr>`;
+    return;
+  }
+  const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
+  $('fuelBody').innerHTML = list.map(b => `<tr>
+    <td data-l="Billing month"><strong>${esc(b.billing_month || '—')}</strong></td><td data-l="Bill date">${dmy(b.bill_date)}</td>
+    <td class="num total" data-l="Total">${money(b.total)}</td>
+    <td data-l="Status">${b.pay_status === 'paid'
+        ? `<span class="fc-badge fc-badge--ok">Paid${b.paid_at ? ' · ' + dmy(b.paid_at) : ''}</span>`
+        : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td>
+    <td class="num" data-l="Gasoline">${num(b.gasoline)}</td><td class="num" data-l="Tollgate">${num(b.tollgate)}</td>
+    <td class="num" data-l="Car wash">${num(b.car_wash)}</td><td class="num" data-l="Parking">${num(b.parking_fee)}</td>
+    <td class="num" data-l="Adjustment">${num(b.adjustment)}</td>
+    <td data-l="Car plate">${esc(b.car_no || '—')}</td><td data-l="Cost center">${esc(b.cost_center || '—')}</td>
+    <td data-l="Type">${esc(b.bill_type || '—')}</td>
+    <td class="remark hide-empty" data-l="Remark">${esc(b.remark || '')}</td></tr>`).join('');
+}
+
+try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch { setTheme('light'); }
+wireImport();
+boot();
+</script>
+</body>
+</html>
