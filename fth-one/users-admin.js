@@ -25,11 +25,12 @@ async function callFn(action, payload){
 }
 
 async function loadUsers(){
-  $('usersBody').innerHTML = '<tr><td colspan="6"><div class="fc-skeleton" style="height:120px"></div></td></tr>';
+  $('usersBody').innerHTML = '<tr><td colspan="7"><div class="fc-skeleton" style="height:120px"></div></td></tr>';
   const { data: { user } } = await sb.auth.getUser();
   MY_EMAIL = (user?.email || '').toLowerCase();
   const [emps, roles, org] = await Promise.all([
-    sb.from('employees').select('*').order('fname', { ascending: true }).limit(2000),
+    // newest joiners first (no join date goes last), then by name
+    sb.from('employees').select('*').order('hire_date', { ascending: false, nullsFirst: false }).order('fname', { ascending: true }).limit(2000),
     sb.rpc('admin_list_roles'),
     sb.from('org_units').select('id,name').order('sort_order', { ascending: true }),
   ]);
@@ -62,7 +63,7 @@ function renderUsers(){
     (list.length !== USERS.length ? `<span class="fc-badge fc-badge--info">${list.length} shown</span>` : '');
 
   if (!list.length) {
-    $('usersBody').innerHTML = `<tr><td colspan="6"><div class="fc-empty"><div class="fc-empty__title">No employees match</div>
+    $('usersBody').innerHTML = `<tr><td colspan="7"><div class="fc-empty"><div class="fc-empty__title">No employees match</div>
       <p>Clear the search box or status filter, or add a new employee.</p></div></td></tr>`;
     return;
   }
@@ -70,11 +71,10 @@ function renderUsers(){
     const roles = [...(ROLES.get(u.email) || [])].map(r => `<span class="chip">${esc(ROLE_LABEL[r] || r)}</span>`).join('');
     const resigned = u.status !== 'active';
     return `<tr>
-      <td><div class="who"><span class="thumb">${u.photo_path
-          ? `<img loading="lazy" alt="" src="${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(u.photo_path)}" onerror="this.remove()">`
-          : ''}${esc((u.fname || '?').charAt(0).toUpperCase())}</span>
+      <td><div class="who"><span class="thumb">${thumbInner(u, true)}</span>
         <div><strong>${esc(u.fname)} ${esc(u.lname)}</strong><div class="fc-mut" style="font-size:12px">${esc(u.email)}</div></div></div></td>
       <td>${esc(u.department || '—')}<div class="fc-mut" style="font-size:12px">${esc(u.title || '')}</div></td>
+      <td style="white-space:nowrap">${u.hire_date ? dmy(u.hire_date) : '<span class="dash">—</span>'}</td>
       <td>${esc(u.cost_center_name || '—')}${u.cost_center_id ? `<div class="fc-mut" style="font-size:12px">${esc(u.cost_center_id)}</div>` : ''}</td>
       <td>${resigned ? '<span class="fc-badge fc-badge--neutral">Resigned</span>' : '<span class="fc-badge fc-badge--ok">Active</span>'}
         ${u.auth_user_id ? '' : '<span class="fc-badge fc-badge--warn">No login</span>'}</td>
@@ -101,7 +101,11 @@ function openEdit(u){
   const own = u && u.cost_center_id ? ORG.find(o => o.id === u.cost_center_id) : null;
   $('ue_cost_center').value = own ? ccLabel(own) : (u?.cost_center_name || '');
   updateCcHint();
+  renderDeptPicker();
   $('ueErr').textContent = '';
+  // photo (existing employees only)
+  $('uePhotoRow').classList.toggle('hidden', !u);
+  if (u) setEditThumb(u);
   const mine = ROLES.get(u?.email) || new Set();
   $('ue_r_platform').checked = mine.has('platform:admin');
   $('ue_r_fuel').checked = mine.has('fuel:admin');
@@ -112,6 +116,32 @@ function openEdit(u){
   $('userModal').classList.remove('hidden');
   $(fid('fname')).focus();
 }
+/* ---------- department: pick from departments already in the system (or type a new one) ---------- */
+const normDept = s => String(s || '').trim().replace(/\s+/g, ' ');
+function deptCounts(){
+  const m = new Map();
+  USERS.forEach(x => { const d = normDept(x.department); if (d) m.set(d, (m.get(d) || 0) + 1); });
+  return m;
+}
+function resolveDept(text){            // existing spelling wins (case-insensitive), so "service - robot" never creates a duplicate
+  const t = normDept(text);
+  if (!t) return { name: null, existing: false };
+  for (const d of deptCounts().keys()) if (d.toLowerCase() === t.toLowerCase()) return { name: d, existing: true };
+  return { name: t, existing: false };
+}
+function renderDeptPicker(){
+  const counts = deptCounts();
+  const list = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  $('deptList').innerHTML = list.map(d => `<option value="${esc(d)}"></option>`).join('');
+  const cur = resolveDept($('ue_department').value);
+  $('deptChips').innerHTML = list.map(d =>
+    `<button type="button" class="dept-chip${cur.existing && cur.name === d ? ' is-on' : ''}" data-d="${esc(d)}" title="${counts.get(d)} employee(s)">${esc(d)}</button>`).join('');
+  const h = $('deptHint');
+  if (!$('ue_department').value.trim()) { h.textContent = 'Click a department below, or start typing.'; h.style.color = 'var(--fc-text-mute)'; }
+  else if (cur.existing) { h.textContent = `Existing department (${counts.get(cur.name)} employee${counts.get(cur.name) === 1 ? '' : 's'}).`; h.style.color = 'var(--fc-ok)'; }
+  else { h.textContent = 'New department — it will be created exactly as typed. Check the spelling first.'; h.style.color = 'var(--fc-warn)'; }
+}
+
 /* ---------- cost center: free text that links to org_units when it matches ---------- */
 const ccLabel = o => `${o.id} — ${o.name}`;
 function resolveCc(text){
@@ -130,6 +160,22 @@ function updateCcHint(){
   h.style.color = r.linked ? 'var(--fc-ok)' : 'var(--fc-text-mute)';
 }
 
+function setEditThumb(u){
+  const t = $('uePhotoThumb');
+  t.innerHTML = thumbInner(u, false);
+}
+// Photo fills the whole square; the initial letter is shown only when there is no photo (or it fails to load)
+function thumbInner(u, lazy){
+  const ini = esc((u.fname || '?').charAt(0).toUpperCase());
+  if (!u.photo_path) return ini;
+  return `<img ${lazy ? 'loading="lazy" ' : ''}alt="" data-i="${ini}" src="${photoUrl(u.photo_path)}" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">`;
+}
+function editPhoto(){
+  const u = EDITING; if (!u) return;
+  openPhoto({ id: u.id, name: u.fname + ' ' + u.lname, path: u.photo_path || null, self: false,
+    onSaved: p => { u.photo_path = p; setEditThumb(u); loadUsers(); } });
+}
+
 function suggestEmail(){
   if (EDITING || $(fid('email')).value) return;
   const f = $(fid('fname')).value.trim().split(/\s+/)[0], l = $(fid('lname')).value.trim();
@@ -139,6 +185,7 @@ function suggestEmail(){
 async function saveEdit(e){
   e.preventDefault();
   const v = Object.fromEntries(F.map(k => [k, $(fid(k)).value.trim()]));
+  v.department = resolveDept(v.department).name || '';
   if (!v.fname || !v.lname) { $('ueErr').textContent = 'First name and last name are required.'; return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) { $('ueErr').textContent = 'Enter a valid email, e.g. name.s@fth.fanuc.com'; return; }
   $('ueSave').disabled = true; $('ueErr').textContent = '';
@@ -226,6 +273,10 @@ function wireUsers(){
   $('ueCancel').onclick = () => $('userModal').classList.add('hidden');
   $(fid('lname')).onblur = suggestEmail;
   $('ue_cost_center').oninput = updateCcHint;
+  $('ue_department').oninput = renderDeptPicker;
+  $('ue_department').onfocus = e => e.target.select();
+  $('deptChips').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { $('ue_department').value = b.dataset.d; renderDeptPicker(); } };
+  $('uePhotoBtn').onclick = editPhoto;
   $('urClose').onclick = () => $('resultModal').classList.add('hidden');
   $('urCopy').onclick = async () => {
     try { await navigator.clipboard.writeText($('urPw').textContent); toast('Copied'); } catch { toast('Copy failed — select the text and copy manually', true); }

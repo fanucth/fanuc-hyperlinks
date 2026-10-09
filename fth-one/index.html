@@ -42,6 +42,12 @@
   .thumb{width:32px;height:32px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-th-bg);color:var(--fc-text-dim);
     display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb--lg{width:56px;height:56px;font-size:20px;}
+  .dept-chips{display:flex;flex-wrap:wrap;gap:var(--fc-s1);margin-top:var(--fc-s2);}
+  .dept-chip{font:inherit;font-size:12px;font-weight:600;color:var(--fc-text-dim);background:var(--fc-surface);border:1px solid var(--fc-border);
+    border-radius:var(--fc-radius);padding:2px var(--fc-s2);cursor:pointer;}
+  .dept-chip:hover,.dept-chip.is-on{color:var(--fc-primary);border-color:var(--fc-primary);}
+  .photo-row{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
   .who{display:flex;align-items:center;gap:var(--fc-s3);}
   .avatar{width:80px;height:80px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
     display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
@@ -62,6 +68,21 @@
   .push{margin-left:auto;}
 
   /* profile details */
+  /* photo editing */
+  .avatar-wrap{position:relative;flex:none;}
+  .avatar-edit{position:absolute;right:-6px;bottom:-6px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+    background:var(--fc-surface);color:var(--fc-text);border:1px solid var(--fc-border-strong);border-radius:50%;cursor:pointer;
+    box-shadow:var(--fc-shadow-pop);transition:background .15s,color .15s;}
+  .avatar-edit:hover{background:var(--fc-primary);color:var(--fc-primary-ink);border-color:var(--fc-primary);}
+  .avatar-edit:focus-visible{outline:none;box-shadow:var(--fc-focus);}
+  .ph-stage{position:relative;width:min(320px,100%);aspect-ratio:1;margin:var(--fc-s3) auto;border-radius:var(--fc-radius);overflow:hidden;background:var(--fc-th-bg);touch-action:none;}
+  .ph-stage canvas{width:100%;height:100%;display:block;cursor:grab;}
+  .ph-stage canvas:active{cursor:grabbing;}
+  .ph-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:var(--fc-s4);color:var(--fc-text-dim);font-size:14px;pointer-events:none;}
+  .ph-tools{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
+  .ph-tools input[type=range]{flex:1;accent-color:var(--fc-primary);}
+  .ph-actions{display:flex;gap:var(--fc-s2);flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:var(--fc-s3);}
+
   /* compact profile card */
   .profile{padding:0;overflow:hidden;}
   .profile__head{display:flex;align-items:center;gap:var(--fc-s4);padding:var(--fc-s4) var(--fc-s4) var(--fc-s3);}
@@ -222,6 +243,7 @@
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
   <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6ZM9 4v14M15 6v14"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
@@ -295,7 +317,8 @@
       <div class="stack">
       <aside class="panel profile">
         <div class="profile__head">
-          <div class="avatar" id="avatar" aria-hidden="true"></div>
+          <div class="avatar-wrap"><div class="avatar" id="avatar" aria-hidden="true"></div>
+            <button type="button" class="avatar-edit" id="btnPhoto" title="Add or change photo" aria-label="Add or change profile photo"><svg class="ico"><use href="#i-camera"/></svg></button></div>
           <div class="profile__who">
             <div class="hero__eyebrow">My profile</div>
             <h2 class="profile__name" id="pName"></h2>
@@ -392,7 +415,7 @@
         <p class="summary" id="usersSummary"></p>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Employee</th><th>Department</th><th>Cost center</th><th>Status</th><th>Admin roles</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th>Admin roles</th><th></th></tr></thead>
             <tbody id="usersBody"></tbody>
           </table>
         </div>
@@ -474,19 +497,27 @@
   <form class="fc-modal__box" id="userForm" style="max-width:640px;max-height:92vh;overflow:auto">
     <h3 id="ueTitle">Add employee</h3>
     <p class="fc-note" id="ueHint" style="margin-top:0"></p>
+    <div id="uePhotoRow" class="photo-row hidden">
+      <span class="thumb thumb--lg" id="uePhotoThumb"></span>
+      <div><div class="kv__label">Profile photo</div><button type="button" class="fc-btn fc-btn--sm" id="uePhotoBtn">Add / change photo</button></div>
+    </div>
     <div class="form-grid">
       <label class="fc-field"><span class="fc-field__label">First name *</span><input class="fc-input" id="ue_fname" autocomplete="off"></label>
       <label class="fc-field"><span class="fc-field__label">Last name *</span><input class="fc-input" id="ue_lname" autocomplete="off"></label>
       <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Company email * (used to sign in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
       <label class="fc-field"><span class="fc-field__label">Employee ID</span><input class="fc-input" id="ue_employee_no" autocomplete="off" placeholder="F12345"></label>
       <label class="fc-field"><span class="fc-field__label">Joined</span><input class="fc-input" id="ue_hire_date" type="date"></label>
-      <label class="fc-field"><span class="fc-field__label">Department</span><input class="fc-input" id="ue_department" autocomplete="off" placeholder="Service - Robot"></label>
+      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Department</span>
+        <input class="fc-input" id="ue_department" list="deptList" autocomplete="off" placeholder="Pick an existing department or type a new one">
+        <datalist id="deptList"></datalist>
+        <span class="fc-mut" id="deptHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span>
+        <span class="dept-chips" id="deptChips"></span></label>
       <label class="fc-field"><span class="fc-field__label">Title</span><input class="fc-input" id="ue_title" autocomplete="off"></label>
+      <label class="fc-field"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
       <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Cost center</span>
         <input class="fc-input" id="ue_cost_center" list="ccList" autocomplete="off" placeholder="Type a code or name, e.g. FTH1SA2 or Sales - Robot">
         <datalist id="ccList"></datalist>
         <span class="fc-mut" id="ccHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
-      <label class="fc-field"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
       <label class="fc-field"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
     </div>
     <fieldset id="ueRoles" class="roles hidden">
@@ -501,6 +532,31 @@
       <button type="submit" class="fc-btn fc-btn--primary" id="ueSave">Create employee</button>
     </div>
   </form>
+</div>
+
+<!-- Profile photo editor -->
+<div class="fc-modal hidden" id="phModal" role="dialog" aria-modal="true" aria-labelledby="phTitle">
+  <div class="fc-modal__box" style="max-width:420px;max-height:94vh;overflow:auto">
+    <h3 id="phTitle">My profile photo</h3>
+    <p class="fc-note" id="phHint" style="margin-top:0"></p>
+    <div class="ph-stage"><canvas id="phCanvas" width="320" height="320"></canvas><div class="ph-empty" id="phEmpty">No photo yet — choose one to get started.</div></div>
+    <div class="ph-tools hidden" id="phTools">
+      <svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg>
+      <input type="range" id="phZoom" min="1" max="3" step="0.01" value="1" aria-label="Zoom">
+      <button type="button" class="fc-btn fc-btn--sm" id="phRotate">Rotate</button>
+    </div>
+    <input type="file" id="phFile" accept="image/*" hidden>
+    <div class="fc-field__error" id="phErr" role="alert"></div>
+    <div class="ph-actions">
+      <div style="display:flex;gap:var(--fc-s2);flex-wrap:wrap">
+        <button type="button" class="fc-btn" id="phChoose">Choose a photo</button>
+      </div>
+      <div style="display:flex;gap:var(--fc-s2)">
+        <button type="button" class="fc-btn" id="phCancel">Cancel</button>
+        <button type="button" class="fc-btn fc-btn--primary" id="phSave" disabled>Save photo</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Result (temporary password shown once) -->
@@ -538,6 +594,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="users-admin.js"></script>
 <script src="homemap.js"></script>
+<script src="photo.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -551,6 +608,7 @@ const FUEL_DEPT_RE = /^\s*(sales|service)/i;
 
 const $ = id => document.getElementById(id);
 const sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+const photoUrl = p => `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${String(p).split('/').map(encodeURIComponent).join('/')}`;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = n => Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const dmy = d => { if (!d) return '-'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
@@ -681,7 +739,9 @@ async function reloadBills(){
 }
 
 const ic = n => `<svg class="ico"><use href="#i-${n}"/></svg>`;
+let ME_EMP = null;
 function renderProfile(e){
+  ME_EMP = e;
   $('pName').textContent = `${e.fname} ${e.lname}`;
   const av = $('avatar');
   av.textContent = (e.fname || '?').charAt(0).toUpperCase();
@@ -695,7 +755,7 @@ function renderProfile(e){
     img.alt = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
     img.onload = () => { av.textContent = ''; av.appendChild(img); };
     img.onerror = () => next(i + 1);
-    img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(tries[i])}`;
+    img.src = photoUrl(tries[i]);
   })(0);
   $('pSub').textContent = [e.title, e.department].filter(Boolean).join(' · ');
 
@@ -763,6 +823,11 @@ try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-s
 wireImport();
 wireUsers();
 wireHomemap();
+wirePhoto();
+$('btnPhoto').onclick = () => openPhoto({
+  id: ME_EMP.id, name: ME_EMP.fname + ' ' + ME_EMP.lname, path: ME_EMP.photo_path || null, self: true,
+  onSaved: p => { ME_EMP.photo_path = p; renderProfile(ME_EMP); },
+});
 boot();
 </script>
 </body>
