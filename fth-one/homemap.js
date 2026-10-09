@@ -72,8 +72,8 @@ async function renderMyLocation(){
     box.innerHTML = `<p class="fc-note" style="margin-top:0">You have not shared a home location. It is voluntary, and helps the company reach and assist employees during floods or other disasters.</p>
       <button class="fc-btn fc-btn--primary full" id="btnPin">Pin my home location</button>`;
   } else {
-    box.innerHTML = `<div class="kv__row" style="padding-top:0"><span class="kv__ico"><svg class="ico"><use href="#i-pin"/></svg></span>
-        <div><span class="kv__label">Shared on ${dmy(MY_LOC.consent_at)}</span><span class="kv__val">${esc(MY_LOC.province || 'Thailand')}${MY_LOC.region ? ' · ' + esc(MY_LOC.region) + ' region' : ''}</span></div></div>
+    box.innerHTML = `<div style="margin-bottom:var(--fc-s3)"><span class="kv__label">Shared on ${dmy(MY_LOC.consent_at)}</span>
+        <span class="kv__val">${esc(MY_LOC.province || 'Thailand')}${MY_LOC.region ? ' · ' + esc(MY_LOC.region) + ' region' : ''}</span></div>
       <div style="display:flex;gap:var(--fc-s2);flex-wrap:wrap"><button class="fc-btn" id="btnPin">Change</button>
       <button class="fc-btn" id="btnUnpin">Remove my location</button></div>`;
   }

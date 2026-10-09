@@ -13,7 +13,7 @@
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
     -webkit-font-smoothing:antialiased;}
-  .fc-container{max-width:1200px;padding:var(--fc-s5) var(--fc-s4) var(--fc-s7);}
+  .fc-container{max-width:none;margin:0;padding:var(--fc-s5) var(--fc-s5) var(--fc-s7);}   /* full width, left aligned */
   h1,h2,h3{font-family:'Kanit','Inter',sans-serif;}
 
   .ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -43,7 +43,7 @@
     display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
   .who{display:flex;align-items:center;gap:var(--fc-s3);}
-  .avatar{width:96px;height:96px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
+  .avatar{width:80px;height:80px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
     display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
   .hero__eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
   .hero__name{font-size:28px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
@@ -52,8 +52,8 @@
     background:var(--fc-surface);border:1px solid var(--fc-border);padding:2px var(--fc-s3);border-radius:var(--fc-radius);}
 
   /* layout */
-  .grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:var(--fc-s5);align-items:start;}
-  .grid--single{grid-template-columns:minmax(0,560px);}
+  .grid{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);gap:var(--fc-s5);align-items:start;}
+  .grid--single{grid-template-columns:minmax(300px,340px);}
   .panel{background:var(--fc-surface);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
   .panel__head{display:flex;align-items:center;gap:var(--fc-s3);padding:var(--fc-s4) var(--fc-s5);border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
   .panel__title{font-size:20px;font-weight:600;line-height:1.35;margin:0;}
@@ -62,13 +62,20 @@
   .push{margin-left:auto;}
 
   /* profile details */
-  .kv{margin:0;display:grid;gap:0;}
-  .kv__row{display:flex;gap:var(--fc-s3);padding:var(--fc-s3) 0;border-bottom:1px solid var(--fc-border);align-items:flex-start;}
-  .kv__row:last-child{border-bottom:0;padding-bottom:0;}
-  .kv__row:first-child{padding-top:0;}
-  .kv__ico{color:var(--fc-text-mute);margin-top:2px;}
-  .kv__label{font-size:12px;font-weight:600;color:var(--fc-text-mute);display:block;}
-  .kv__val{font-size:14px;font-weight:500;color:var(--fc-text);overflow-wrap:anywhere;}
+  /* compact profile card */
+  .profile{padding:0;overflow:hidden;}
+  .profile__head{display:flex;align-items:center;gap:var(--fc-s4);padding:var(--fc-s4) var(--fc-s4) var(--fc-s3);}
+  .profile__name{font-size:20px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
+  .profile__sub{font-size:14px;color:var(--fc-text-dim);overflow-wrap:anywhere;}
+  .kv{margin:0;padding:var(--fc-s3) var(--fc-s4) var(--fc-s4);display:grid;grid-template-columns:1fr 1fr;gap:var(--fc-s3) var(--fc-s4);
+    border-top:1px solid var(--fc-border);}
+  .kv__row{min-width:0;}
+  .kv__row.span2{grid-column:1 / -1;}
+  .kv__ico{color:var(--fc-text-mute);}
+  .kv__label{font-size:12px;font-weight:600;color:var(--fc-text-mute);display:flex;align-items:center;gap:var(--fc-s1);}
+  .kv__label .ico{width:12px;height:12px;}
+  .kv__val{display:block;font-size:14px;font-weight:500;color:var(--fc-text);overflow-wrap:anywhere;line-height:1.5;}
+
 
   /* KPIs */
   .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--fc-s3);margin-bottom:var(--fc-s5);}
@@ -122,6 +129,13 @@
   .result[hidden]{display:none;}
   .hidden{display:none !important;}
 
+  /* back button: solid ink colour so it reads as "leave this page, return to the main page" */
+  .back-btn{display:inline-flex;align-items:center;gap:var(--fc-s2);min-height:36px;padding:var(--fc-s2) var(--fc-s4);font:inherit;font-weight:600;
+    color:var(--fc-bg);background:var(--fc-text);border:1px solid var(--fc-text);border-radius:var(--fc-radius);cursor:pointer;transition:opacity .15s,transform .15s;}
+  .back-btn:hover{opacity:.86;}
+  .back-btn:active{transform:translateX(-2px);}
+  .back-btn:focus-visible{outline:none;box-shadow:var(--fc-focus);}
+
   /* home map */
   .stack{display:grid;gap:var(--fc-s5);}
   #pinMap,#ovMap{isolation:isolate;border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
@@ -158,6 +172,7 @@
 
   /* responsive: bill rows become cards on phones */
   @media (max-width:900px){
+    .fc-container{padding:var(--fc-s4) var(--fc-s3) var(--fc-s6);}
     .grid{grid-template-columns:minmax(0,1fr);}
     .grid--single{grid-template-columns:minmax(0,1fr);}
     .fc-appbar{padding:var(--fc-s2) var(--fc-s3);}
@@ -165,8 +180,15 @@
     .bar-btn span.lbl{display:none;}
   }
   @media (max-width:640px){
+    .fc-appbar{flex-wrap:wrap;gap:var(--fc-s2);}
+    .bar-actions{flex:1 1 100%;margin-left:0;justify-content:space-between;}
+    .bar-actions .bar-btn{padding:var(--fc-s2);}
+    .admin-tag,.bar-sep{display:none;}
     .kpis{grid-template-columns:minmax(0,1fr);}
     .hero__name{font-size:20px;}
+    .profile__head{flex-direction:column;text-align:center;}
+    .kv{text-align:center;}
+    .kv__label{justify-content:center;}
     .tbl-wrap{border:0;max-height:none;}
     .tbl.cards thead{display:none;}
     .tbl.cards,.tbl.cards tbody,.tbl.cards tr,.tbl.cards td{display:block;width:100%;}
@@ -269,20 +291,18 @@
 
   <!-- Profile + fuel bills -->
   <section id="viewMain" class="hidden">
-    <div class="hero">
-      <div class="avatar" id="avatar" aria-hidden="true"></div>
-      <div>
-        <div class="hero__eyebrow">Welcome back</div>
-        <h2 class="hero__name" id="pName"></h2>
-        <div class="chips" id="pChips"></div>
-      </div>
-    </div>
-
     <div class="grid" id="mainGrid">
       <div class="stack">
-      <aside class="panel">
-        <div class="panel__head"><h3 class="panel__title">My profile</h3></div>
-        <div class="panel__body"><div class="kv" id="pKv"></div></div>
+      <aside class="panel profile">
+        <div class="profile__head">
+          <div class="avatar" id="avatar" aria-hidden="true"></div>
+          <div class="profile__who">
+            <div class="hero__eyebrow">My profile</div>
+            <h2 class="profile__name" id="pName"></h2>
+            <div class="profile__sub" id="pSub"></div>
+          </div>
+        </div>
+        <div class="kv" id="pKv"></div>
       </aside>
       <section class="panel" id="homePanel">
         <div class="panel__head">
@@ -332,7 +352,7 @@
         <div style="display:flex;gap:var(--fc-s2);flex-wrap:wrap" class="push">
           <button class="bar-btn" id="btnMapFit"><svg class="ico"><use href="#i-map"/></svg><span>Fit Thailand</span></button>
           <button class="bar-btn hidden" id="btnMapLog"><svg class="ico"><use href="#i-receipt"/></svg><span>Access log</span></button>
-          <button class="bar-btn" id="btnMapBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+          <button class="back-btn" id="btnMapBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
         </div>
       </div>
       <div class="panel__body">
@@ -359,7 +379,7 @@
       <div class="panel__head">
         <div><h3 class="panel__title">Manage users</h3>
           <p class="panel__sub">Add employees, edit details, reset passwords and control access</p></div>
-        <button class="bar-btn push" id="btnUsersBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+        <button class="back-btn push" id="btnUsersBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
       </div>
       <div class="panel__body">
         <div class="filters" style="margin-bottom:var(--fc-s4)">
@@ -385,7 +405,7 @@
     <div class="panel">
       <div class="panel__head">
         <h3 class="panel__title">Import fuel bills from Excel</h3>
-        <button class="bar-btn push" id="btnImpBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+        <button class="back-btn push" id="btnImpBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
       </div>
       <div class="panel__body">
         <div class="steps">
@@ -677,17 +697,16 @@ function renderProfile(e){
     img.onerror = () => next(i + 1);
     img.src = `${SUPABASE_CONFIG.url}/storage/v1/object/public/engineer-photos/${encodeURIComponent(tries[i])}`;
   })(0);
-  $('pChips').innerHTML =
-    (e.department ? `<span class="chip">${ic('building')}${esc(e.department)}</span>` : '') +
-    (e.title ? `<span class="chip">${ic('briefcase')}${esc(e.title)}</span>` : '');
+  $('pSub').textContent = [e.title, e.department].filter(Boolean).join(' · ');
 
   const rows = [
-    ['id', 'Employee ID', e.employee_no], ['building', 'Department', e.department], ['briefcase', 'Title', e.title],
-    ['coin', 'Cost center', e.cost_center_name ? e.cost_center_name + (e.cost_center_id ? ' (' + e.cost_center_id + ')' : '') : null], ['mail', 'Email', e.email], ['phone', 'Phone', e.tel],
-    ['hash', 'Extension', e.ext], ['cal', 'Joined', e.hire_date ? dmy(e.hire_date) : null],
+    ['id', 'Employee ID', e.employee_no], ['cal', 'Joined', e.hire_date ? dmy(e.hire_date) : null],
+    ['building', 'Department', e.department, true],
+    ['coin', 'Cost center', e.cost_center_name ? e.cost_center_name + (e.cost_center_id ? ' (' + e.cost_center_id + ')' : '') : null, true],
+    ['mail', 'Email', e.email, true], ['phone', 'Phone', e.tel], ['hash', 'Extension', e.ext],
   ];
-  $('pKv').innerHTML = rows.map(([i, k, v]) => `<div class="kv__row"><span class="kv__ico">${ic(i)}</span>
-    <div><span class="kv__label">${esc(k)}</span><span class="kv__val">${v ? esc(v) : '<span class="dash">—</span>'}</span></div></div>`).join('');
+  $('pKv').innerHTML = rows.map(([i, k, v, wide]) => `<div class="kv__row${wide ? ' span2' : ''}">
+    <span class="kv__label">${ic(i)}${esc(k)}</span><span class="kv__val">${v ? esc(v) : '<span class="dash">—</span>'}</span></div>`).join('');
 
   // Fuel bills are for Sales* / Service* departments only — everyone else just sees their profile
   $('fuelPanel').classList.toggle('hidden', !CAN_SEE_FUEL);
