@@ -51,6 +51,31 @@ function findProvince(lat, lng){
   return best;
 }
 
+/* Base map with English labels: OpenFreeMap vector tiles (free, no key) drawn through MapLibre inside Leaflet.
+   Label order: English name -> Latin transliteration -> local name. Falls back to plain OpenStreetMap tiles
+   (local-language labels) if WebGL or the vector map is unavailable. */
+const OFM_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+function webglOk(){ try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } }
+function addBaseMap(map){
+  const fallback = () => L.tileLayer(OSM.url, { maxZoom: 19, attribution: OSM.attr }).addTo(map);
+  if (typeof L.maplibreGL !== 'function' || typeof maplibregl === 'undefined' || !webglOk()) return fallback();
+  try {
+    const layer = L.maplibreGL({ style: OFM_STYLE, attribution: '&copy; <a href="https://openfreemap.org">OpenFreeMap</a> &copy; OpenMapTiles, data from OpenStreetMap' }).addTo(map);
+    const mgl = layer.getMaplibreMap();
+    const english = () => {
+      try {
+        (mgl.getStyle().layers || []).forEach(l => {
+          if (l.type === 'symbol' && l.layout && l.layout['text-field'])
+            mgl.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name:latin'], ['get', 'name']]);
+        });
+      } catch (e) { /* keep the default labels */ }
+    };
+    mgl.on('style.load', english);
+    if (mgl.isStyleLoaded()) english();
+    return layer;
+  } catch (e) { return fallback(); }
+}
+
 const pinIcon = () => L.divIcon({
   className: '',
   html: '<svg width="32" height="42" viewBox="0 0 32 42" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))"><path d="M16 1C8 1 2 7 2 15c0 10 14 26 14 26s14-16 14-26C30 7 24 1 16 1Z" fill="#C32C30" stroke="#fff" stroke-width="2"/><circle cx="16" cy="15" r="5.5" fill="#fff"/></svg>',
@@ -110,8 +135,8 @@ async function openPin(){
   $('pinModal').classList.remove('hidden');
   try { await loadProvinces(); } catch (e) { $('pinErr').textContent = e.message; }
   if (!pinMap) {
-    pinMap = L.map('pinMap', { zoomControl: true }).fitBounds(TH_BOUNDS);
-    L.tileLayer(OSM.url, { maxZoom: 19, attribution: OSM.attr }).addTo(pinMap);
+    pinMap = L.map('pinMap', { zoomControl: true, maxZoom: 19 }).fitBounds(TH_BOUNDS);
+    addBaseMap(pinMap);
     pinMap.on('click', e => setPin(e.latlng.lat, e.latlng.lng, false));
   }
   setTimeout(() => {
@@ -125,11 +150,21 @@ async function openPin(){
 
 function useMyGps(){
   if (!navigator.geolocation) return ($('pinErr').textContent = 'This browser cannot share your current location — click the map instead.');
+  // Browsers only allow location on secure (https) pages — the internal http:// address is always refused
+  if (!window.isSecureContext) {
+    return ($('pinErr').textContent = 'Current location only works on the secure address https://one.fanucth.co.th/fth-one/ — open that link, or click the map to place the pin.');
+  }
   $('pinErr').textContent = '';
   $('pinGps').disabled = true;
   navigator.geolocation.getCurrentPosition(
     p => { $('pinGps').disabled = false; setPin(p.coords.latitude, p.coords.longitude, true); },
-    err => { $('pinGps').disabled = false; $('pinErr').textContent = 'Could not get your location (' + err.message + '). Allow location access, or click the map instead.'; },
+    err => {
+      $('pinGps').disabled = false;
+      $('pinErr').textContent = err.code === 1
+        ? 'Location access is blocked for this site. Click the lock icon next to the address, set Location to Allow, reload the page and try again — or just click the map to place the pin. (Also check that Location is turned on in Windows / your phone settings.)'
+        : err.code === 3 ? 'Getting your location took too long. Try again, or click the map to place the pin.'
+        : 'Your device could not work out its location. Click the map to place the pin.';
+    },
     { enableHighAccuracy: true, timeout: 15000 });
 }
 
@@ -167,8 +202,8 @@ async function openOverview(){
   OV_STATS = (st.data && st.data[0]) || { active_employees: 0, pinned: OV_ROWS.length };
 
   if (!ovMap) {
-    ovMap = L.map('ovMap', { zoomControl: true }).fitBounds(TH_BOUNDS);
-    L.tileLayer(OSM.url, { maxZoom: 19, attribution: OSM.attr }).addTo(ovMap);
+    ovMap = L.map('ovMap', { zoomControl: true, maxZoom: 19 }).fitBounds(TH_BOUNDS);
+    addBaseMap(ovMap);
   }
   setTimeout(() => { ovMap.invalidateSize(); ovMap.fitBounds(TH_BOUNDS); drawOverview(); }, 60);
 }

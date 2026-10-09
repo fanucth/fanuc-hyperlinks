@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="fanuc-ui.css">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
@@ -133,7 +134,7 @@
   /* login */
   .login{max-width:400px;margin:var(--fc-s7) auto;}
   .login__top{text-align:center;margin-bottom:var(--fc-s5);}
-  .login__top img{height:36px;margin-bottom:var(--fc-s4);}
+  .login__top .emblem{width:56px;height:56px;display:block;margin:0 auto var(--fc-s4);}
   .login__title{font-size:28px;line-height:1.35;margin:0 0 var(--fc-s1);}
   .login .panel__body{padding:var(--fc-s5);}
   .fc-btn{font-weight:600;}
@@ -277,7 +278,13 @@
   <section id="viewLogin" class="hidden">
     <form class="login" id="loginForm">
       <div class="login__top">
-        <img src="fanuc-logo.png" alt="FANUC">
+        <!-- FTH One emblem (the red FANUC logo is already in the top bar) -->
+        <svg class="emblem" viewBox="0 0 48 48" role="img" aria-label="FTH One" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="6" fill="currentColor" style="color:var(--fc-accent)"/>
+          <g fill="none" stroke="#1b1b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="24" cy="18" r="6"/><path d="M11.5 38c1.2-7 6.2-11 12.5-11s11.3 4 12.5 11"/>
+          </g>
+        </svg>
         <h2 class="login__title">Sign in</h2>
         <p class="panel__sub">Use your company email to view your profile.</p>
       </div>
@@ -592,6 +599,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="fuel-import.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script src="users-admin.js"></script>
 <script src="homemap.js"></script>
 <script src="photo.js"></script>
