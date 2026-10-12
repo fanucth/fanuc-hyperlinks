@@ -96,10 +96,12 @@ function mfaCell(u){
   if (!MFA_SET) return '<span class="dash">—</span>';
   if (MFA_SET.mode === 'all') return '<span class="fc-badge fc-badge--info">Everyone</span>';
   const sel = u.mfa_required === true;
+  const selfOn = u.mfa_self === true;
+  const selfBadge = selfOn ? ` <span class="fc-badge fc-badge--neutral" title="Turned on by the person">Self</span>` : '';
   const badge = sel ? `<span class="fc-badge ${MFA_SET.mode === 'pilot' ? 'fc-badge--ok' : 'fc-badge--neutral'}">${MFA_SET.mode === 'pilot' ? 'Required' : 'Selected (off)'}</span>` : '<span class="dash">—</span>';
   const o = MFA_OV.get(u.email);
   const extra = o ? ` ${o.has_totp ? '<span class="fc-badge fc-badge--neutral" title="Authenticator app set up">App</span>' : ''}${o.backup_remaining > 0 ? `<span class="fc-badge fc-badge--neutral" title="Unused backup codes">${o.backup_remaining} codes</span>` : ''}` : '';
-  return badge + extra + ` <button class="bar-btn" data-act="mfa" data-id="${u.id}">${sel ? 'Remove' : 'Require'}</button>`;
+  return badge + selfBadge + extra + ` <button class="bar-btn" data-act="mfa" data-id="${u.id}">${sel ? 'Remove' : 'Require'}</button>`;
 }
 
 function renderUsers(){

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css?v=202610120948">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610121056">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
@@ -347,7 +347,6 @@
     </form>
   </section>
 
-  <!-- Signed in but not an active employee -->
   <!-- Email code (2FA) -->
   <section id="viewMfa" class="hidden">
     <form class="login" id="mfaForm">
@@ -378,6 +377,7 @@
     </form>
   </section>
 
+  <!-- Signed in but not an active employee -->
   <section id="viewNoEmp" class="hidden">
     <div class="login">
       <div class="panel"><div class="panel__body">
@@ -660,6 +660,22 @@
   </form>
 </div>
 
+<!-- Turn on the email code (self-service) -->
+<div class="fc-modal hidden" id="emailSetupModal" role="dialog" aria-modal="true" aria-labelledby="emTitle">
+  <form class="fc-modal__box" id="emailSetupForm" style="max-width:420px">
+    <h3 id="emTitle">Turn on email code</h3>
+    <p class="fc-note" id="emMsg" style="margin-top:0">Sending a test code to your company email…</p>
+    <label class="fc-field"><span class="fc-field__label">6-digit code from the email</span>
+      <input id="emCode" class="fc-input code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+      <span class="fc-field__error" id="emErr" role="alert"></span></label>
+    <p style="margin:0 0 var(--fc-s3)"><button type="button" class="linkbtn" id="emResend" disabled>Resend code</button></p>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="emCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="emOk">Turn on</button>
+    </div>
+  </form>
+</div>
+
 <!-- Backup codes (shown once) -->
 <div class="fc-modal hidden" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupTitle">
   <div class="fc-modal__box" style="max-width:460px;max-height:94vh;overflow:auto">
@@ -733,13 +749,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="fuel-import.js?v=202610120948"></script>
+<script src="fuel-import.js?v=202610121056"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610120948"></script>
-<script src="homemap.js?v=202610120948"></script>
-<script src="photo.js?v=202610120948"></script>
+<script src="users-admin.js?v=202610121056"></script>
+<script src="homemap.js?v=202610121056"></script>
+<script src="photo.js?v=202610121056"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -949,16 +965,77 @@ async function renderSecurity(){
   $('secPanel').classList.toggle('hidden', !SEC || SEC.has_totp === undefined);   // hidden until 011 + 012 are installed
   if (!SEC || SEC.has_totp === undefined) return;
   const badge = (on, a, b) => on ? `<span class="fc-badge fc-badge--ok">${a}</span>` : `<span class="fc-badge fc-badge--neutral">${b}</span>`;
-  let html = `<div class="sec-row"><div class="sec-row__t"><b>Email code</b><span>A 6-digit code sent to your company email at sign-in</span></div>
-      ${SEC.needed ? '<span class="fc-badge fc-badge--ok">Required for you</span>' : '<span class="fc-badge fc-badge--neutral">Not required</span>'}</div>
+  // Email code row: IT can require it; otherwise people can turn it on / off themselves (self_on exists after 013_email_2fa_self.sql)
+  let emailBtn = '', emailBadge, emailNote = 'A 6-digit code sent to your company email at sign-in';
+  if (SEC.self_on === undefined) {
+    emailBadge = SEC.needed ? '<span class="fc-badge fc-badge--ok">Required for you</span>' : '<span class="fc-badge fc-badge--neutral">Not required</span>';
+  } else if (SEC.mode === 'off') {
+    emailBadge = '<span class="fc-badge fc-badge--warn">Paused by IT</span>';
+    emailNote = 'IT has paused email codes for everyone for now — you will not be asked for one.';
+  } else if (SEC.admin_required) {
+    emailBadge = '<span class="fc-badge fc-badge--info">Required by IT</span>';
+    emailNote = 'IT requires the email code for your account.';
+  } else if (SEC.self_on) {
+    emailBadge = '<span class="fc-badge fc-badge--ok">On</span>';
+    emailBtn = '<button class="fc-btn fc-btn--sm" id="btnEmail">Turn off</button>';
+    emailNote = 'You turned this on — at sign-in you enter a 6-digit code sent to your email.';
+  } else {
+    emailBadge = '<span class="fc-badge fc-badge--neutral">Off</span>';
+    emailBtn = '<button class="fc-btn fc-btn--sm" id="btnEmail">Turn on</button>';
+  }
+  let html = `<div class="sec-row"><div class="sec-row__t"><b>Email code</b><span>${emailNote}</span></div>
+      <div>${emailBadge} ${emailBtn}</div></div>
     <div class="sec-row"><div class="sec-row__t"><b>Authenticator app</b><span>Works without email — a second way to sign in</span></div>
       <div>${badge(SEC.has_totp, 'Active', 'Not set up')} <button class="fc-btn fc-btn--sm" id="btnTotp">${SEC.has_totp ? 'Remove' : 'Set up'}</button></div></div>`;
   if (IS_PLATFORM_ADMIN) html += `<div class="sec-row"><div class="sec-row__t"><b>Backup codes</b><span>For when email and the app are both unavailable</span></div>
       <div>${badge(SEC.backup_remaining > 0, SEC.backup_remaining + ' unused', 'None')} <button class="fc-btn fc-btn--sm" id="btnBackup">${SEC.backup_remaining > 0 ? 'Create new codes' : 'Create codes'}</button></div></div>`;
   $('secBody').innerHTML = html;
   $('btnTotp').onclick = SEC.has_totp ? () => openTotp('remove') : () => openTotp('setup');
+  if ($('btnEmail')) $('btnEmail').onclick = SEC.self_on ? turnOffEmail : openEmailSetup;
   if ($('btnBackup')) $('btnBackup').onclick = makeBackupCodes;
 }
+// ---- turn the email code on / off yourself ----
+let EM_TIMER = null;
+function emCooldown(sec){
+  clearInterval(EM_TIMER);
+  const b = $('emResend'); let left = Math.max(0, Math.round(sec || 0));
+  const tick = () => { b.disabled = left > 0; b.textContent = left > 0 ? `Resend code (${left}s)` : 'Resend code'; if (left-- <= 0) clearInterval(EM_TIMER); };
+  tick(); EM_TIMER = setInterval(tick, 1000);
+}
+async function emSend(force){
+  $('emErr').textContent = ''; $('emMsg').textContent = 'Sending a test code to your company email…';
+  const r = await mfaCall('email_setup_send', { force: !!force });
+  if (!r.ok) { $('emMsg').textContent = 'We could not send the code.'; $('emErr').textContent = r.data.error || 'Something went wrong.'; return emCooldown(r.data.resendIn || 0); }
+  $('emMsg').textContent = r.data.already
+    ? `A code was already sent to ${r.data.sentTo}. Enter it below, or resend if you cannot find it.`
+    : `We sent a 6-digit code to ${r.data.sentTo}. Enter it to confirm you can receive it — then email codes are on for your account.`;
+  emCooldown(r.data.resendIn);
+}
+async function openEmailSetup(){
+  $('emCode').value = ''; $('emErr').textContent = ''; $('emailSetupModal').classList.remove('hidden');
+  await emSend(false); $('emCode').focus();
+}
+async function turnOffEmail(){
+  if (!confirm('Turn off the email code for your account? You will only need your password to sign in.')) return;
+  const r = await mfaCall('email_disable', {});
+  if (!r.ok) return toast(r.data.error || 'Could not turn it off', true);
+  toast('Email code is off'); renderSecurity();
+}
+$('emailSetupForm').onsubmit = async e => {
+  e.preventDefault();
+  const code = $('emCode').value.replace(/\D/g, '');
+  if (code.length !== 6) { $('emErr').textContent = 'Enter the 6-digit code from the email.'; return; }
+  $('emOk').disabled = true; $('emErr').textContent = '';
+  const r = await mfaCall('email_setup_confirm', { code });
+  $('emOk').disabled = false;
+  if (!r.ok) { $('emErr').textContent = r.data.error || 'That code did not work.'; $('emCode').select(); return; }
+  $('emailSetupModal').classList.add('hidden'); clearInterval(EM_TIMER);
+  toast('Email code is on — you will be asked for it at your next sign-in'); renderSecurity();
+};
+$('emResend').onclick = () => emSend(true);
+$('emCancel').onclick = () => { $('emailSetupModal').classList.add('hidden'); clearInterval(EM_TIMER); };
+$('emCode').oninput = e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); };
+
 let TOTP_MODE = 'setup';
 async function openTotp(mode){
   TOTP_MODE = mode; $('totpErr').textContent = ''; $('totpCode').value = '';
