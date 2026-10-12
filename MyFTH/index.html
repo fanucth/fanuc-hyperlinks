@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css?v=202610121056">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610121724">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
@@ -461,6 +461,7 @@
         <div><h3 class="panel__title">Home map</h3>
           <p class="panel__sub">Where employees live across Thailand — anonymous overview. Opening a name is logged.</p></div>
         <div style="display:flex;gap:var(--fc-s2);flex-wrap:wrap" class="push">
+          <button class="bar-btn" id="btnMapBkk"><svg class="ico"><use href="#i-map"/></svg><span>Fit Bangkok</span></button>
           <button class="bar-btn" id="btnMapFit"><svg class="ico"><use href="#i-map"/></svg><span>Fit Thailand</span></button>
           <button class="bar-btn hidden" id="btnMapLog"><svg class="ico"><use href="#i-receipt"/></svg><span>Access log</span></button>
           <button class="back-btn" id="btnMapBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
@@ -749,13 +750,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="fuel-import.js?v=202610121056"></script>
+<script src="fuel-import.js?v=202610121724"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610121056"></script>
-<script src="homemap.js?v=202610121056"></script>
-<script src="photo.js?v=202610121056"></script>
+<script src="users-admin.js?v=202610121724"></script>
+<script src="homemap.js?v=202610121724"></script>
+<script src="photo.js?v=202610121724"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */

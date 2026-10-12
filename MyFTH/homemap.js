@@ -8,6 +8,8 @@
    ===================================================================== */
 const CONSENT_VERSION = 'v1-2026-10';
 const TH_BOUNDS = [[5.6, 97.3], [20.5, 105.7]];
+// Default view: Bangkok and its neighbouring provinces (most employees live here). "Fit Thailand" shows the whole country.
+const BKK_BOUNDS = [[13.45, 100.25], [14.10, 100.95]];
 const OSM = { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr: '&copy; OpenStreetMap contributors' };
 
 let IS_HOMEMAP_VIEWER = false;
@@ -135,7 +137,7 @@ async function openPin(){
   $('pinModal').classList.remove('hidden');
   try { await loadProvinces(); } catch (e) { $('pinErr').textContent = e.message; }
   if (!pinMap) {
-    pinMap = L.map('pinMap', { zoomControl: true, maxZoom: 19 }).fitBounds(TH_BOUNDS);
+    pinMap = L.map('pinMap', { zoomControl: true, maxZoom: 19 }).fitBounds(BKK_BOUNDS);
     addBaseMap(pinMap);
     pinMap.on('click', e => setPin(e.latlng.lat, e.latlng.lng, false));
   }
@@ -143,7 +145,7 @@ async function openPin(){
     pinMap.invalidateSize();
     if (pinMarker) { pinMap.removeLayer(pinMarker); pinMarker = null; }
     pinProv = null; $('pinInfo').innerHTML = '<span class="fc-mut">Click the map to drop the pin, or drag it to fine-tune.</span>';
-    if (MY_LOC) { setPin(+MY_LOC.lat, +MY_LOC.lng, true); } else pinMap.fitBounds(TH_BOUNDS);
+    if (MY_LOC) { setPin(+MY_LOC.lat, +MY_LOC.lng, true); } else pinMap.fitBounds(BKK_BOUNDS);
     updatePinSave();
   }, 60);
 }
@@ -202,10 +204,10 @@ async function openOverview(){
   OV_STATS = (st.data && st.data[0]) || { active_employees: 0, pinned: OV_ROWS.length };
 
   if (!ovMap) {
-    ovMap = L.map('ovMap', { zoomControl: true, maxZoom: 19 }).fitBounds(TH_BOUNDS);
+    ovMap = L.map('ovMap', { zoomControl: true, maxZoom: 19 }).fitBounds(BKK_BOUNDS);
     addBaseMap(ovMap);
   }
-  setTimeout(() => { ovMap.invalidateSize(); ovMap.fitBounds(TH_BOUNDS); drawOverview(); }, 60);
+  setTimeout(() => { ovMap.invalidateSize(); ovMap.fitBounds(BKK_BOUNDS); drawOverview(); }, 60);
 }
 
 function drawOverview(){
@@ -301,6 +303,7 @@ function wireHomemap(){
   $('lyDots').onchange = () => { if (!ovMap) return; $('lyDots').checked ? ovDots && ovDots.addTo(ovMap) : ovDots && ovMap.removeLayer(ovDots); };
   $('mapProvinces').onclick = e => { const b = e.target.closest('[data-c]'); if (b) zoomToProvince(b.dataset.c); };
   $('btnMapFit').onclick = () => ovMap && ovMap.fitBounds(TH_BOUNDS);
+  $('btnMapBkk').onclick = () => ovMap && ovMap.fitBounds(BKK_BOUNDS);
   $('btnMapLog').onclick = openAccessLog;
   $('logClose').onclick = () => $('logModal').classList.add('hidden');
 }
