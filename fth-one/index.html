@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FTH One — My Profile</title>
+<title>MyFTH — My Profile</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2048%2048'%3E%3Crect%20width%3D'48'%20height%3D'48'%20rx%3D'8'%20fill%3D'%23FFD702'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%231b1b1f'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Crect%20x%3D'10'%20y%3D'11'%20width%3D'28'%20height%3D'26'%20rx%3D'3.5'%2F%3E%3Cpath%20d%3D'M20.5%2011v2.2h7V11'%2F%3E%3Ccircle%20cx%3D'19.5'%20cy%3D'23'%20r%3D'3.2'%2F%3E%3Cpath%20d%3D'M13.8%2032c.8-3%203-4.4%205.7-4.4s4.9%201.4%205.7%204.4M29%2022h5M29%2027h5'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610120948">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
@@ -24,6 +25,9 @@
   .fc-appbar{padding:var(--fc-s2) var(--fc-s5);}
   .brand{display:flex;align-items:center;gap:var(--fc-s3);}
   .brand img{height:28px;display:block;}
+  .brand .brand__logo{height:38px;width:auto;}
+  :root[data-theme="dark"] .brand .brand__logo{background:#fff;border-radius:var(--fc-radius);padding:2px var(--fc-s2);}   /* the logo has black text: keep it readable in dark mode */
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand .brand__logo{background:#fff;border-radius:var(--fc-radius);padding:2px var(--fc-s2);} }
   .brand__div{width:1px;height:28px;background:var(--fc-border-strong);}
   .brand__name{font-family:'Kanit',sans-serif;font-weight:600;font-size:20px;line-height:1.2;margin:0;}
   .brand__sub{font-size:12px;color:var(--fc-text-mute);display:block;line-height:1.2;}
@@ -50,7 +54,7 @@
   .dept-chip:hover,.dept-chip.is-on{color:var(--fc-primary);border-color:var(--fc-primary);}
   .photo-row{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
   .who{display:flex;align-items:center;gap:var(--fc-s3);}
-  .avatar{width:80px;height:80px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
+  .avatar{width:72px;height:72px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
     display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
   .hero__eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
   .hero__name{font-size:28px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
@@ -83,6 +87,19 @@
   .ph-tools{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
   .ph-tools input[type=range]{flex:1;accent-color:var(--fc-primary);}
   .ph-actions{display:flex;gap:var(--fc-s2);flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:var(--fc-s3);}
+
+  /* compact side cards (home location, sign-in security): small header, collapsible */
+  .panel--compact .panel__head{padding:var(--fc-s3) var(--fc-s4);gap:var(--fc-s2);cursor:pointer;user-select:none;}
+  .panel--compact .panel__title{font-size:16px;}
+  .panel--compact .panel__sub{display:none;}
+  .panel--compact .panel__body{padding:var(--fc-s3) var(--fc-s4) var(--fc-s4);}
+  .panel--compact .ico--lg{width:16px;height:16px;}
+  .panel--compact .chev{margin-left:auto;transition:transform .15s;color:var(--fc-text-mute);}
+  .panel--compact.collapsed .panel__body{display:none;}
+  .panel--compact.collapsed .panel__head{border-bottom:0;}
+  .panel--compact.collapsed .chev{transform:rotate(-90deg);}
+  .panel--compact .sec-row{padding:var(--fc-s2) 0;}
+  .stack{gap:var(--fc-s4);}
 
   /* compact profile card */
   .profile{padding:0;overflow:hidden;}
@@ -179,6 +196,32 @@
   .leaflet-container{font-family:inherit;}
   @media (max-width:900px){ .mapgrid{grid-template-columns:minmax(0,1fr);} #ovMap{height:60vh;min-height:360px;} .side{max-height:none;min-height:0;} }
 
+  /* email code (2FA) */
+  .code-input{font-size:28px;letter-spacing:.5em;text-align:center;font-variant-numeric:tabular-nums;font-family:var(--fc-font-mono);padding-left:.5em;}
+  .linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--fc-primary);cursor:pointer;}
+  .linkbtn:disabled{color:var(--fc-text-mute);cursor:default;}
+  .linkbtn:not(:disabled):hover{text-decoration:underline;}
+  .seccard{display:flex;gap:var(--fc-s4);align-items:flex-end;flex-wrap:wrap;border:1px solid var(--fc-border);border-radius:var(--fc-radius);
+    padding:var(--fc-s4);margin-bottom:var(--fc-s4);background:var(--fc-bg);}
+  .seccard__txt{flex:1 1 280px;min-width:0;}
+  .seccard__txt strong{display:block;margin-bottom:var(--fc-s1);}
+  .seccard .fc-field{margin:0;}
+  .seccard .fc-field__label{font-size:12px;}
+
+  /* sign-in security card + dialogs */
+  .sec-row{display:flex;gap:var(--fc-s3);align-items:center;justify-content:space-between;padding:var(--fc-s3) 0;border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
+  .sec-row:last-child{border-bottom:0;padding-bottom:0;}
+  .sec-row:first-child{padding-top:0;}
+  .sec-row__t{min-width:0;}
+  .sec-row__t b{display:block;font-size:14px;}
+  .sec-row__t span{font-size:12px;color:var(--fc-text-dim);}
+  .totp-qr{display:block;margin:var(--fc-s3) auto;width:208px;height:208px;image-rendering:pixelated;background:#fff;padding:var(--fc-s2);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
+  .totp-secret{font-family:var(--fc-font-mono);font-size:14px;font-weight:600;letter-spacing:.08em;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);text-align:center;user-select:all;overflow-wrap:anywhere;}
+  .codes{display:grid;grid-template-columns:1fr 1fr;gap:var(--fc-s2);margin:var(--fc-s3) 0;}
+  .codes code{font-family:var(--fc-font-mono);font-size:16px;font-weight:600;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2);text-align:center;user-select:all;}
+  .mfa-alts{text-align:center;margin:var(--fc-s3) 0 0;font-size:14px;display:flex;gap:var(--fc-s4);justify-content:center;flex-wrap:wrap;}
+  @media print{ body *{visibility:hidden;} #backupModal,#backupModal *{visibility:visible;} #backupModal{position:absolute;inset:0;background:#fff;} #backupModal button{display:none;} }
+
   /* manage users */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--fc-s3);}
   .form-grid .fc-field{margin-bottom:var(--fc-s3);}
@@ -245,16 +288,17 @@
   <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
   <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6ZM9 4v14M15 6v14"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
 
 <header class="fc-appbar">
   <div class="brand">
-    <img src="fanuc-logo.png" alt="FANUC">
+    <img src="fanuc-thai-logo.png" alt="FANUC THAI LIMITED" class="brand__logo">
     <span class="brand__div" aria-hidden="true"></span>
     <div>
-      <h1 class="brand__name">FTH One</h1>
+      <h1 class="brand__name">MyFTH</h1>
       <span class="brand__sub">Employee self-service</span>
     </div>
   </div>
@@ -278,12 +322,10 @@
   <section id="viewLogin" class="hidden">
     <form class="login" id="loginForm">
       <div class="login__top">
-        <!-- FTH One emblem (the red FANUC logo is already in the top bar) -->
-        <svg class="emblem" viewBox="0 0 48 48" role="img" aria-label="FTH One" xmlns="http://www.w3.org/2000/svg">
-          <rect width="48" height="48" rx="6" fill="currentColor" style="color:var(--fc-accent)"/>
-          <g fill="none" stroke="#1b1b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="24" cy="18" r="6"/><path d="M11.5 38c1.2-7 6.2-11 12.5-11s11.3 4 12.5 11"/>
-          </g>
+        <!-- MyFTH emblem: employee ID badge on FANUC yellow -->
+        <svg class="emblem" viewBox="0 0 48 48" role="img" aria-label="MyFTH" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="6" style="fill:var(--fc-accent)"/>
+          <g fill="none" stroke="#1b1b1f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="11" width="28" height="26" rx="3.5"/><path d="M20.5 11v2.2h7V11"/><circle cx="19.5" cy="23" r="3.2"/><path d="M13.8 32c.8-3 3-4.4 5.7-4.4s4.9 1.4 5.7 4.4M29 22h5M29 27h5"/></g>
         </svg>
         <h2 class="login__title">Sign in</h2>
         <p class="panel__sub">Use your company email to view your profile.</p>
@@ -306,6 +348,36 @@
   </section>
 
   <!-- Signed in but not an active employee -->
+  <!-- Email code (2FA) -->
+  <section id="viewMfa" class="hidden">
+    <form class="login" id="mfaForm">
+      <div class="login__top">
+        <svg class="emblem" viewBox="0 0 48 48" role="img" aria-label="Email" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="6" fill="currentColor" style="color:var(--fc-accent)"/>
+          <g fill="none" stroke="#1b1b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="14" width="28" height="20" rx="3"/><path d="m11 17 13 9 13-9"/></g>
+        </svg>
+        <h2 class="login__title">Check your email</h2>
+        <p class="panel__sub" id="mfaMsg">We are sending a 6-digit code…</p>
+      </div>
+      <div class="panel"><div class="panel__body">
+        <label class="fc-field">
+          <span class="fc-field__label" id="mfaLabel">Verification code</span>
+          <input id="mfaCode" class="fc-input code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••" required>
+          <span class="fc-field__error" id="mfaErr" role="alert"></span>
+        </label>
+        <label class="check" id="mfaTrustWrap" style="margin-bottom:var(--fc-s3)"><input type="checkbox" id="mfaTrust"> <span id="mfaTrustLbl">Remember this browser</span></label>
+        <button class="fc-btn fc-btn--primary full" id="mfaVerify" type="submit">Verify and continue</button>
+        <p style="text-align:center;margin:var(--fc-s4) 0 0"><button type="button" class="linkbtn" id="mfaResend" disabled>Resend code</button></p>
+        <p class="mfa-alts" id="mfaAlts">
+          <button type="button" class="linkbtn hidden" id="mfaAltEmail">Email me a code</button>
+          <button type="button" class="linkbtn hidden" id="mfaAltTotp">Use authenticator app</button>
+          <button type="button" class="linkbtn hidden" id="mfaAltBackup">Use a backup code</button>
+        </p>
+      </div></div>
+      <p class="fc-note" style="text-align:center;margin-top:var(--fc-s4)">Wrong account? <button type="button" class="linkbtn" id="mfaOut">Sign out</button></p>
+    </form>
+  </section>
+
   <section id="viewNoEmp" class="hidden">
     <div class="login">
       <div class="panel"><div class="panel__body">
@@ -334,12 +406,21 @@
         </div>
         <div class="kv" id="pKv"></div>
       </aside>
-      <section class="panel" id="homePanel">
-        <div class="panel__head">
+      <section class="panel panel--compact" id="homePanel">
+        <div class="panel__head" data-fold="home" role="button" tabindex="0" aria-expanded="true" title="Optional · used for disaster response">
           <svg class="ico ico--lg" style="color:var(--fc-primary)"><use href="#i-pin"/></svg>
-          <div><h3 class="panel__title">My home location</h3><p class="panel__sub">Optional · used for disaster response</p></div>
+          <h3 class="panel__title">My home location</h3>
+          <svg class="ico chev"><use href="#i-chev"/></svg>
         </div>
         <div class="panel__body" id="homeBody"><div class="fc-skeleton" style="height:64px"></div></div>
+      </section>
+      <section class="panel panel--compact hidden" id="secPanel">
+        <div class="panel__head" data-fold="sec" role="button" tabindex="0" aria-expanded="true" title="Extra ways to prove it is you">
+          <svg class="ico ico--lg" style="color:var(--fc-primary)"><use href="#i-key"/></svg>
+          <h3 class="panel__title">Sign-in security</h3>
+          <svg class="ico chev"><use href="#i-chev"/></svg>
+        </div>
+        <div class="panel__body" id="secBody"></div>
       </section>
       </div>
 
@@ -392,7 +473,7 @@
             <div id="mapSummary"></div>
             <div>
               <h4>Layers</h4>
-              <label class="check"><input type="checkbox" id="lyProv" checked> <span>Province shading (employees per province)</span></label>
+              <label class="check"><input type="checkbox" id="lyProv"> <span>Province shading (employees per province)</span></label>
               <label class="check"><input type="checkbox" id="lyDots" checked> <span>Home pins (anonymous)</span></label>
             </div>
             <div><h4>By region</h4><div id="mapRegions"></div></div>
@@ -412,6 +493,21 @@
         <button class="back-btn push" id="btnUsersBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
       </div>
       <div class="panel__body">
+        <div class="seccard" id="mfaCard">
+          <div class="seccard__txt">
+            <strong>Sign-in security — email code (2FA)</strong>
+            <span class="fc-note" id="mfaCardNote">After the password, people must enter a 6-digit code sent to their company email.</span>
+          </div>
+          <label class="fc-field"><span class="fc-field__label">Who must use it</span>
+            <select id="mfaMode" class="fc-input"><option value="off">Nobody (off)</option><option value="pilot">Selected people only</option><option value="all">Everyone</option></select></label>
+          <label class="fc-field"><span class="fc-field__label">Remember browser</span>
+            <select id="mfaDays" class="fc-input"><option value="0">Never ask to remember</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label>
+          <button class="fc-btn fc-btn--primary" id="mfaSave" type="button">Save</button>
+          <div id="mfaBulk" style="display:flex;gap:var(--fc-s2);flex-wrap:wrap;flex-basis:100%">
+            <button class="fc-btn fc-btn--sm" id="mfaAllShown" type="button">Require for everyone in the list below</button>
+            <button class="fc-btn fc-btn--sm" id="mfaNoneShown" type="button">Remove for everyone in the list below</button>
+          </div>
+        </div>
         <div class="filters" style="margin-bottom:var(--fc-s4)">
           <label class="fc-field" style="flex:1;min-width:220px"><span class="fc-field__label">Search</span>
             <input type="search" id="uSearch" class="fc-input" placeholder="Name, email, department, employee ID…"></label>
@@ -422,7 +518,7 @@
         <p class="summary" id="usersSummary"></p>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th>Admin roles</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th>Email code</th><th>Admin roles</th><th></th></tr></thead>
             <tbody id="usersBody"></tbody>
           </table>
         </div>
@@ -511,14 +607,14 @@
     <div class="form-grid">
       <label class="fc-field"><span class="fc-field__label">First name *</span><input class="fc-input" id="ue_fname" autocomplete="off"></label>
       <label class="fc-field"><span class="fc-field__label">Last name *</span><input class="fc-input" id="ue_lname" autocomplete="off"></label>
-      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Company email * (used to sign in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
+      <label class="fc-field"><span class="fc-field__label">Company email * (used to sign in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
+      <label class="fc-field"><span class="fc-field__label">Department</span>
+        <input class="fc-input" id="ue_department" list="deptList" autocomplete="off" placeholder="Pick or type">
+        <datalist id="deptList"></datalist>
+        <span class="fc-mut" id="deptHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
+      <div style="grid-column:1/-1;margin:calc(var(--fc-s1) * -1) 0 var(--fc-s3)"><span class="dept-chips" id="deptChips"></span></div>
       <label class="fc-field"><span class="fc-field__label">Employee ID</span><input class="fc-input" id="ue_employee_no" autocomplete="off" placeholder="F12345"></label>
       <label class="fc-field"><span class="fc-field__label">Joined</span><input class="fc-input" id="ue_hire_date" type="date"></label>
-      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Department</span>
-        <input class="fc-input" id="ue_department" list="deptList" autocomplete="off" placeholder="Pick an existing department or type a new one">
-        <datalist id="deptList"></datalist>
-        <span class="fc-mut" id="deptHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span>
-        <span class="dept-chips" id="deptChips"></span></label>
       <label class="fc-field"><span class="fc-field__label">Title</span><input class="fc-input" id="ue_title" autocomplete="off"></label>
       <label class="fc-field"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
       <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Cost center</span>
@@ -527,6 +623,7 @@
         <span class="fc-mut" id="ccHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
       <label class="fc-field"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
     </div>
+    <label class="check" id="ueMfaRow" style="margin:var(--fc-s2) 0"><input type="checkbox" id="ue_mfa"> <span><b>Require email code at sign-in</b> <span class="fc-mut" id="ueMfaNote"></span></span></label>
     <fieldset id="ueRoles" class="roles hidden">
       <legend>Admin roles</legend>
       <label class="check"><input type="checkbox" id="ue_r_platform"> <span><b>Platform admin</b> — can manage users and roles</span></label>
@@ -539,6 +636,44 @@
       <button type="submit" class="fc-btn fc-btn--primary" id="ueSave">Create employee</button>
     </div>
   </form>
+</div>
+
+<!-- Authenticator app: set up / remove -->
+<div class="fc-modal hidden" id="totpModal" role="dialog" aria-modal="true" aria-labelledby="totpTitle">
+  <form class="fc-modal__box" id="totpForm" style="max-width:420px;max-height:94vh;overflow:auto">
+    <h3 id="totpTitle">Set up authenticator app</h3>
+    <div id="totpSetupBox">
+      <p class="fc-note" style="margin-top:0">1. Install <b>Google Authenticator</b> or <b>Microsoft Authenticator</b> on your phone.<br>
+        2. Choose “Add account” → “Scan a QR code” and scan this code (or type the key below).<br>
+        3. Enter the 6-digit code the app shows.</p>
+      <img class="totp-qr" id="totpQr" alt="QR code for the authenticator app">
+      <div class="totp-secret" id="totpSecret"></div>
+    </div>
+    <p class="fc-note" id="totpRemoveNote" style="margin-top:0">To remove the authenticator app, enter the code it currently shows.</p>
+    <label class="fc-field" style="margin-top:var(--fc-s3)"><span class="fc-field__label">6-digit code from the app</span>
+      <input id="totpCode" class="fc-input code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+      <span class="fc-field__error" id="totpErr" role="alert"></span></label>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="totpCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="totpOk">Turn on</button>
+    </div>
+  </form>
+</div>
+
+<!-- Backup codes (shown once) -->
+<div class="fc-modal hidden" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupTitle">
+  <div class="fc-modal__box" style="max-width:460px;max-height:94vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--fc-s3)"><h3 id="backupTitle" style="margin-bottom:var(--fc-s3)">Your backup codes</h3>
+      <button type="button" class="bar-btn" id="backupClose" aria-label="Close" title="Close" style="padding:var(--fc-s1) var(--fc-s2)"><svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <p class="fc-note" style="margin-top:0"><b>Save these now — they are shown only once.</b> Each code works one time, when you cannot use the email code or your authenticator app.
+      Creating new codes makes the old ones stop working. Keep them somewhere safe (print them or store them in the company password manager), not in the same email account.</p>
+    <div class="codes" id="backupList"></div>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end;flex-wrap:wrap">
+      <button type="button" class="fc-btn" id="backupCopy">Copy all</button>
+      <button type="button" class="fc-btn" id="backupPrint">Print</button>
+      <button type="button" class="fc-btn fc-btn--primary" id="backupDone">I saved them</button>
+    </div>
+  </div>
 </div>
 
 <!-- Profile photo editor -->
@@ -597,13 +732,14 @@
 <div class="fc-toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="fuel-import.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="fuel-import.js?v=202610120948"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js"></script>
-<script src="homemap.js"></script>
-<script src="photo.js"></script>
+<script src="users-admin.js?v=202610120948"></script>
+<script src="homemap.js?v=202610120948"></script>
+<script src="photo.js?v=202610120948"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -630,7 +766,7 @@ function toast(msg, err){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3600);
 }
 function show(id){
-  ['viewLoading','viewLogin','viewNoEmp','viewMain','viewImport','viewUsers','viewMap'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  ['viewLoading','viewLogin','viewMfa','viewNoEmp','viewMain','viewImport','viewUsers','viewMap'].forEach(v => $(v).classList.toggle('hidden', v !== id));
   const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap'].includes(id);
   $('btnImport').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
   $('btnUsers').classList.toggle('hidden', !(IS_PLATFORM_ADMIN && id === 'viewMain'));
@@ -704,6 +840,186 @@ sb.auth.onAuthStateChange(ev => {
   if (ev === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true, 'Set a new password', 'Choose a new password to continue.'); }
 });
 
+/* ---------- email code (2FA) ---------- */
+const MFA = { user: null, trustDays: 0, timer: null };
+async function mfaCall(action, payload){
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/mfa-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CONFIG.anonKey, Authorization: 'Bearer ' + (session?.access_token || '') },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {   // network / CORS / function not deployed
+    return { ok: false, status: 0, data: { error: 'Could not reach the sign-in service (' + (e.message || e) + '). Check the connection, or that the mfa-login function is deployed.' } };
+  }
+}
+const tdKey = id => 'fth_td_' + id;
+function mfaCooldown(sec){
+  clearInterval(MFA.timer);
+  const b = $('mfaResend'); let left = Math.max(0, Math.round(sec || 0));
+  const tick = () => { b.disabled = left > 0; b.textContent = left > 0 ? `Resend code (${left}s)` : 'Resend code'; if (left-- <= 0) clearInterval(MFA.timer); };
+  tick(); if (left >= 0) MFA.timer = setInterval(tick, 1000);
+}
+async function mfaSend(force){
+  $('mfaErr').textContent = '';
+  $('mfaMsg').textContent = 'Sending your code…';
+  const r = await mfaCall('send', { force: !!force });
+  if (r.ok && r.data.skipped) return boot();
+  if (!r.ok) {
+    $('mfaMsg').textContent = 'We could not send the code.';
+    $('mfaErr').textContent = r.data.error || 'Something went wrong. Try “Resend code”, or contact IT.';
+    return mfaCooldown(r.data.resendIn || 0);
+  }
+  $('mfaMsg').textContent = r.data.already
+    ? `A code was already sent to ${r.data.sentTo}. Enter it below, or resend if you cannot find it.`
+    : `We sent a 6-digit code to ${r.data.sentTo}. It is valid for ${r.data.minutes} minutes.`;
+  mfaCooldown(r.data.resendIn);
+}
+// mode: 'email' | 'totp' | 'backup'
+const PREF = id => 'fth_mfa_pref_' + id;
+function setMfaMode(mode){
+  MFA.mode = mode; const st = MFA.st || {};
+  $('mfaErr').textContent = ''; $('mfaCode').value = '';
+  const num = mode !== 'backup';
+  $('mfaCode').maxLength = num ? 6 : 9;
+  $('mfaCode').inputMode = num ? 'numeric' : 'text';
+  $('mfaCode').placeholder = num ? '••••••' : 'XXXX-XXXX';
+  $('mfaLabel').textContent = { email: 'Verification code', totp: 'Authenticator code', backup: 'Backup code' }[mode];
+  $('mfaResend').classList.toggle('hidden', mode !== 'email');
+  $('mfaTrustWrap').classList.toggle('hidden', mode === 'backup' || MFA.trustDays <= 0);
+  $('mfaAltEmail').classList.toggle('hidden', mode === 'email');
+  $('mfaAltTotp').classList.toggle('hidden', mode === 'totp' || !st.has_totp);
+  $('mfaAltBackup').classList.toggle('hidden', mode === 'backup' || !(st.backup_remaining > 0));
+  if (mode === 'totp') $('mfaMsg').textContent = 'Open your authenticator app and enter the 6-digit code for MyFTH.';
+  if (mode === 'backup') $('mfaMsg').textContent = 'Enter one of the backup codes you saved. Each code works only once.';
+  $('mfaCode').focus();
+}
+async function startMfa(user, st){
+  MFA.user = user; MFA.st = st; MFA.trustDays = st.trust_days || 0;
+  show('viewMfa');
+  $('mfaCode').value = ''; $('mfaErr').textContent = '';
+  $('mfaTrust').checked = false;
+  $('mfaTrustLbl').textContent = `Remember this browser for ${MFA.trustDays} days (do not tick on a shared computer)`;
+  $('mfaMsg').textContent = 'Checking this browser…';
+  let tk = null, pref = null; try { tk = localStorage.getItem(tdKey(user.id)); pref = localStorage.getItem(PREF(user.id)); } catch {}
+  if (tk && MFA.trustDays > 0) {
+    const t = await mfaCall('trust', { token: tk });
+    if (t.ok) return boot();
+    try { localStorage.removeItem(tdKey(user.id)); } catch {}
+  }
+  if (pref === 'totp' && st.has_totp) { setMfaMode('totp'); return; }       // people who use the app are not e-mailed every time
+  setMfaMode('email');
+  await mfaSend(false);
+  $('mfaCode').focus();
+}
+$('mfaForm').onsubmit = async e => {
+  e.preventDefault();
+  const mode = MFA.mode || 'email';
+  let code = $('mfaCode').value;
+  if (mode === 'backup') { code = code.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (code.length !== 8) { $('mfaErr').textContent = 'Enter the backup code exactly as saved (8 characters).'; return; } }
+  else { code = code.replace(/\D/g, ''); if (code.length !== 6) { $('mfaErr').textContent = mode === 'totp' ? 'Enter the 6-digit code from your authenticator app.' : 'Enter the 6-digit code from the email.'; return; } }
+  $('mfaVerify').disabled = true; $('mfaErr').textContent = '';
+  const r = await mfaCall({ email: 'verify', totp: 'totp_verify', backup: 'backup_use' }[mode], { code, trust: $('mfaTrust').checked });
+  $('mfaVerify').disabled = false;
+  if (!r.ok) { $('mfaErr').textContent = r.data.error || 'Could not verify the code.'; $('mfaCode').select(); return; }
+  if (r.data.trustToken && MFA.user) { try { localStorage.setItem(tdKey(MFA.user.id), r.data.trustToken); } catch {} }
+  if (MFA.user && mode !== 'backup') { try { localStorage.setItem(PREF(MFA.user.id), mode); } catch {} }
+  if (mode === 'backup') toast(r.data.remaining > 0 ? `Backup code accepted — ${r.data.remaining} left` : 'Backup code accepted — that was your last one. Create new codes in Sign-in security.');
+  boot();
+};
+$('mfaResend').onclick = () => mfaSend(true);
+$('mfaOut').onclick = () => logout();
+$('mfaAltEmail').onclick = async () => { setMfaMode('email'); await mfaSend(false); $('mfaCode').focus(); };
+$('mfaAltTotp').onclick = () => setMfaMode('totp');
+$('mfaAltBackup').onclick = () => setMfaMode('backup');
+$('mfaCode').oninput = e => {
+  e.target.value = MFA.mode === 'backup'
+    ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 9)
+    : e.target.value.replace(/\D/g, '').slice(0, 6);
+};
+
+/* ---------- profile: Sign-in security card (authenticator app, backup codes) ---------- */
+let SEC = null;
+async function renderSecurity(){
+  const r = await sb.rpc('mfa_status');
+  SEC = (!r.error && r.data && r.data[0]) || null;
+  $('secPanel').classList.toggle('hidden', !SEC || SEC.has_totp === undefined);   // hidden until 011 + 012 are installed
+  if (!SEC || SEC.has_totp === undefined) return;
+  const badge = (on, a, b) => on ? `<span class="fc-badge fc-badge--ok">${a}</span>` : `<span class="fc-badge fc-badge--neutral">${b}</span>`;
+  let html = `<div class="sec-row"><div class="sec-row__t"><b>Email code</b><span>A 6-digit code sent to your company email at sign-in</span></div>
+      ${SEC.needed ? '<span class="fc-badge fc-badge--ok">Required for you</span>' : '<span class="fc-badge fc-badge--neutral">Not required</span>'}</div>
+    <div class="sec-row"><div class="sec-row__t"><b>Authenticator app</b><span>Works without email — a second way to sign in</span></div>
+      <div>${badge(SEC.has_totp, 'Active', 'Not set up')} <button class="fc-btn fc-btn--sm" id="btnTotp">${SEC.has_totp ? 'Remove' : 'Set up'}</button></div></div>`;
+  if (IS_PLATFORM_ADMIN) html += `<div class="sec-row"><div class="sec-row__t"><b>Backup codes</b><span>For when email and the app are both unavailable</span></div>
+      <div>${badge(SEC.backup_remaining > 0, SEC.backup_remaining + ' unused', 'None')} <button class="fc-btn fc-btn--sm" id="btnBackup">${SEC.backup_remaining > 0 ? 'Create new codes' : 'Create codes'}</button></div></div>`;
+  $('secBody').innerHTML = html;
+  $('btnTotp').onclick = SEC.has_totp ? () => openTotp('remove') : () => openTotp('setup');
+  if ($('btnBackup')) $('btnBackup').onclick = makeBackupCodes;
+}
+let TOTP_MODE = 'setup';
+async function openTotp(mode){
+  TOTP_MODE = mode; $('totpErr').textContent = ''; $('totpCode').value = '';
+  const setup = mode === 'setup';
+  $('totpTitle').textContent = setup ? 'Set up authenticator app' : 'Remove authenticator app';
+  $('totpSetupBox').classList.toggle('hidden', !setup);
+  $('totpRemoveNote').classList.toggle('hidden', setup);
+  $('totpOk').textContent = setup ? 'Turn on' : 'Remove';
+  $('totpModal').classList.remove('hidden');
+  if (!setup) { $('totpCode').focus(); return; }
+  $('totpQr').removeAttribute('src'); $('totpSecret').textContent = 'Preparing…'; $('totpOk').disabled = true;
+  const fail = msg => { $('totpSecret').textContent = ''; $('totpQr').classList.add('hidden'); $('totpErr').textContent = msg; };
+  $('totpQr').classList.remove('hidden');
+  const r = await mfaCall('totp_setup', {});
+  if (!r.ok) return fail(r.data.error || 'Could not start the setup.');
+  if (!r.data.uri || !r.data.secret) {
+    // an older mfa-login function answers "skipped" to every action — it has not been updated yet
+    return fail('The server is running an older version of the sign-in function. Ask IT to deploy the latest mfa-login (supabase functions deploy mfa-login), then try again.');
+  }
+  $('totpSecret').textContent = r.data.secret.replace(/(.{4})/g, '$1 ').trim();
+  try {
+    const qr = qrcode(0, 'M'); qr.addData(r.data.uri); qr.make();
+    $('totpQr').src = qr.createDataURL(5, 2);
+  } catch (e) {
+    $('totpQr').classList.add('hidden');
+    $('totpErr').textContent = 'The QR code could not be drawn on this computer. In the app choose “Enter a setup key” and type the key shown above.';
+  }
+  $('totpOk').disabled = false; $('totpCode').focus();
+}
+$('totpForm').onsubmit = async e => {
+  e.preventDefault();
+  const code = $('totpCode').value.replace(/\D/g, '');
+  if (code.length !== 6) { $('totpErr').textContent = 'Enter the 6-digit code shown in the app.'; return; }
+  $('totpOk').disabled = true; $('totpErr').textContent = '';
+  const r = await mfaCall(TOTP_MODE === 'setup' ? 'totp_confirm' : 'totp_remove', { code });
+  $('totpOk').disabled = false;
+  if (!r.ok) { $('totpErr').textContent = r.data.error || 'That code did not work.'; $('totpCode').select(); return; }
+  $('totpModal').classList.add('hidden');
+  toast(TOTP_MODE === 'setup' ? 'Authenticator app is on' : 'Authenticator app removed');
+  if (TOTP_MODE === 'remove') { try { localStorage.removeItem(PREF(ME_EMP ? ME_EMP.auth_user_id : '')); } catch {} }
+  renderSecurity();
+};
+$('totpCancel').onclick = () => $('totpModal').classList.add('hidden');
+$('totpCode').oninput = e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); };
+
+let BACKUP_TXT = '';
+async function makeBackupCodes(){
+  if (SEC && SEC.backup_remaining > 0 && !confirm('Create new backup codes? The old codes will stop working immediately.')) return;
+  const r = await mfaCall('backup_generate', {});
+  if (!r.ok) return toast(r.data.error || 'Could not create backup codes', true);
+  BACKUP_TXT = r.data.codes.join('\n');
+  $('backupList').innerHTML = r.data.codes.map(c => `<code>${esc(c)}</code>`).join('');
+  $('backupModal').classList.remove('hidden');
+  renderSecurity();
+}
+$('backupCopy').onclick = async () => { try { await navigator.clipboard.writeText(BACKUP_TXT); toast('Copied'); } catch { toast('Copy failed — select the codes and copy manually', true); } };
+$('backupPrint').onclick = () => window.print();
+const closeBackup = () => { $('backupModal').classList.add('hidden'); $('backupList').innerHTML = ''; BACKUP_TXT = ''; };
+$('backupDone').onclick = closeBackup;
+$('backupClose').onclick = () => { if (confirm('Close without saving? These codes will not be shown again.')) closeBackup(); };
+
 /* ---------- load data ---------- */
 let BILLS = [];
 let MY_EMP_ID = null;
@@ -713,6 +1029,12 @@ async function boot(){
   if (!session) return show('viewLogin');
   const { data: { user }, error: uErr } = await sb.auth.getUser();   // fresh metadata from the server
   if (uErr || !user) { await sb.auth.signOut().catch(() => {}); return show('viewLogin'); }
+
+  // Email code (2FA): if this account must verify and this session has not, ask for the code first.
+  // (If the server part is not installed yet, mfa_status does not exist and we simply carry on.)
+  const ms = await sb.rpc('mfa_status');
+  const mst = !ms.error && ms.data && ms.data[0];
+  if (mst && mst.needed && !mst.verified) return startMfa(user, mst);
 
   if (user.user_metadata?.must_change_password) {
     show('viewLogin');
@@ -735,6 +1057,7 @@ async function boot(){
   IS_HOMEMAP_VIEWER = !hv.error && hv.data === true;
   show('viewMain');
   renderMyLocation();
+  renderSecurity();
   if (CAN_SEE_FUEL) await reloadBills();
 }
 
@@ -833,6 +1156,20 @@ wireImport();
 wireUsers();
 wireHomemap();
 wirePhoto();
+// collapsible side cards (state is remembered per browser; Sign-in security starts folded)
+function foldCard(el, collapsed, save){
+  el.classList.toggle('collapsed', collapsed);
+  const head = el.querySelector('[data-fold]'); head.setAttribute('aria-expanded', String(!collapsed));
+  if (save) { try { localStorage.setItem('fth_fold_' + head.dataset.fold, collapsed ? '1' : '0'); } catch {} }
+}
+document.querySelectorAll('[data-fold]').forEach(head => {
+  const card = head.closest('.panel--compact'); let saved = null;
+  try { saved = localStorage.getItem('fth_fold_' + head.dataset.fold); } catch {}
+  foldCard(card, saved === null ? head.dataset.fold === 'sec' : saved === '1', false);
+  const toggle = () => foldCard(card, !card.classList.contains('collapsed'), true);
+  head.onclick = toggle;
+  head.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+});
 $('btnPhoto').onclick = () => openPhoto({
   id: ME_EMP.id, name: ME_EMP.fname + ' ' + ME_EMP.lname, path: ME_EMP.photo_path || null, self: true,
   onSaved: p => { ME_EMP.photo_path = p; renderProfile(ME_EMP); },

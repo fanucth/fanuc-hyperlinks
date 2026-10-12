@@ -8,6 +8,9 @@ let USERS = [];                 // employees rows
 let ROLES = new Map();          // email -> Set("platform:admin", "fuel:admin", ...)
 let MY_EMAIL = '';
 let EDITING = null;             // employee row being edited (null = adding)
+let LAST_LIST = [];            // rows currently shown (used by the bulk 2FA buttons)
+let MFA_OV = new Map();          // email -> { has_totp, backup_remaining } (admin_mfa_overview)
+let MFA_SET = null;             // { mode, trust_days } from admin_get_mfa (null = 011_email_2fa.sql not installed)
 let ORG = [];                   // org_units (id = cost center code, name)
 
 const ROLE_LABEL = { 'platform:admin': 'Platform admin', 'fuel:admin': 'Fuel admin', 'homemap:viewer': 'Home map viewer' };
@@ -25,7 +28,7 @@ async function callFn(action, payload){
 }
 
 async function loadUsers(){
-  $('usersBody').innerHTML = '<tr><td colspan="7"><div class="fc-skeleton" style="height:120px"></div></td></tr>';
+  $('usersBody').innerHTML = '<tr><td colspan="8"><div class="fc-skeleton" style="height:120px"></div></td></tr>';
   const { data: { user } } = await sb.auth.getUser();
   MY_EMAIL = (user?.email || '').toLowerCase();
   const [emps, roles, org] = await Promise.all([
@@ -44,7 +47,59 @@ async function loadUsers(){
     if (!ROLES.has(r.email)) ROLES.set(r.email, new Set());
     ROLES.get(r.email).add(`${r.app}:${r.role}`);
   });
+  const mf = await sb.rpc('admin_get_mfa');
+  MFA_SET = (!mf.error && mf.data && mf.data[0]) || null;
+  MFA_OV = new Map();
+  const ov = await sb.rpc('admin_mfa_overview');          // exists after 012_mfa_totp_backup.sql
+  if (!ov.error) (ov.data || []).forEach(o => MFA_OV.set(o.email, o));
+  renderMfaCard();
   renderUsers();
+}
+
+/* ---------- email code (2FA) switches ---------- */
+const mfaOn = u => MFA_SET && (MFA_SET.mode === 'all' || (MFA_SET.mode === 'pilot' && u.mfa_required === true));
+function renderMfaCard(){
+  const card = $('mfaCard');
+  if (!MFA_SET) {
+    $('mfaMode').disabled = $('mfaDays').disabled = $('mfaSave').disabled = true;
+    $('mfaBulk').classList.add('hidden');
+    $('mfaCardNote').textContent = 'Not installed yet: run 011_email_2fa.sql in Supabase and deploy the mfa-login function.';
+    return;
+  }
+  $('mfaMode').disabled = $('mfaDays').disabled = $('mfaSave').disabled = false;
+  $('mfaMode').value = MFA_SET.mode; $('mfaDays').value = String(MFA_SET.trust_days);
+  $('mfaBulk').classList.toggle('hidden', MFA_SET.mode !== 'pilot');
+  $('mfaCardNote').textContent = {
+    off: 'Currently OFF — nobody is asked for a code. Choose “Selected people only” to start with a pilot group.',
+    pilot: 'Only the people marked “Required” in the table (or ticked in Edit) are asked for a code at sign-in.',
+    all: 'Everyone is asked for a code at sign-in.',
+  }[MFA_SET.mode];
+}
+async function saveMfa(){
+  $('mfaSave').disabled = true;
+  const r = await sb.rpc('admin_set_mfa', { p_mode: $('mfaMode').value, p_trust_days: +$('mfaDays').value });
+  $('mfaSave').disabled = false;
+  if (r.error) return toast('Could not save: ' + r.error.message, true);
+  toast('Sign-in security saved');
+  await loadUsers();
+}
+async function bulkMfa(on){
+  const ids = LAST_LIST.filter(x => x.status === 'active').map(x => x.id);
+  if (!ids.length) return toast('No employees in the list', true);
+  if (!confirm(`${on ? 'Require' : 'Stop requiring'} the email code for ${ids.length} employee${ids.length === 1 ? '' : 's'} in the list?`)) return;
+  const { error } = await sb.from('employees').update({ mfa_required: on }).in('id', ids);
+  if (error) return toast('Could not update: ' + error.message, true);
+  toast('Updated ' + ids.length); await loadUsers();
+}
+
+function mfaCell(u){
+  if (!MFA_SET) return '<span class="dash">—</span>';
+  if (MFA_SET.mode === 'all') return '<span class="fc-badge fc-badge--info">Everyone</span>';
+  const sel = u.mfa_required === true;
+  const badge = sel ? `<span class="fc-badge ${MFA_SET.mode === 'pilot' ? 'fc-badge--ok' : 'fc-badge--neutral'}">${MFA_SET.mode === 'pilot' ? 'Required' : 'Selected (off)'}</span>` : '<span class="dash">—</span>';
+  const o = MFA_OV.get(u.email);
+  const extra = o ? ` ${o.has_totp ? '<span class="fc-badge fc-badge--neutral" title="Authenticator app set up">App</span>' : ''}${o.backup_remaining > 0 ? `<span class="fc-badge fc-badge--neutral" title="Unused backup codes">${o.backup_remaining} codes</span>` : ''}` : '';
+  return badge + extra + ` <button class="bar-btn" data-act="mfa" data-id="${u.id}">${sel ? 'Remove' : 'Require'}</button>`;
 }
 
 function renderUsers(){
@@ -55,6 +110,7 @@ function renderUsers(){
     if (!q) return true;
     return [u.fname, u.lname, u.email, u.department, u.title, u.employee_no, u.cost_center_name].join(' ').toLowerCase().includes(q);
   });
+  LAST_LIST = list;
   const active = USERS.filter(u => u.status === 'active').length;
   $('usersSummary').innerHTML =
     `<span class="fc-badge fc-badge--neutral">${USERS.length} employees</span>` +
@@ -63,7 +119,7 @@ function renderUsers(){
     (list.length !== USERS.length ? `<span class="fc-badge fc-badge--info">${list.length} shown</span>` : '');
 
   if (!list.length) {
-    $('usersBody').innerHTML = `<tr><td colspan="7"><div class="fc-empty"><div class="fc-empty__title">No employees match</div>
+    $('usersBody').innerHTML = `<tr><td colspan="8"><div class="fc-empty"><div class="fc-empty__title">No employees match</div>
       <p>Clear the search box or status filter, or add a new employee.</p></div></td></tr>`;
     return;
   }
@@ -78,9 +134,11 @@ function renderUsers(){
       <td>${esc(u.cost_center_name || '—')}${u.cost_center_id ? `<div class="fc-mut" style="font-size:12px">${esc(u.cost_center_id)}</div>` : ''}</td>
       <td>${resigned ? '<span class="fc-badge fc-badge--neutral">Resigned</span>' : '<span class="fc-badge fc-badge--ok">Active</span>'}
         ${u.auth_user_id ? '' : '<span class="fc-badge fc-badge--warn">No login</span>'}</td>
+      <td style="white-space:nowrap">${mfaCell(u)}</td>
       <td><div class="chips" style="margin:0">${roles || '<span class="dash">—</span>'}</div></td>
       <td style="text-align:right;white-space:nowrap">
         <button class="bar-btn" data-act="edit" data-id="${u.id}">Edit</button>
+        <button class="bar-btn" data-act="resetmfa" data-id="${u.id}" ${u.auth_user_id && MFA_SET ? '' : 'disabled'} title="Clear email-code sessions, remembered browsers, authenticator app and backup codes">Reset 2FA</button>
         <button class="bar-btn" data-act="reset" data-id="${u.id}" ${u.auth_user_id ? '' : 'disabled'}>Reset password</button>
         <button class="bar-btn" data-act="toggle" data-id="${u.id}">${resigned ? 'Reactivate' : 'Mark resigned'}</button>
       </td></tr>`;
@@ -110,6 +168,9 @@ function openEdit(u){
   $('ue_r_platform').checked = mine.has('platform:admin');
   $('ue_r_fuel').checked = mine.has('fuel:admin');
   $('ue_r_homemap').checked = mine.has('homemap:viewer');
+  $('ueMfaRow').classList.toggle('hidden', !MFA_SET);
+  $('ue_mfa').checked = !!(u && u.mfa_required === true);
+  $('ueMfaNote').textContent = !MFA_SET ? '' : MFA_SET.mode === 'all' ? '— everyone is required right now' : MFA_SET.mode === 'off' ? '— takes effect when the setting above is not “Nobody”' : '';
   $('ueRoles').classList.toggle('hidden', !u);   // roles can be granted after the account exists
   $('ueHint').textContent = u ? '' : 'A login account is created with a temporary password (first name + last 4 digits of phone, or Employee ID). The employee must choose a new password at first sign-in.';
   $('ueSave').textContent = u ? 'Save changes' : 'Create employee';
@@ -195,6 +256,7 @@ async function saveEdit(e){
       F.filter(k => k !== 'email').forEach(k => { patch[k] = v[k] === '' ? null : v[k]; });
       const cc = resolveCc($('ue_cost_center').value);
       patch.cost_center_id = cc.id; patch.cost_center_name = cc.name;
+      if (MFA_SET) patch.mfa_required = $('ue_mfa').checked;
       const { error } = await sb.from('employees').update(patch).eq('id', EDITING.id);
       if (error) throw error;
       // admin roles (changes only)
@@ -239,6 +301,12 @@ async function onRowAction(ev){
   const b = ev.target.closest('button[data-act]'); if (!b) return;
   const u = USERS.find(x => x.id === b.dataset.id); if (!u) return;
   if (b.dataset.act === 'edit') return openEdit(u);
+  if (b.dataset.act === 'mfa') {
+    b.disabled = true;
+    const { error } = await sb.from('employees').update({ mfa_required: u.mfa_required !== true }).eq('id', u.id);
+    if (error) { b.disabled = false; return toast('Could not update: ' + error.message, true); }
+    return loadUsers();
+  }
 
   b.disabled = true;
   try {
@@ -246,6 +314,11 @@ async function onRowAction(ev){
       if (!confirm(`Reset the password for ${u.fname} ${u.lname}?\nTheir current password stops working immediately.`)) return;
       const out = await callFn('reset_password', { email: u.email });
       showResult('Password reset', u.email, out.tempPassword);
+    } else if (b.dataset.act === 'resetmfa') {
+      if (!confirm(`Reset sign-in verification for ${u.fname} ${u.lname}?\n\nAll their sessions must verify again, remembered browsers are forgotten, and their authenticator app and backup codes are removed so they can set them up again.`)) return;
+      await callFn('reset_mfa', { email: u.email });
+      toast('Verification reset — they will be asked again at the next sign-in');
+      await loadUsers();
     } else if (b.dataset.act === 'toggle') {
       const resign = u.status === 'active';
       if (!confirm(resign
@@ -273,6 +346,9 @@ function wireUsers(){
   $('ueCancel').onclick = () => $('userModal').classList.add('hidden');
   $(fid('lname')).onblur = suggestEmail;
   $('ue_cost_center').oninput = updateCcHint;
+  $('mfaSave').onclick = saveMfa;
+  $('mfaAllShown').onclick = () => bulkMfa(true);
+  $('mfaNoneShown').onclick = () => bulkMfa(false);
   $('ue_department').oninput = renderDeptPicker;
   $('ue_department').onfocus = e => e.target.select();
   $('deptChips').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { $('ue_department').value = b.dataset.d; renderDeptPicker(); } };
