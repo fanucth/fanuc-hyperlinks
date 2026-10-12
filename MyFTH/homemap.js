@@ -152,7 +152,7 @@ function useMyGps(){
   if (!navigator.geolocation) return ($('pinErr').textContent = 'This browser cannot share your current location — click the map instead.');
   // Browsers only allow location on secure (https) pages — the internal http:// address is always refused
   if (!window.isSecureContext) {
-    return ($('pinErr').textContent = 'Current location only works on the secure address https://one.fanucth.co.th/myFTH/ — open that link, or click the map to place the pin.');
+    return ($('pinErr').textContent = 'Current location only works on the secure address https://one.fanucth.co.th/MyFTH/ — open that link, or click the map to place the pin.');
   }
   $('pinErr').textContent = '';
   $('pinGps').disabled = true;
