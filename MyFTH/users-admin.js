@@ -109,13 +109,14 @@ function renderUsers(){
   // separate filters, all applied together (AND); each box matches part of the text, case-insensitive
   const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const q = norm($('uSearch').value), qd = norm($('uDept').value), qc = norm($('uCc').value);
-  const st = $('uStatus').value;
+  const st = $('uStatus').value, qr = $('uRole').value;
   const dl = [...new Set(USERS.map(u => normDept(u.department)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   $('uDeptList').innerHTML = dl.map(d => `<option value="${esc(d)}"></option>`).join('');
   $('uCcList').innerHTML = ORG.map(o => `<option value="${esc(ccLabel(o))}"></option>`).join('');
   const list = USERS.filter(u => {
     if (st && u.status !== st) return false;
     if (q && !norm([u.fname, u.lname, u.fname + ' ' + u.lname, u.email, u.employee_no, u.title].join(' ')).includes(q)) return false;
+    if (qr) { const rs = ROLES.get(u.email) || new Set(); if (qr === 'none' ? rs.size > 0 : qr === 'any' ? rs.size === 0 : !rs.has(qr)) return false; }
     if (qd && !norm(u.department).includes(qd)) return false;
     if (qc && !norm([u.cost_center_id, u.cost_center_name, ccLabel({ id: u.cost_center_id || '', name: u.cost_center_name || '' })].join(' ')).includes(qc)) return false;
     return true;
@@ -379,8 +380,8 @@ function wireUsers(){
   $('btnUsersBack').onclick = () => show('viewMain');
   $('btnAddUser').onclick = () => openEdit(null);
   $('uSearch').oninput = renderUsers; $('uDept').oninput = renderUsers; $('uCc').oninput = renderUsers;
-  $('uClear').onclick = () => { $('uSearch').value = $('uDept').value = $('uCc').value = ''; $('uStatus').value = 'active'; renderUsers(); };
-  $('uStatus').onchange = renderUsers;
+  $('uClear').onclick = () => { $('uSearch').value = $('uDept').value = $('uCc').value = ''; $('uStatus').value = 'active'; $('uRole').value = ''; renderUsers(); };
+  $('uStatus').onchange = renderUsers; $('uRole').onchange = renderUsers;
   $('usersBody').onclick = onRowAction;
   $('userForm').onsubmit = saveEdit;
   $('ueCancel').onclick = () => $('userModal').classList.add('hidden');

@@ -250,6 +250,61 @@
     .form-grid--12 .c4,.form-grid--12 .c5,.form-grid--12 .c12{grid-column:1 / -1;}
   }
 
+  /* gasoline calculation dialog */
+  .calc-tbl{width:100%;border-collapse:collapse;font-size:14px;}
+  .calc-tbl td{padding:5px var(--fc-s2);border-bottom:1px solid var(--fc-border);}
+  .calc-tbl td.k{color:var(--fc-text-mute);font-size:12px;white-space:nowrap;width:1%;}
+  .calc-tbl td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;} .calc-tbl td.u{color:var(--fc-text-mute);font-size:12px;white-space:nowrap;width:1%;}
+  .calc-tbl tr.calc-grp td{background:var(--fc-surface-2, rgba(128,128,128,.12));font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:0;}
+  .calc-tbl tr.calc-strong td{font-weight:700;} .calc-tbl tr.calc-result td{background:rgba(212,160,23,.14);font-weight:700;}
+  .calc-tbl tr.calc-good td.v{color:var(--fc-ok);} .calc-tbl tr.calc-bad td{color:var(--fc-danger, #c0392b);font-weight:700;}
+  .calc-warn{margin-top:var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);border:1px solid var(--fc-warn);border-radius:var(--fc-radius);color:var(--fc-warn);font-size:13px;}
+
+  /* payment advice (screen + print) */
+  .adv-dlg{max-width:min(980px,96vw);width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;padding:var(--fc-s4);}
+  .adv-controls h3{margin:0 0 var(--fc-s2);font-size:16px;}
+  .adv-ctl{display:flex;flex-wrap:wrap;gap:var(--fc-s3);align-items:flex-end;}
+  .adv-ctl .fc-field{margin:0;} .adv-btns{margin-left:auto;display:flex;gap:var(--fc-s2);}
+  .adv-pages{overflow:auto;background:#e4e7ec;padding:var(--fc-s3);margin-top:var(--fc-s3);flex:1;min-height:200px;}
+  .adv-sheet{width:210mm;height:296mm;box-sizing:border-box;padding:10mm 13mm;margin:0 auto var(--fc-s3);background:#fff;color:#000;
+    box-shadow:0 2px 10px rgba(0,0,0,.2);font-family:Tahoma,'Noto Sans Thai',Arial,sans-serif;font-size:9.5pt;line-height:1.35;
+    display:flex;flex-direction:column;break-after:page;page-break-after:always;}
+  .adv-sheet:last-child{break-after:auto;page-break-after:auto;}
+  .adv-copy{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+  .adv-sheet.one .adv-copy{flex:0 0 auto;}
+  .adv-cut{border-top:1px dashed #555;margin:3mm 0;}
+  .adv-head{display:flex;justify-content:space-between;gap:8mm;}
+  .adv-logo{height:12mm;display:block;margin-bottom:1mm;} .adv-th{font-weight:700;font-size:10pt;}
+  .adv-addr{font-size:8pt;color:#333;margin-top:1mm;}
+  .adv-meta{text-align:right;} .adv-title{font-weight:700;font-size:13pt;text-decoration:underline;margin-bottom:2mm;}
+  .adv-mrow{display:flex;justify-content:flex-end;align-items:baseline;gap:2mm;margin-top:1mm;font-size:8.5pt;}
+  .adv-ce{outline:none;} .adv-ce:focus{background:#fff6c8;}
+  .adv-box{display:inline-block;min-width:38mm;border-bottom:1px solid #000;text-align:center;font-weight:700;padding:0 2mm;}
+  .adv-to{margin:3mm 0 1.5mm;} .adv-line-in{display:inline-block;min-width:80mm;border-bottom:1px solid #000;padding:0 3mm;font-weight:700;}
+  .adv-tbl{width:100%;border-collapse:collapse;margin-top:2mm;}
+  .adv-tbl th{border-top:1.5px solid #000;border-bottom:1.5px solid #000;font-weight:400;padding:1.2mm 1mm;font-size:8.5pt;text-align:center;}
+  .adv-tbl th.l{text-align:left;} .adv-tbl th.r,.adv-tbl td.r{text-align:right;}
+  .adv-tbl td{padding:1.1mm 1mm;font-size:9pt;} .adv-tbl td.n{text-align:right;} .adv-tbl td.c{text-align:center;}
+  .adv-period{font-weight:700;border-bottom:1px dotted #aaa;padding-top:2mm !important;}
+  .adv-line td{border-bottom:1px dotted #ccc;} .adv-last td{border-bottom:1.5px solid #000;}
+  .adv-dash{display:inline-block;min-width:22mm;text-align:center;font-weight:700;border-bottom:1px dashed #777;}
+  .adv-tp{padding-top:2mm !important;} .adv-mut{color:#444;} .adv-ul{border-bottom:1px solid #000;} .adv-dbl{border-bottom:3px double #000;font-size:10pt !important;}
+  .adv-baht{display:flex;align-items:center;gap:6mm;margin-top:3.5mm;} .adv-baht-l{font-size:8.5pt;min-width:34mm;}
+  .adv-bahtbox{display:inline-block;flex:1;border:1px dotted #000;padding:2mm 3mm;font-weight:700;font-size:9.5pt;}
+  .adv-sign{display:flex;justify-content:space-between;gap:4mm;margin-top:auto;padding-top:5mm;font-size:8.5pt;}
+  .adv-sig{display:inline-block;min-width:34mm;border-bottom:1px solid #000;text-align:center;font-weight:700;}
+  @media print{
+    @page{size:A4 portrait;margin:0;}
+    body.adv-print > *:not(#advModal){display:none !important;}
+    body.adv-print{background:#fff !important;}
+    body.adv-print #advModal{position:static !important;display:block !important;background:none !important;padding:0 !important;}
+    body.adv-print .adv-dlg{max-width:none;max-height:none;width:auto;overflow:visible;box-shadow:none;border:0;padding:0;background:none;display:block;}
+    body.adv-print .adv-controls{display:none !important;}
+    body.adv-print .adv-pages{overflow:visible;background:none;padding:0;margin:0;}
+    body.adv-print .adv-sheet{margin:0;box-shadow:none;}
+    body.adv-print .adv-ce:focus{background:none;}
+  }
+
   /* manage users */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--fc-s3);}
   .form-grid .fc-field{margin-bottom:var(--fc-s3);}
@@ -319,6 +374,7 @@
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18M5 16v2.5M19 16v2.5M7 12h10"/><circle cx="8" cy="14" r=".8"/><circle cx="16" cy="14" r=".8"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7v-7Z"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
@@ -336,6 +392,7 @@
     <span class="admin-tag hidden" id="adminTag"></span>
     <button class="bar-btn bar-btn--accent hidden" id="btnMap"><svg class="ico"><use href="#i-map"/></svg><span class="lbl">Home map</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnUsers"><svg class="ico"><use href="#i-users"/></svg><span class="lbl">Manage users</span></button>
+    <button class="bar-btn bar-btn--accent hidden" id="btnAdvice"><svg class="ico"><use href="#i-print"/></svg><span class="lbl">Payment advice</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnImport"><svg class="ico"><use href="#i-upload"/></svg><span class="lbl">Import bills</span></button>
     <button class="bar-btn hidden" id="btnChgPw"><svg class="ico"><use href="#i-key"/></svg><span class="lbl">Change password</span></button>
     <button class="bar-btn" id="btnTheme" aria-label="Toggle light / dark mode"><svg class="ico" id="themeIco"><use href="#i-moon"/></svg></button>
@@ -474,8 +531,8 @@
               <thead><tr>
                 <th>Billing month</th><th>Bill date</th><th class="num">Total</th><th>Status</th>
                 <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th>
-                <th class="num">Parking</th><th class="num">Adjustment</th>
-                <th>Car plate</th><th>Cost center</th><th>Type</th><th>Remark</th>
+                <th class="num">Parking</th><th class="num">Other</th><th class="num">Adjustment</th>
+                <th>Car plate</th><th>Cost center</th><th>Type</th><th>Remark</th><th></th>
               </tr></thead>
               <tbody id="fuelBody"></tbody>
             </table>
@@ -549,6 +606,8 @@
           <label class="fc-field" style="flex:2;min-width:170px"><span class="fc-field__label">Cost center</span>
             <input type="search" id="uCc" class="fc-input" list="uCcList" placeholder="Code or name" autocomplete="off">
             <datalist id="uCcList"></datalist></label>
+          <label class="fc-field"><span class="fc-field__label">Admin role</span>
+            <select id="uRole" class="fc-input"><option value="">Any</option><option value="any">Has any admin role</option><option value="platform:admin">Platform admin</option><option value="fuel:admin">Fuel admin</option><option value="homemap:viewer">Home map viewer</option><option value="none">No admin role</option></select></label>
           <label class="fc-field"><span class="fc-field__label">Status</span>
             <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
           <button class="fc-btn" id="uClear" type="button" style="margin-bottom:var(--fc-s3)" title="Clear all filters">Clear</button>
@@ -559,6 +618,34 @@
           <table class="tbl">
             <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th title="Email code at sign-in (2FA)">Email code (2FA)</th><th>Admin roles</th><th></th></tr></thead>
             <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Payment advice (fuel admin only): pick a billing month, print the documents -->
+  <section id="viewAdvice" class="hidden">
+    <div class="panel">
+      <div class="panel__head">
+        <h3 class="panel__title">Payment advice</h3>
+        <button class="back-btn push" id="btnAdvBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+      </div>
+      <div class="panel__body">
+        <p class="fc-note" style="margin-top:0">Choose a billing month, tick the people and print. Each document is one A4 sheet (two copies, top and bottom). The number is <b>PC-year/ G&lt;month&gt;-&lt;No.&gt;</b>.</p>
+        <div class="filters" style="margin-bottom:var(--fc-s3)">
+          <label class="fc-field"><span class="fc-field__label">Billing month</span><select id="advMonth" class="fc-input"></select></label>
+          <label class="fc-field" style="flex:1;min-width:200px"><span class="fc-field__label">Search</span>
+            <input type="search" id="advSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
+          <button class="fc-btn" id="advPrintSel" type="button" disabled style="margin-bottom:var(--fc-s3)"><span>Print selected</span></button>
+          <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button" style="margin-bottom:var(--fc-s3)">Print whole month</button>
+        </div>
+        <p class="summary" id="advStatus"></p>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th><input type="checkbox" id="advTickAll" aria-label="Select all"></th><th>No.</th><th>Employee</th><th>Department</th><th>Car plate</th>
+              <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th><th class="num">Parking</th><th class="num">Other</th><th class="num">Adjustment</th><th class="num">Total</th><th>Calculation</th><th>Status</th></tr></thead>
+            <tbody id="advBody"></tbody>
           </table>
         </div>
       </div>
@@ -594,8 +681,8 @@
           <div class="tbl-wrap">
             <table class="tbl">
               <thead><tr><th>Month</th><th>Name in file</th><th>Employee</th><th>Cost center</th><th>Type</th><th>Car plate</th>
-                <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th><th class="num">Parking</th>
-                <th class="num">Adjustment</th><th class="num">Total</th><th>Status</th></tr></thead>
+                <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th><th class="num">Parking</th><th class="num">Other</th>
+                <th class="num">Adjustment</th><th class="num">Total</th><th>Calculation</th><th>Status</th></tr></thead>
               <tbody id="impBody"></tbody>
             </table>
           </div>
@@ -632,6 +719,34 @@
     <p class="fc-note" style="margin-top:0">Latest 200 times someone opened the overview or a person's details.</p>
     <div class="tbl-wrap" style="max-height:50vh"><table class="tbl"><thead><tr><th>When</th><th>Viewer</th><th>Action</th><th>Person</th></tr></thead><tbody id="logBody"></tbody></table></div>
     <div style="display:flex;justify-content:flex-end;margin-top:var(--fc-s4)"><button class="fc-btn" id="logClose" type="button">Close</button></div>
+  </div>
+</div>
+
+<!-- Gasoline calculation details -->
+<div class="fc-modal hidden" id="calcModal" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+  <div class="fc-modal__box compact" style="max-width:560px;max-height:94vh;overflow:auto">
+    <h3 id="calcTitle">Gasoline calculation</h3>
+    <div id="calcBody"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:var(--fc-s3)"><button type="button" class="fc-btn fc-btn--primary" id="calcClose">Close</button></div>
+  </div>
+</div>
+
+<!-- Payment advice: preview and print -->
+<div class="fc-modal hidden" id="advModal" role="dialog" aria-modal="true" aria-labelledby="advTitle">
+  <div class="fc-modal__box adv-dlg">
+    <div class="adv-controls">
+      <h3 id="advTitle">Payment advice</h3>
+      <div class="adv-ctl">
+        <label class="fc-field"><span class="fc-field__label">Document date</span><input type="date" id="advDate" class="fc-input"></label>
+        <label class="fc-field"><span class="fc-field__label">Prepare by</span><input id="advPrep" class="fc-input" autocomplete="off"></label>
+        <label class="fc-field"><span class="fc-field__label">Copies on a sheet</span>
+          <select id="advCopies" class="fc-input"><option value="2">2 (top and bottom)</option><option value="1">1</option></select></label>
+        <span class="fc-note" id="advInfo"></span>
+        <span class="adv-btns"><button type="button" class="fc-btn" id="advClose">Close</button><button type="button" class="fc-btn fc-btn--primary" id="advPrint">Print</button></span>
+      </div>
+      <p class="fc-note" style="margin:var(--fc-s1) 0 0">Click any text on the document to edit it before printing. In the print dialog choose A4 and margins “None”. Changing the date, Prepare by or copies redraws the page.</p>
+    </div>
+    <div id="advPages" class="adv-pages"></div>
   </div>
 </div>
 
@@ -814,12 +929,14 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="fuel-import.js?v=202610141146"></script>
+<script src="fuel-import.js?v=202610151710"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610141510"></script>
+<script src="users-admin.js?v=202610141730"></script>
 <script src="homemap.js?v=202610141146"></script>
+<script src="fuel-calc.js?v=202610151400"></script>
+<script src="advice.js?v=202610151400"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -847,15 +964,16 @@ function toast(msg, err){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3600);
 }
 function show(id){
-  ['viewLoading','viewLogin','viewMfa','viewNoEmp','viewMain','viewImport','viewUsers','viewMap'].forEach(v => $(v).classList.toggle('hidden', v !== id));
-  const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap'].includes(id);
+  ['viewLoading','viewLogin','viewMfa','viewNoEmp','viewMain','viewImport','viewUsers','viewMap','viewAdvice'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap','viewAdvice'].includes(id);
   $('btnImport').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
+  $('btnAdvice').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
   $('btnUsers').classList.toggle('hidden', !(IS_PLATFORM_ADMIN && id === 'viewMain'));
   $('btnMap').classList.toggle('hidden', !(IS_HOMEMAP_VIEWER && id === 'viewMain'));
   $('btnMapLog').classList.toggle('hidden', !IS_PLATFORM_ADMIN);
   $('adminTag').textContent = IS_PLATFORM_ADMIN ? 'Platform admin' : 'Fuel admin';
   $('adminTag').classList.toggle('hidden', !((IS_PLATFORM_ADMIN || IS_FUEL_ADMIN) && inApp));
-  $('btnChgPw').classList.toggle('hidden', !['viewMain','viewImport','viewUsers','viewMap'].includes(id));
+  $('btnChgPw').classList.toggle('hidden', !['viewMain','viewImport','viewUsers','viewMap','viewAdvice'].includes(id));
   $('btnLogout').classList.toggle('hidden', !inApp);
   $('barSep').classList.toggle('hidden', !inApp);
 }
@@ -1208,6 +1326,7 @@ async function reloadBills(){
   const r = await sb.from('fuel_bills').select('*').eq('employee_id', MY_EMP_ID).order('bill_date', { ascending: false });
   if (r.error) { toast('Could not load fuel bills: ' + r.error.message, true); BILLS = []; }
   else BILLS = r.data || [];
+  await loadCalcs(BILLS.map(b => b.id));      // calculation details (017_fuel_calc.sql) — silent if not installed
   setupFilters();
   renderFuel();
 }
@@ -1272,7 +1391,7 @@ function renderFuel(){
     <div class="kpi__value">${v}<span class="kpi__unit">THB</span></div><div class="kpi__sub">${s}</div></div>`).join('');
 
   if (!list.length) {
-    $('fuelBody').innerHTML = `<tr><td colspan="13" style="display:table-cell"><div class="fc-empty">
+    $('fuelBody').innerHTML = `<tr><td colspan="15" style="display:table-cell"><div class="fc-empty">
       <div class="fc-empty__title">${BILLS.length ? 'No bills in this period' : 'No fuel bills yet'}</div>
       <p>${BILLS.length ? 'Try a different year or month, or choose “All years” and “All months”.'
                         : 'Bills appear here after the monthly import. If one is missing after month-end, please contact the team that processes fuel claims.'}</p></div></td></tr>`;
@@ -1287,14 +1406,18 @@ function renderFuel(){
         : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td>
     <td class="num" data-l="Gasoline">${num(b.gasoline)}</td><td class="num" data-l="Tollgate">${num(b.tollgate)}</td>
     <td class="num" data-l="Car wash">${num(b.car_wash)}</td><td class="num" data-l="Parking">${num(b.parking_fee)}</td>
+    <td class="num" data-l="Other" title="${esc(fuelExtraTip(b))}">${num(fuelExtraSum(b))}</td>
     <td class="num" data-l="Adjustment">${num(b.adjustment)}</td>
     <td data-l="Car plate">${esc(b.car_no || '—')}</td><td data-l="Cost center">${esc(b.cost_center || '—')}</td>
     <td data-l="Type">${esc(b.bill_type || '—')}</td>
-    <td class="remark hide-empty" data-l="Remark">${esc(b.remark || '')}</td></tr>`).join('');
+    <td class="remark hide-empty" data-l="Remark">${esc(b.remark || '')}</td>
+    <td data-l="Document">${CALCS.has(b.id) ? `<button type="button" class="bar-btn" data-calc="${b.id}" title="How the gasoline amount was calculated"><svg class="ico"><use href="#i-receipt"/></svg><span class="lbl">Details</span></button>` : ''}<button type="button" class="bar-btn" data-adv="${b.id}" title="Print payment advice"><svg class="ico"><use href="#i-print"/></svg><span class="lbl">Print</span></button></td></tr>`).join('');
 }
 
 try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch { setTheme('light'); }
 wireImport();
+wireAdvice();
+wireCalc();
 wireUsers();
 wireHomemap();
 wirePhoto();
