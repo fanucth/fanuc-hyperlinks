@@ -532,7 +532,7 @@
           </div>
           <label class="fc-field"><span class="fc-field__label">Who must use it</span>
             <select id="mfaMode" class="fc-input"><option value="off">Nobody (off)</option><option value="pilot">Selected people only</option><option value="all">Everyone</option></select></label>
-          <label class="fc-field"><span class="fc-field__label">Remember browser</span>
+          <label class="fc-field"><span class="fc-field__label" title="After a correct 2FA code, this browser is not asked for a code again for this many days">Remember browser (2FA)</span>
             <select id="mfaDays" class="fc-input"><option value="0">Never ask to remember</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label>
           <button class="fc-btn fc-btn--primary" id="mfaSave" type="button">Save</button>
           <div id="mfaBulk" style="display:flex;gap:var(--fc-s2);flex-wrap:wrap;flex-basis:100%">
@@ -557,7 +557,7 @@
         <p class="summary" id="usersSummary"></p>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th>Email code</th><th>Admin roles</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th>Department</th><th>Joined</th><th>Cost center</th><th>Status</th><th title="Email code at sign-in (2FA)">Email code (2FA)</th><th>Admin roles</th><th></th></tr></thead>
             <tbody id="usersBody"></tbody>
           </table>
         </div>
