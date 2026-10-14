@@ -123,6 +123,8 @@ function parseSummarized(wb, fallbackMonth){
   return out;
 }
 
+const carOf = r => r.car_no || ((EMP.find(e => e.id === r.empId) || {}).car_no) || null;   // plate from Excel, else the one saved on the employee
+
 function rowStatus(r){
   if (!r.empId) return 'pick';
   if (IMP_EXISTING.has(r.empId + '|' + r.billing_month)) return 'dup';
@@ -149,7 +151,7 @@ function renderImport(){
       : `<span class="fc-badge fc-badge--warn">${r.cand.length > 1 ? 'Duplicate name — pick one' : 'Not found — pick one'}</span>`;
     const n = v => v ? money(v) : '<span class="dash">—</span>';
     return `<tr><td>${esc(r.billing_month)}</td><td>${esc(r.nameRaw)}</td><td>${who}</td>
-      <td>${esc(r.cc || '-')}</td><td>${esc(r.type || '-')}</td><td>${esc(r.car_no || '-')}</td>
+      <td>${esc(r.cc || '-')}</td><td>${esc(r.type || '-')}</td><td>${esc(carOf(r) || '-')}</td>
       <td class="num">${n(r.g)}</td><td class="num">${n(r.t)}</td>
       <td class="num">${n(r.w)}</td><td class="num">${n(r.p)}</td><td class="num">${n(r.adj)}</td>
       <td class="num total">${money(r.computed)}</td>
@@ -204,7 +206,7 @@ async function doImport(){
   const batch = crypto.randomUUID();
   const recs = todo.map(r => ({
     employee_id: r.empId, bill_date: r.bill_date, billing_month: r.billing_month, cost_center: r.cc, bill_type: r.type,
-    car_no: r.car_no, gasoline: r.g, tollgate: r.t, car_wash: r.w, parking_fee: r.p, adjustment: r.adj,
+    car_no: carOf(r), gasoline: r.g, tollgate: r.t, car_wash: r.w, parking_fee: r.p, adjustment: r.adj,
     remark: r.remark, created_by: user?.email || null, import_batch: batch,
   }));
   $('btnDoImport').disabled = true;

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css?v=202610141031">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610141141">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
@@ -289,6 +289,7 @@
   <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6ZM9 4v14M15 6v14"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18M5 16v2.5M19 16v2.5M7 12h10"/><circle cx="8" cy="14" r=".8"/><circle cx="16" cy="14" r=".8"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
@@ -624,6 +625,7 @@
         <datalist id="ccList"></datalist>
         <span class="fc-mut" id="ccHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
       <label class="fc-field"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
+      <label class="fc-field"><span class="fc-field__label">Car plate</span><input class="fc-input" id="ue_car_no" autocomplete="off" placeholder="e.g. 3ขบ-6697"></label>
     </div>
     <label class="check" id="ueMfaRow" style="margin:var(--fc-s2) 0"><input type="checkbox" id="ue_mfa"> <span><b>Require email code at sign-in</b> <span class="fc-mut" id="ueMfaNote"></span></span></label>
     <fieldset id="ueRoles" class="roles hidden">
@@ -751,13 +753,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="fuel-import.js?v=202610141031"></script>
+<script src="fuel-import.js?v=202610141141"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610141031"></script>
-<script src="homemap.js?v=202610141031"></script>
-<script src="photo.js?v=202610141031"></script>
+<script src="users-admin.js?v=202610141141"></script>
+<script src="homemap.js?v=202610141141"></script>
+<script src="photo.js?v=202610141141"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -1174,7 +1176,7 @@ function renderProfile(e){
     ['id', 'Employee ID', e.employee_no], ['cal', 'Joined', e.hire_date ? dmy(e.hire_date) : null],
     ['building', 'Department', e.department, true],
     ['coin', 'Cost center', e.cost_center_name ? e.cost_center_name + (e.cost_center_id ? ' (' + e.cost_center_id + ')' : '') : null, true],
-    ['mail', 'Email', e.email, true], ['phone', 'Phone', e.tel], ['hash', 'Extension', e.ext],
+    ['mail', 'Email', e.email, true], ['phone', 'Phone', e.tel], ['hash', 'Extension', e.ext], ['car', 'Car plate', e.car_no],
   ];
   $('pKv').innerHTML = rows.map(([i, k, v, wide]) => `<div class="kv__row${wide ? ' span2' : ''}">
     <span class="kv__label">${ic(i)}${esc(k)}</span><span class="kv__val">${v ? esc(v) : '<span class="dash">—</span>'}</span></div>`).join('');

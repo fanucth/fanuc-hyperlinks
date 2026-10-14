@@ -41,6 +41,7 @@ async function loadUsers(){
   else ORG = (org.data || []).filter(o => o.id !== 'FTH' && o.id !== 'FTH1');   // company-level units are not cost centers for people
   if (emps.error) { toast('Could not load employees: ' + emps.error.message, true); USERS = []; }
   else USERS = emps.data || [];
+  CAR_COL = USERS.length ? ("car_no" in USERS[0]) : CAR_COL;   // false until 014_car_no.sql has been run
   ROLES = new Map();
   if (roles.error) toast('Could not load roles (did you run 005_user_management.sql?): ' + roles.error.message, true);
   else (roles.data || []).forEach(r => {
@@ -148,13 +149,15 @@ function renderUsers(){
 }
 
 /* ---------- add / edit dialog ---------- */
-const F = ['fname', 'lname', 'email', 'employee_no', 'department', 'title', 'tel', 'ext', 'hire_date'];
+let CAR_COL = true;                // does employees.car_no exist yet?
+const F = ['fname', 'lname', 'email', 'employee_no', 'department', 'title', 'tel', 'ext', 'car_no', 'hire_date'];
 const fid = k => 'ue_' + k;
 
 function openEdit(u){
   EDITING = u || null;
   $('ueTitle').textContent = u ? 'Edit employee' : 'Add employee';
   F.forEach(k => { $(fid(k)).value = u ? (u[k] ?? '') : ''; });
+  $('ue_car_no').closest('label').classList.toggle('hidden', !CAR_COL);
   $(fid('email')).readOnly = !!u;
   // cost center: type freely; matching entries from the Organizational Unit sheet (org_units) are suggested to pick
   $('ccList').innerHTML = ORG.map(o => `<option value="${esc(ccLabel(o))}"></option>`).join('');
@@ -256,6 +259,7 @@ async function saveEdit(e){
     if (EDITING) {
       const patch = {};
       F.filter(k => k !== 'email').forEach(k => { patch[k] = v[k] === '' ? null : v[k]; });
+      if (!CAR_COL) delete patch.car_no;
       const cc = resolveCc($('ue_cost_center').value);
       patch.cost_center_id = cc.id; patch.cost_center_name = cc.name;
       if (MFA_SET) patch.mfa_required = $('ue_mfa').checked;
