@@ -237,8 +237,84 @@ async function undoImport(){
   IMP_LAST_BATCH = null; $('impResult').classList.add('hidden');
 }
 
+
+/* ---------- downloadable Excel template (same layout the importer reads) ---------- */
+function downloadTemplate(){
+  if (typeof XLSX === 'undefined') return toast('The Excel library is not loaded yet — try again in a moment', true);
+  const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const today = new Date(), py = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear(), pm = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+  const last = new Date(py, pm + 1, 0).getDate();
+  const adjPm = pm === 0 ? 11 : pm - 1, adjPy = pm === 0 ? py - 1 : py, adjLast = new Date(adjPy, adjPm + 1, 0).getDate();
+  const title = (d1, d2, m, y) => `Summarized  of gasoline, tollgate and other expenses claim during ${d1}-${d2} ${MONTHS_EN[m]} ${y}`;
+
+  const num = v => ({ t: 'n', v });
+  const fml = (f, v) => ({ t: 'n', f, v });
+  const HEAD = ['', '', 'No.', 'Name of staff', 'Cost Center', 'Type', 'Gasoline', 'Tollgate', 'Car wash', 'Parking Fee', 'Subtotal (auto)', 'adjustment', 'Total', '', 'Remark'];
+  const block = (ttl, rows, startRow) => {              // startRow = 1-based Excel row of the title
+    const out = [[ '', '', ttl ], [], HEAD];
+    let r = startRow + 3, first = r;
+    rows.forEach((x, i) => {
+      const sub = x.g + x.t + x.w + x.p;
+      out.push(['', '', i + 1, x.name, x.cc, x.type, num(x.g), num(x.t), x.w ? num(x.w) : '', x.p ? num(x.p) : '',
+                fml(`SUM(G${r}:J${r})`, sub), x.adj ? num(x.adj) : '', fml(`K${r}+L${r}`, sub + x.adj), '', x.remark || '']);
+      r++;
+    });
+    const tg = rows.reduce((s, x) => s + x.g, 0), tt = rows.reduce((s, x) => s + x.t, 0), tw = rows.reduce((s, x) => s + x.w, 0),
+          tp = rows.reduce((s, x) => s + x.p, 0), ta = rows.reduce((s, x) => s + x.adj, 0);
+    out.push(['', '', '', 'Total', '', '', fml(`SUM(G${first}:G${r - 1})`, tg), fml(`SUM(H${first}:H${r - 1})`, tt), fml(`SUM(I${first}:I${r - 1})`, tw), fml(`SUM(J${first}:J${r - 1})`, tp),
+              fml(`SUM(K${first}:K${r - 1})`, tg + tt + tw + tp), fml(`SUM(L${first}:L${r - 1})`, ta), fml(`SUM(M${first}:M${r - 1})`, tg + tt + tw + tp + ta)]);
+    return out;
+  };
+
+  const b1 = block(title(1, last, pm, py), [
+    { name: 'Mr. Example1',    cc: 'FTH1SE2',  type: 'V', g: 4500.5, t: 1200, w: 0,   p: 0,  adj: 0,    remark: 'EXAMPLE — delete these rows and type your own' },
+    { name: 'Mr. Example2 C.', cc: 'FTH1SA2',  type: 'S', g: 3200,   t: 800,  w: 140, p: 60, adj: 0,    remark: 'Same first name as someone else? add the first letter of the last name' },
+    { name: 'Mr. Example3',    cc: 'FTH1SE31', type: 'V', g: 2800,   t: 0,    w: 0,   p: 0,  adj: -100, remark: 'adjustment can be negative' },
+  ], 1);
+  const gap = [[], []];
+  const b2start = b1.length + gap.length + 1;
+  const b2 = block(title(1, adjLast, adjPm, adjPy), [
+    { name: 'Mr. Example1', cc: 'FTH1SE2', type: 'V', g: 300, t: 0, w: 0, p: 0, adj: 0, remark: 'OPTIONAL second block: a correction for an earlier month (delete the whole block if not needed)' },
+  ], b2start);
+  const ws1 = XLSX.utils.aoa_to_sheet([...b1, ...gap, ...b2]);
+  ws1['!cols'] = [{ wch: 2 }, { wch: 2 }, { wch: 6 }, { wch: 24 }, { wch: 14 }, { wch: 7 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 13 }, { wch: 3 }, { wch: 60 }];
+
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    ['', 'Car plate list (optional) — used to fill the Car plate column'],
+    [],
+    ['', 'No.', 'No. car', 'Name of staff'],
+    ['', 1, '1กข-1234', 'Mr. Example1'],
+    ['', 2, '2ขค-5678', 'Mr. Example2 C.'],
+    ['', 3, '', 'Mr. Example3'],
+  ]);
+  ws2['!cols'] = [{ wch: 2 }, { wch: 6 }, { wch: 14 }, { wch: 24 }];
+
+  const ws0 = XLSX.utils.aoa_to_sheet([
+    ['MyFTH — fuel bills import template'],
+    [],
+    ['How to use'],
+    ['1.', 'Open the sheet "Summarized". Change the month in the title line (e.g. "during 1-31 March 2026") — it decides the billing month of every row below it.'],
+    ['2.', 'One row per employee. Name of staff = "Mr./Ms. Firstname" as in the employee list. If two people share a first name add the first letter of the last name (e.g. "Mr. Chatchai C.").'],
+    ['3.', 'Cost Center = the code from the cost center list (e.g. FTH1SA2). Type = S or V. Amounts are in THB; leave empty or 0 when there is none. Adjustment may be negative.'],
+    ['4.', 'Subtotal and Total are formulas — you can overwrite them, the system recalculates from Gasoline + Tollgate + Car wash + Parking Fee + adjustment.'],
+    ['5.', 'Keep the sheet names ("Summarized", and optionally "Calculation" for car plates) and keep the header row and the "Total" row of each block.'],
+    ['6.', 'A second block (own title line, header row, rows and a Total row) can hold corrections for an earlier month. Delete it if you do not need it.'],
+    ['7.', 'Delete the three EXAMPLE rows (names Example1-3) before importing. Then in MyFTH: Import bills -> choose this file -> review -> Import.'],
+    [],
+    ['Tip', 'Rows already imported for the same employee and month are skipped, so importing the same file twice is safe. "Undo this import" removes a batch that was just imported (only bills still Pending).'],
+  ]);
+  ws0['!cols'] = [{ wch: 6 }, { wch: 140 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws0, 'How to use');
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summarized');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Calculation');
+  XLSX.writeFile(wb, 'MyFTH_fuel_bills_template.xlsx');
+}
+
 function wireImport(){
   $('btnImport').onclick = () => show('viewImport');
+  $('btnTemplate').onclick = downloadTemplate;
   $('btnImpBack').onclick = async () => { show('viewMain'); await reloadBills(); };
   $('impFile').onchange = e => onPickFile(e.target.files[0]);
   $('impMonth').onchange = () => { if ($('impFile').files[0]) onPickFile($('impFile').files[0]); };
