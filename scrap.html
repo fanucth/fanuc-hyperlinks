@@ -4,11 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.23</title>
-<!-- VERSION: v3.23 | Updated: 2026-10-14
+<title>Scrap Photo Capture - v3.24</title>
+<!-- VERSION: v3.24 | Updated: 2026-10-14
+     Changes (v3.24):
+       - คอลัมน์ Item Code ในตารางข้อ 3 ไม่ตัดบรรทัด คอลัมน์อื่นหดเข้ามาแทน
      Changes (v3.23):
        - เพิ่มคอลัมน์ 'PDF' ในตารางข้อ 3: ปุ่ม 📄 PDF ต่อรายการ export PDF เฉพาะ 1 item (ก่อน+หลังทั้งหมด ไม่ต้องเลือกช่วงวันที่)
        - แยกฟังก์ชัน generatePdfReport ใช้ร่วมกับปุ่ม Export PDF รวม (ไม่ต้องรัน SQL)
+       - คอลัมน์ Item Code ในตารางข้อ 3 ไม่ตัดบรรทัด (กว้างพอดีรหัส) คอลัมน์อื่นหดเข้ามาแทน
      Changes (v3.22):
        - เพิ่มปุ่ม 'แก้ QTY' ในตารางรายการที่บันทึกแล้ว สำหรับแก้ QTY ที่จะทำลายกรณีใส่ผิด
      Changes (v3.21):
@@ -161,6 +164,10 @@
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
   th{color:var(--sub);font-weight:600;font-size:11px;}
+  /* คอลัมน์ Item Code ไม่ตัดบรรทัด (รหัสยาวไม่ถูกหักที่ขีด/#) — คอลัมน์อื่นหดเข้ามาแทน */
+  #tableWrap th:first-child, #tableWrap td:first-child{white-space:nowrap;}
+  #tableWrap td{overflow-wrap:anywhere;}
+  #tableWrap td:first-child{overflow-wrap:normal;}
   .empty{color:var(--sub);font-size:13px;text-align:center;padding:16px 0;}
   .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ok);color:#062f18;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;max-width:90%;text-align:center;}
   .toast.show{opacity:1;}
@@ -408,7 +415,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.23';
+const APP_VERSION = 'v3.24';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
