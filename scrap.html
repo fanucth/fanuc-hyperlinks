@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.22</title>
-<!-- VERSION: v3.22 | Updated: 2026-10-08
+<title>Scrap Photo Capture - v3.23</title>
+<!-- VERSION: v3.23 | Updated: 2026-10-14
+     Changes (v3.23):
+       - เพิ่มคอลัมน์ 'PDF' ในตารางข้อ 3: ปุ่ม 📄 PDF ต่อรายการ export PDF เฉพาะ 1 item (ก่อน+หลังทั้งหมด ไม่ต้องเลือกช่วงวันที่)
+       - แยกฟังก์ชัน generatePdfReport ใช้ร่วมกับปุ่ม Export PDF รวม (ไม่ต้องรัน SQL)
      Changes (v3.22):
        - เพิ่มปุ่ม 'แก้ QTY' ในตารางรายการที่บันทึกแล้ว สำหรับแก้ QTY ที่จะทำลายกรณีใส่ผิด
      Changes (v3.21):
@@ -405,7 +408,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.22';
+const APP_VERSION = 'v3.23';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -456,6 +459,8 @@ const TRANSLATIONS = {
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
   editQtyBtn:        { th:'🔢 แก้ QTY', en:'🔢 Fix QTY', ja:'🔢 数量修正' },
+  colPdf:            { th:'PDF', en:'PDF', ja:'PDF' },
+  pdfRowBtn:         { th:'📄 PDF', en:'📄 PDF', ja:'📄 PDF' },
   editQtyPrompt:     { th:'แก้ QTY ที่จะทำลาย ({code})\nค่าเดิม: {qty}\nใส่จำนวนที่ถูกต้อง:', en:'Fix disposal qty ({code})\nCurrent: {qty}\nEnter the correct quantity:', ja:'廃棄数量を修正 ({code})\n現在: {qty}\n正しい数量を入力:' },
   qtyUpdated:        { th:'แก้ QTY ของ {code} จาก {old} เป็น {new} แล้ว', en:'Changed qty of {code} from {old} to {new}', ja:'{code} の数量を {old} から {new} に変更しました' },
   qtyUpdateFail:     { th:'แก้ QTY ไม่สำเร็จ: {err}', en:'Could not change qty: {err}', ja:'数量を変更できません: {err}' },
@@ -1229,15 +1234,18 @@ function renderTable(){
   document.getElementById('countTotal').textContent = records.length;
   const wrap = document.getElementById('tableWrap');
   if(records.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th></tr>`;
-  records.forEach(r => {
+  let html = `<table><tr><th>${t('colCode')}</th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colTime')}</th><th>${t('colPdf')}</th></tr>`;
+  records.forEach((r, i) => {
     const nBefore = (r.before || []).length;
     const nAfter = (r.after || []).length;
     const done = nBefore > 0 && nAfter > 0;
-    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td style="text-align:center; font-weight:600;">${r.disposalQty ?? '-'}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td></tr>`;
+    html += `<tr><td>${r.code}</td><td>${nBefore}</td><td>${nAfter}</td><td style="text-align:center; font-weight:600;">${r.disposalQty ?? '-'}</td><td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td><td>${r.savedAt}</td><td><button class="btn-view btn-pdf" data-idx="${i}">${t('pdfRowBtn')}</button></td></tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
+  wrap.querySelectorAll('.btn-pdf').forEach(btn => {
+    btn.onclick = () => exportSingleRecordPdf(records[Number(btn.dataset.idx)], btn);
+  });
 }
 if (!CLOUD_MODE) renderTable();
 renderGallery('before');
@@ -1302,7 +1310,7 @@ function renderCloudTable(){
   renderPager();
   const wrap = document.getElementById('tableWrap');
   if (cloudRecords.length === 0){ wrap.innerHTML = `<div class="empty">${t('emptyList')}</div>`; return; }
-  let html = `<table><tr><th>${t('colCode')}</th><th></th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th></tr>`;
+  let html = `<table><tr><th>${t('colCode')}</th><th></th><th>${t('colBefore')}</th><th>${t('colAfter')}</th><th>${t('colFinalDisposal')}</th><th>${t('colStatus')}</th><th>${t('colBy')}</th><th>${t('colTime')}</th><th>${t('colPdf')}</th></tr>`;
   cloudRecords.forEach(r => {
     const photos  = r.scrap_photos || [];
     const nBefore = photos.filter(p => p.phase === 'before').length;
@@ -1321,13 +1329,14 @@ function renderCloudTable(){
       <td style="text-align:center; font-weight:600;">${r.disposal_qty ?? '-'}</td>
       <td><span class="badge ${done?'badge-done':'badge-partial'}">${done?t('statusComplete'):t('statusPartial')}</span></td>
       <td>${r.created_by_email || '-'}</td><td>${dt}</td>
+      <td><button class="btn-view btn-pdf" data-id="${r.id}">${t('pdfRowBtn')}</button></td>
     </tr>`;
   });
   html += '</table>';
   wrap.innerHTML = html;
 
   wrap.querySelectorAll('.btn-view').forEach(btn => {
-    if (btn.classList.contains('btn-edit') || btn.classList.contains('btn-code') || btn.classList.contains('btn-qty')) return;
+    if (btn.classList.contains('btn-edit') || btn.classList.contains('btn-code') || btn.classList.contains('btn-qty') || btn.classList.contains('btn-pdf')) return;
     btn.onclick = () => showPhotoModal(cloudRecords.find(r => r.id === btn.dataset.id));
   });
   wrap.querySelectorAll('.btn-edit').forEach(btn => {
@@ -1338,6 +1347,9 @@ function renderCloudTable(){
   });
   wrap.querySelectorAll('.btn-qty').forEach(btn => {
     btn.onclick = () => editRecordQty(cloudRecords.find(r => r.id === btn.dataset.id));
+  });
+  wrap.querySelectorAll('.btn-pdf').forEach(btn => {
+    btn.onclick = () => exportSingleRecordPdf(cloudRecords.find(r => r.id === btn.dataset.id), btn);
   });
 }
 
@@ -1651,6 +1663,12 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
   if (sourceRows.length === 0){ toast(t('exportNoData'), true); return; }
 
+  await generatePdfReport(sourceRows, range, btnPdf);
+};
+
+// สร้าง PDF จากรายการที่ส่งเข้ามา (ใช้ทั้งปุ่ม Export PDF รวม และปุ่ม PDF รายตัวในตารางข้อ 3)
+// btnPdf = ปุ่มที่กด (ถูก disable + เปลี่ยนข้อความระหว่างสร้าง); fileTag = ข้อความต่อท้ายชื่อไฟล์ (เช่น item code)
+async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
   btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
 
   try {
@@ -1764,12 +1782,22 @@ document.getElementById('btnExportPdf').onclick = async () => {
       if (showBefore) y = await drawPhotoGrid('Before', beforePhotos, y);
       if (showAfter)  y = await drawPhotoGrid('After',  afterPhotos,  y);
     }
-    pdf.save(`scrap_evidence_report_${timestampForFilename()}.pdf`);
+    const tag = fileTag ? '_' + String(fileTag).replace(/[^A-Za-z0-9._-]+/g, '_') : '';
+    pdf.save(`scrap_evidence_report${tag}_${timestampForFilename()}.pdf`);
+  } catch (e) {
+    toast(t('exportLoadFail', { err: e.message }), true);
   } finally {
     btnPdf.disabled = false;
     btnPdf.textContent = originalPdfLabel;
   }
-};
+}
+
+// ปุ่ม PDF รายตัว: export เฉพาะ 1 รายการ (ก่อน+หลังทั้งหมด) ไม่ต้องเลือกช่วงวันที่
+function exportSingleRecordPdf(record, btn){
+  if (!record) return;
+  const code = CLOUD_MODE ? record.item_code : record.code;
+  return generatePdfReport([record], { phase: 'both' }, btn, code);
+}
 
 /* ============================================================
    ส่วนที่ 7: Supabase (ทำงานเมื่อใส่ config แล้วเท่านั้น)
