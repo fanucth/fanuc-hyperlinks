@@ -203,9 +203,9 @@ function renderDeptPicker(){
   $('deptChips').innerHTML = list.map(d =>
     `<button type="button" class="dept-chip${cur.existing && cur.name === d ? ' is-on' : ''}" data-d="${esc(d)}" title="${counts.get(d)} employee(s)">${esc(d)}</button>`).join('');
   const h = $('deptHint');
-  if (!$('ue_department').value.trim()) { h.textContent = 'Click a department below, or start typing.'; h.style.color = 'var(--fc-text-mute)'; }
+  if (!$('ue_department').value.trim()) { h.textContent = ''; h.style.color = 'var(--fc-text-mute)'; }
   else if (cur.existing) { h.textContent = `Existing department (${counts.get(cur.name)} employee${counts.get(cur.name) === 1 ? '' : 's'}).`; h.style.color = 'var(--fc-ok)'; }
-  else { h.textContent = 'New department — it will be created exactly as typed. Check the spelling first.'; h.style.color = 'var(--fc-warn)'; }
+  else { h.textContent = 'New department — saved as typed.'; h.style.color = 'var(--fc-warn)'; }
 }
 
 /* ---------- cost center: free text that links to org_units when it matches ---------- */
@@ -221,8 +221,8 @@ function resolveCc(text){
 function updateCcHint(){
   const r = resolveCc($('ue_cost_center').value);
   const h = $('ccHint');
-  if (!$('ue_cost_center').value.trim()) { h.textContent = 'Start typing a code or name (e.g. FTH1SA2 or Sales - Robot) to see matching cost centers.'; return; }
-  h.textContent = r.linked ? `Linked to ${r.id} — ${r.name}` : 'Not in the cost center list — it will be saved exactly as typed.';
+  if (!$('ue_cost_center').value.trim()) { h.textContent = ''; return; }
+  h.textContent = r.linked ? `Linked: ${r.id} — ${r.name}` : 'Not in the list — saved as typed.';
   h.style.color = r.linked ? 'var(--fc-ok)' : 'var(--fc-text-mute)';
 }
 

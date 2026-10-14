@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css?v=202610141141">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610141146">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
   body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
@@ -222,6 +222,34 @@
   .mfa-alts{text-align:center;margin:var(--fc-s3) 0 0;font-size:14px;display:flex;gap:var(--fc-s4);justify-content:center;flex-wrap:wrap;}
   @media print{ body *{visibility:hidden;} #backupModal,#backupModal *{visibility:visible;} #backupModal{position:absolute;inset:0;background:#fff;} #backupModal button{display:none;} }
 
+  /* compact dialogs */
+  .fc-modal__box.compact{padding:var(--fc-s4);}
+  .fc-modal__box.compact h3{font-size:16px;margin:0 0 var(--fc-s2);}
+  .compact .fc-field{margin-bottom:var(--fc-s2);}
+  .compact .fc-field__label{font-size:12px;margin-bottom:2px;}
+  .compact .fc-input{min-height:34px;padding:var(--fc-s1) var(--fc-s3);font-size:14px;}
+  .compact .hint{font-size:12px;display:block;margin-top:2px;min-height:0;}
+  .compact .hint:empty{display:none;}
+  .form-grid--12{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 var(--fc-s3);}
+  .form-grid--12 .c2{grid-column:span 2;} .form-grid--12 .c3{grid-column:span 3;} .form-grid--12 .c4{grid-column:span 4;}
+  .form-grid--12 .c5{grid-column:span 5;} .form-grid--12 .c6{grid-column:span 6;} .form-grid--12 .c12{grid-column:1 / -1;}
+  .chips-row{margin:calc(var(--fc-s1) * -1) 0 var(--fc-s2);}
+  .chips-row:has(.dept-chips:empty){display:none;}
+  .ue-head{display:flex;align-items:center;justify-content:space-between;gap:var(--fc-s3);margin-bottom:var(--fc-s2);}
+  .ue-head h3{margin:0 !important;}
+  .ue-head .photo-row{margin:0;gap:var(--fc-s2);}
+  .ue-head .thumb--lg{width:36px;height:36px;font-size:14px;}
+  .strip{display:flex;flex-wrap:wrap;gap:var(--fc-s1) var(--fc-s5);align-items:center;border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);margin:var(--fc-s1) 0 var(--fc-s2);}
+  .roles-inline{display:flex;flex-wrap:wrap;gap:var(--fc-s1) var(--fc-s4);border:0;margin:0;padding:0;min-width:0;}
+  .roles-inline.hidden{display:none;}
+  .strip .check{padding:var(--fc-s1) 0;}
+  .profile{position:relative;}
+  .profile .edit-me{position:absolute;top:var(--fc-s2);right:var(--fc-s2);padding:var(--fc-s1) var(--fc-s2);min-height:0;}
+  @media (max-width:640px){
+    .form-grid--12 .c2,.form-grid--12 .c3{grid-column:span 6;}
+    .form-grid--12 .c4,.form-grid--12 .c5,.form-grid--12 .c12{grid-column:1 / -1;}
+  }
+
   /* manage users */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--fc-s3);}
   .form-grid .fc-field{margin-bottom:var(--fc-s3);}
@@ -290,6 +318,7 @@
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18M5 16v2.5M19 16v2.5M7 12h10"/><circle cx="8" cy="14" r=".8"/><circle cx="16" cy="14" r=".8"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
@@ -396,6 +425,7 @@
     <div class="grid" id="mainGrid">
       <div class="stack">
       <aside class="panel profile">
+        <button type="button" class="bar-btn edit-me" id="btnEditMe" title="Edit my details" aria-label="Edit my details"><svg class="ico"><use href="#i-edit"/></svg><span class="lbl">Edit</span></button>
         <div class="profile__head">
           <div class="avatar-wrap"><div class="avatar" id="avatar" aria-hidden="true"></div>
             <button type="button" class="avatar-edit" id="btnPhoto" title="Add or change photo" aria-label="Add or change profile photo"><svg class="ico"><use href="#i-camera"/></svg></button></div>
@@ -598,46 +628,69 @@
   </div>
 </div>
 
-<!-- Add / edit employee -->
+<!-- Add / edit employee (compact: 12-column grid, security + roles on one strip) -->
 <div class="fc-modal hidden" id="userModal" role="dialog" aria-modal="true" aria-labelledby="ueTitle">
-  <form class="fc-modal__box" id="userForm" style="max-width:640px;max-height:92vh;overflow:auto">
-    <h3 id="ueTitle">Add employee</h3>
-    <p class="fc-note" id="ueHint" style="margin-top:0"></p>
-    <div id="uePhotoRow" class="photo-row hidden">
-      <span class="thumb thumb--lg" id="uePhotoThumb"></span>
-      <div><div class="kv__label">Profile photo</div><button type="button" class="fc-btn fc-btn--sm" id="uePhotoBtn">Add / change photo</button></div>
+  <form class="fc-modal__box compact" id="userForm" style="max-width:820px;max-height:94vh;overflow:auto">
+    <div class="ue-head">
+      <h3 id="ueTitle">Add employee</h3>
+      <div id="uePhotoRow" class="photo-row hidden">
+        <span class="thumb thumb--lg" id="uePhotoThumb"></span>
+        <button type="button" class="fc-btn fc-btn--sm" id="uePhotoBtn">Change photo</button>
+      </div>
     </div>
-    <div class="form-grid">
-      <label class="fc-field"><span class="fc-field__label">First name *</span><input class="fc-input" id="ue_fname" autocomplete="off"></label>
-      <label class="fc-field"><span class="fc-field__label">Last name *</span><input class="fc-input" id="ue_lname" autocomplete="off"></label>
-      <label class="fc-field"><span class="fc-field__label">Company email * (used to sign in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
-      <label class="fc-field"><span class="fc-field__label">Department</span>
+    <p class="fc-note" id="ueHint" style="margin:0 0 var(--fc-s2)"></p>
+    <div class="form-grid--12">
+      <label class="fc-field c3"><span class="fc-field__label">First name *</span><input class="fc-input" id="ue_fname" autocomplete="off"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Last name *</span><input class="fc-input" id="ue_lname" autocomplete="off"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Employee ID</span><input class="fc-input" id="ue_employee_no" autocomplete="off" placeholder="F12345"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Joined</span><input class="fc-input" id="ue_hire_date" type="date"></label>
+
+      <label class="fc-field c5"><span class="fc-field__label">Company email * (sign-in)</span><input class="fc-input" id="ue_email" type="email" autocomplete="off" placeholder="name.s@fth.fanuc.com"></label>
+      <label class="fc-field c4"><span class="fc-field__label">Department</span>
         <input class="fc-input" id="ue_department" list="deptList" autocomplete="off" placeholder="Pick or type">
         <datalist id="deptList"></datalist>
-        <span class="fc-mut" id="deptHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
-      <div style="grid-column:1/-1;margin:calc(var(--fc-s1) * -1) 0 var(--fc-s3)"><span class="dept-chips" id="deptChips"></span></div>
-      <label class="fc-field"><span class="fc-field__label">Employee ID</span><input class="fc-input" id="ue_employee_no" autocomplete="off" placeholder="F12345"></label>
-      <label class="fc-field"><span class="fc-field__label">Joined</span><input class="fc-input" id="ue_hire_date" type="date"></label>
-      <label class="fc-field"><span class="fc-field__label">Title</span><input class="fc-input" id="ue_title" autocomplete="off"></label>
-      <label class="fc-field"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
-      <label class="fc-field" style="grid-column:1/-1"><span class="fc-field__label">Cost center</span>
-        <input class="fc-input" id="ue_cost_center" list="ccList" autocomplete="off" placeholder="Type a code or name, e.g. FTH1SA2 or Sales - Robot">
+        <span class="fc-mut hint" id="deptHint"></span></label>
+      <label class="fc-field c3"><span class="fc-field__label">Title</span><input class="fc-input" id="ue_title" autocomplete="off"></label>
+      <div class="c12 chips-row"><span class="dept-chips" id="deptChips"></span></div>
+
+      <label class="fc-field c4"><span class="fc-field__label">Cost center</span>
+        <input class="fc-input" id="ue_cost_center" list="ccList" autocomplete="off" placeholder="Code or name, e.g. FTH1SA2">
         <datalist id="ccList"></datalist>
-        <span class="fc-mut" id="ccHint" style="font-size:12px;display:block;margin-top:var(--fc-s1)"></span></label>
-      <label class="fc-field"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
-      <label class="fc-field"><span class="fc-field__label">Car plate</span><input class="fc-input" id="ue_car_no" autocomplete="off" placeholder="e.g. 3ขบ-6697"></label>
+        <span class="fc-mut hint" id="ccHint"></span></label>
+      <label class="fc-field c3"><span class="fc-field__label">Phone</span><input class="fc-input" id="ue_tel" autocomplete="off"></label>
+      <label class="fc-field c2"><span class="fc-field__label">Extension</span><input class="fc-input" id="ue_ext" autocomplete="off"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Car plate</span><input class="fc-input" id="ue_car_no" autocomplete="off" placeholder="3ขบ-6697"></label>
     </div>
-    <label class="check" id="ueMfaRow" style="margin:var(--fc-s2) 0"><input type="checkbox" id="ue_mfa"> <span><b>Require email code at sign-in</b> <span class="fc-mut" id="ueMfaNote"></span></span></label>
-    <fieldset id="ueRoles" class="roles hidden">
-      <legend>Admin roles</legend>
-      <label class="check"><input type="checkbox" id="ue_r_platform"> <span><b>Platform admin</b> — can manage users and roles</span></label>
-      <label class="check"><input type="checkbox" id="ue_r_homemap"> <span><b>Home map viewer</b> — can see the anonymous overview of employee home locations</span></label>
-      <label class="check"><input type="checkbox" id="ue_r_fuel"> <span><b>Fuel admin</b> — can import and manage fuel bills for all employees</span></label>
-    </fieldset>
-    <div class="fc-field__error" id="ueErr" role="alert" style="margin:var(--fc-s2) 0"></div>
+    <div class="strip">
+      <label class="check" id="ueMfaRow" title="Ask this person for an emailed code at sign-in"><input type="checkbox" id="ue_mfa"> <span><b>Require email code</b> <span class="fc-mut" id="ueMfaNote"></span></span></label>
+      <fieldset id="ueRoles" class="roles-inline hidden">
+        <label class="check" title="Can manage users and roles"><input type="checkbox" id="ue_r_platform"> <span><b>Platform admin</b></span></label>
+        <label class="check" title="Can see the anonymous overview of employee home locations"><input type="checkbox" id="ue_r_homemap"> <span><b>Home map viewer</b></span></label>
+        <label class="check" title="Can import and manage fuel bills for all employees"><input type="checkbox" id="ue_r_fuel"> <span><b>Fuel admin</b></span></label>
+      </fieldset>
+    </div>
+    <div class="fc-field__error" id="ueErr" role="alert"></div>
     <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
       <button type="button" class="fc-btn" id="ueCancel">Cancel</button>
       <button type="submit" class="fc-btn fc-btn--primary" id="ueSave">Create employee</button>
+    </div>
+  </form>
+</div>
+
+<!-- Edit my details (self-service: phone, extension, car plate) -->
+<div class="fc-modal hidden" id="meModal" role="dialog" aria-modal="true" aria-labelledby="meTitle">
+  <form class="fc-modal__box compact" id="meForm" style="max-width:440px">
+    <h3 id="meTitle">Edit my details</h3>
+    <p class="fc-note" style="margin:0 0 var(--fc-s2)">You can update how people reach you and your car plate. Name, department, cost center and other details are managed by IT — contact IT to change them.</p>
+    <div class="form-grid--12">
+      <label class="fc-field c6"><span class="fc-field__label">Phone</span><input class="fc-input" id="me_tel" autocomplete="tel" maxlength="30"></label>
+      <label class="fc-field c6"><span class="fc-field__label">Extension</span><input class="fc-input" id="me_ext" autocomplete="off" maxlength="10"></label>
+      <label class="fc-field c12" id="meCarRow"><span class="fc-field__label">Car plate</span><input class="fc-input" id="me_car_no" autocomplete="off" maxlength="20" placeholder="e.g. 3ขบ-6697"></label>
+    </div>
+    <div class="fc-field__error" id="meErr" role="alert"></div>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="meCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="meSave">Save</button>
     </div>
   </form>
 </div>
@@ -753,13 +806,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="fuel-import.js?v=202610141141"></script>
+<script src="fuel-import.js?v=202610141146"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610141141"></script>
-<script src="homemap.js?v=202610141141"></script>
-<script src="photo.js?v=202610141141"></script>
+<script src="users-admin.js?v=202610141146"></script>
+<script src="homemap.js?v=202610141146"></script>
+<script src="photo.js?v=202610141146"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -1251,6 +1304,29 @@ document.querySelectorAll('[data-fold]').forEach(head => {
   head.onclick = toggle;
   head.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
 });
+// ---- edit my own contact details (phone / extension / car plate) ----
+$('btnEditMe').onclick = () => {
+  $('me_tel').value = ME_EMP.tel || ''; $('me_ext').value = ME_EMP.ext || ''; $('me_car_no').value = ME_EMP.car_no || '';
+  $('meCarRow').classList.toggle('hidden', !('car_no' in ME_EMP));   // the column exists after 014_car_no.sql
+  $('meErr').textContent = ''; $('meModal').classList.remove('hidden'); $('me_tel').focus();
+};
+$('meCancel').onclick = () => $('meModal').classList.add('hidden');
+$('meForm').onsubmit = async e => {
+  e.preventDefault();
+  const hasCar = 'car_no' in ME_EMP;
+  $('meSave').disabled = true; $('meErr').textContent = '';
+  const { error } = await sb.rpc('update_my_profile', { p_tel: $('me_tel').value, p_ext: $('me_ext').value, p_car_no: $('me_car_no').value, p_set_car: hasCar });
+  $('meSave').disabled = false;
+  if (error) {
+    $('meErr').textContent = /could not find the function|PGRST202/i.test(error.message + (error.code || ''))
+      ? 'Not available yet — IT needs to install 015_self_edit.sql first.' : 'Could not save: ' + error.message;
+    return;
+  }
+  const v = s => (s || '').trim() || null;
+  ME_EMP.tel = v($('me_tel').value); ME_EMP.ext = v($('me_ext').value); if (hasCar) ME_EMP.car_no = v($('me_car_no').value);
+  $('meModal').classList.add('hidden'); renderProfile(ME_EMP); toast('Saved');
+};
+
 $('btnPhoto').onclick = () => openPhoto({
   id: ME_EMP.id, name: ME_EMP.fname + ' ' + ME_EMP.lname, path: ME_EMP.photo_path || null, self: true,
   onSaved: p => { ME_EMP.photo_path = p; renderProfile(ME_EMP); },
