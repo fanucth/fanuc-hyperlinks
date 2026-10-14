@@ -83,11 +83,12 @@ async function phSave(){
     const r = phLayout(PH_OUT); x.drawImage(phs.src, r.x, r.y, r.w, r.h);
     const blob = await new Promise((res, rej) => out.toBlob(b => b ? res(b) : rej(new Error('Could not process the image (it may be protected by the browser). Choose the file again.')), 'image/jpeg', 0.88));
 
-    const path = `u/${PH.id}/${Date.now()}.jpg`;
-    const up = await sb.storage.from(PH_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
-    if (up.error) throw up.error;
-    const rpc = PH.self ? await sb.rpc('set_my_photo', { p_path: path }) : await sb.rpc('admin_set_photo', { p_employee_id: PH.id, p_path: path });
-    if (rpc.error) { await sb.storage.from(PH_BUCKET).remove([path]); throw rpc.error; }
+    if (PH.deferred) {               // "Add employee": the employee does not exist yet — hand the cropped picture back, it is uploaded after the account is created
+      const take = PH.onBlob; $('phModal').classList.add('hidden');
+      if (take) take(blob);
+      return;
+    }
+    const path = await phUploadFor(PH.id, blob, PH.self);
     phCleanup(PH.path);
     const done = PH.onSaved; $('phModal').classList.add('hidden'); toast('Photo saved');
     if (done) done(path);
@@ -95,6 +96,16 @@ async function phSave(){
     $('phErr').textContent = 'Could not save the photo: ' + (e.message || e);
     phUpdateButtons();
   }
+}
+
+// upload a cropped JPEG to u/<employee_id>/<time>.jpg and store the path (self = own photo, otherwise platform admin sets it for someone else)
+async function phUploadFor(id, blob, self){
+  const path = `u/${id}/${Date.now()}.jpg`;
+  const up = await sb.storage.from(PH_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (up.error) throw up.error;
+  const rpc = self ? await sb.rpc('set_my_photo', { p_path: path }) : await sb.rpc('admin_set_photo', { p_employee_id: id, p_path: path });
+  if (rpc.error) { await sb.storage.from(PH_BUCKET).remove([path]); throw rpc.error; }
+  return path;
 }
 
 function phCleanup(oldPath){          // delete the previous file only if it is one uploaded from this page

@@ -541,10 +541,17 @@
           </div>
         </div>
         <div class="filters" style="margin-bottom:var(--fc-s4)">
-          <label class="fc-field" style="flex:1;min-width:220px"><span class="fc-field__label">Search</span>
-            <input type="search" id="uSearch" class="fc-input" placeholder="Name, email, department, employee ID…"></label>
+          <label class="fc-field" style="flex:2;min-width:190px"><span class="fc-field__label">Name</span>
+            <input type="search" id="uSearch" class="fc-input" placeholder="Name, email or employee ID" autocomplete="off"></label>
+          <label class="fc-field" style="flex:2;min-width:170px"><span class="fc-field__label">Department</span>
+            <input type="search" id="uDept" class="fc-input" list="uDeptList" placeholder="Any department" autocomplete="off">
+            <datalist id="uDeptList"></datalist></label>
+          <label class="fc-field" style="flex:2;min-width:170px"><span class="fc-field__label">Cost center</span>
+            <input type="search" id="uCc" class="fc-input" list="uCcList" placeholder="Code or name" autocomplete="off">
+            <datalist id="uCcList"></datalist></label>
           <label class="fc-field"><span class="fc-field__label">Status</span>
             <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
+          <button class="fc-btn" id="uClear" type="button" style="margin-bottom:var(--fc-s3)" title="Clear all filters">Clear</button>
           <button class="fc-btn fc-btn--primary" id="btnAddUser" style="margin-bottom:var(--fc-s3)">Add employee</button>
         </div>
         <p class="summary" id="usersSummary"></p>
@@ -636,6 +643,7 @@
       <div id="uePhotoRow" class="photo-row hidden">
         <span class="thumb thumb--lg" id="uePhotoThumb"></span>
         <button type="button" class="fc-btn fc-btn--sm" id="uePhotoBtn">Change photo</button>
+        <button type="button" class="fc-btn fc-btn--sm hidden" id="uePhotoRemove" title="Remove the chosen photo">Remove</button>
       </div>
     </div>
     <p class="fc-note" id="ueHint" style="margin:0 0 var(--fc-s2)"></p>
@@ -810,9 +818,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610141146"></script>
+<script src="users-admin.js?v=202610141510"></script>
 <script src="homemap.js?v=202610141146"></script>
-<script src="photo.js?v=202610141146"></script>
+<script src="photo.js?v=202610141420"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */

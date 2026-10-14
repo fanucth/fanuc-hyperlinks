@@ -106,12 +106,19 @@ function mfaCell(u){
 }
 
 function renderUsers(){
-  const q = $('uSearch').value.trim().toLowerCase();
+  // separate filters, all applied together (AND); each box matches part of the text, case-insensitive
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const q = norm($('uSearch').value), qd = norm($('uDept').value), qc = norm($('uCc').value);
   const st = $('uStatus').value;
+  const dl = [...new Set(USERS.map(u => normDept(u.department)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  $('uDeptList').innerHTML = dl.map(d => `<option value="${esc(d)}"></option>`).join('');
+  $('uCcList').innerHTML = ORG.map(o => `<option value="${esc(ccLabel(o))}"></option>`).join('');
   const list = USERS.filter(u => {
     if (st && u.status !== st) return false;
-    if (!q) return true;
-    return [u.fname, u.lname, u.email, u.department, u.title, u.employee_no, u.cost_center_name].join(' ').toLowerCase().includes(q);
+    if (q && !norm([u.fname, u.lname, u.fname + ' ' + u.lname, u.email, u.employee_no, u.title].join(' ')).includes(q)) return false;
+    if (qd && !norm(u.department).includes(qd)) return false;
+    if (qc && !norm([u.cost_center_id, u.cost_center_name, ccLabel({ id: u.cost_center_id || '', name: u.cost_center_name || '' })].join(' ')).includes(qc)) return false;
+    return true;
   });
   LAST_LIST = list;
   const active = USERS.filter(u => u.status === 'active').length;
@@ -123,7 +130,7 @@ function renderUsers(){
 
   if (!list.length) {
     $('usersBody').innerHTML = `<tr><td colspan="8"><div class="fc-empty"><div class="fc-empty__title">No employees match</div>
-      <p>Clear the search box or status filter, or add a new employee.</p></div></td></tr>`;
+      <p>Clear one of the filters (or press Clear), or add a new employee.</p></div></td></tr>`;
     return;
   }
   $('usersBody').innerHTML = list.map(u => {
@@ -166,9 +173,11 @@ function openEdit(u){
   updateCcHint();
   renderDeptPicker();
   $('ueErr').textContent = '';
-  // photo (existing employees only)
-  $('uePhotoRow').classList.toggle('hidden', !u);
-  if (u) setEditThumb(u);
+  // photo: existing employees are saved at once; for a new employee the picture is kept here and uploaded after the account is created
+  clearNewPhoto(); $('uePhotoRemove').classList.add('hidden');
+  $('uePhotoRow').classList.remove('hidden');
+  $('uePhotoBtn').textContent = u ? 'Change photo' : 'Add photo';
+  if (u) setEditThumb(u); else $('uePhotoThumb').textContent = '+';
   const mine = ROLES.get(u?.email) || new Set();
   $('ue_r_platform').checked = mine.has('platform:admin');
   $('ue_r_fuel').checked = mine.has('fuel:admin');
@@ -236,8 +245,22 @@ function thumbInner(u, lazy){
   if (!u.photo_path) return ini;
   return `<img ${lazy ? 'loading="lazy" ' : ''}alt="" data-i="${ini}" src="${photoUrl(u.photo_path)}" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">`;
 }
+let NEW_PHOTO = null, NEW_PHOTO_URL = null;    // picture chosen in "Add employee" (cropped JPEG blob)
+function clearNewPhoto(){
+  if (NEW_PHOTO_URL) URL.revokeObjectURL(NEW_PHOTO_URL);
+  NEW_PHOTO = NEW_PHOTO_URL = null;
+}
 function editPhoto(){
-  const u = EDITING; if (!u) return;
+  const u = EDITING;
+  if (!u) {                                   // adding a new employee
+    const nm = `${$(fid('fname')).value} ${$(fid('lname')).value}`.trim();
+    openPhoto({ id: null, name: nm || 'new employee', path: null, self: false, deferred: true, onBlob: b => {
+      clearNewPhoto(); NEW_PHOTO = b; NEW_PHOTO_URL = URL.createObjectURL(b);
+      $('uePhotoThumb').innerHTML = `<img alt="" src="${NEW_PHOTO_URL}">`;
+      $('uePhotoBtn').textContent = 'Change photo'; $('uePhotoRemove').classList.remove('hidden');
+    } });
+    return;
+  }
   openPhoto({ id: u.id, name: u.fname + ' ' + u.lname, path: u.photo_path || null, self: false,
     onSaved: p => { u.photo_path = p; setEditThumb(u); loadUsers(); } });
 }
@@ -281,8 +304,18 @@ async function saveEdit(e){
       const cc = resolveCc($('ue_cost_center').value);
       const out = await callFn('create', { ...v, email: v.email.toLowerCase(), cost_center_id: cc.id, cost_center_name: cc.name });
       $('userModal').classList.add('hidden');
+      // photo chosen in the dialog: needs the new employee's id, so upload it now
+      let photoNote = '';
+      if (NEW_PHOTO) {
+        try {
+          const { data: row, error: qe } = await sb.from('employees').select('id').eq('email', v.email.toLowerCase()).maybeSingle();
+          if (qe || !row) throw qe || new Error('employee not found');
+          await phUploadFor(row.id, NEW_PHOTO, false);
+        } catch (pe) { photoNote = `The photo could not be saved (${pe.message || pe}) — open Edit to add it.`; }
+        clearNewPhoto();
+      }
       showResult('Employee created', v.email.toLowerCase(), out.tempPassword,
-        out.created ? null : 'This email already had a login account, so its password was not changed.');
+        out.created ? null : 'This email already had a login account, so its password was not changed.', photoNote);
     }
     await loadUsers();
   } catch (err) {
@@ -293,12 +326,12 @@ async function saveEdit(e){
 }
 
 /* ---------- result dialog (temporary password shown once) ---------- */
-function showResult(title, email, pw, note){
+function showResult(title, email, pw, note, extra){
   $('urTitle').textContent = title;
   $('urEmail').textContent = email;
   $('urPwRow').classList.toggle('hidden', !pw);
   $('urPw').textContent = pw || '';
-  $('urNote').textContent = note || (pw ? 'Share this temporary password with the employee. It is shown only once; they must choose their own at first sign-in.' : '');
+  $('urNote').textContent = (note || (pw ? 'Share this temporary password with the employee. It is shown only once; they must choose their own at first sign-in.' : '')) + (extra ? ' ' + extra : '');
   $('resultModal').classList.remove('hidden');
 }
 
@@ -345,7 +378,8 @@ function wireUsers(){
   $('btnUsers').onclick = async () => { show('viewUsers'); await loadUsers(); };
   $('btnUsersBack').onclick = () => show('viewMain');
   $('btnAddUser').onclick = () => openEdit(null);
-  $('uSearch').oninput = renderUsers;
+  $('uSearch').oninput = renderUsers; $('uDept').oninput = renderUsers; $('uCc').oninput = renderUsers;
+  $('uClear').onclick = () => { $('uSearch').value = $('uDept').value = $('uCc').value = ''; $('uStatus').value = 'active'; renderUsers(); };
   $('uStatus').onchange = renderUsers;
   $('usersBody').onclick = onRowAction;
   $('userForm').onsubmit = saveEdit;
@@ -359,6 +393,7 @@ function wireUsers(){
   $('ue_department').onfocus = e => e.target.select();
   $('deptChips').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { $('ue_department').value = b.dataset.d; renderDeptPicker(); } };
   $('uePhotoBtn').onclick = editPhoto;
+  $('uePhotoRemove').onclick = () => { clearNewPhoto(); $('uePhotoThumb').textContent = '+'; $('uePhotoBtn').textContent = 'Add photo'; $('uePhotoRemove').classList.add('hidden'); };
   $('urClose').onclick = () => $('resultModal').classList.add('hidden');
   $('urCopy').onclick = async () => {
     try { await navigator.clipboard.writeText($('urPw').textContent); toast('Copied'); } catch { toast('Copy failed — select the text and copy manually', true); }
