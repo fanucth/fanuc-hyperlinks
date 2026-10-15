@@ -65,6 +65,8 @@
   /* layout */
   .grid{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);gap:var(--fc-s5);align-items:start;}
   .grid--single{grid-template-columns:minmax(300px,340px);}
+  .grid.side-hidden{grid-template-columns:minmax(0,1fr);}
+  .grid.side-hidden > .stack{display:none;}
   .panel{background:var(--fc-surface);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
   .panel__head{display:flex;align-items:center;gap:var(--fc-s3);padding:var(--fc-s4) var(--fc-s5);border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
   .panel__title{font-size:20px;font-weight:600;line-height:1.35;margin:0;}
@@ -117,13 +119,18 @@
 
 
   /* KPIs */
-  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--fc-s3);margin-bottom:var(--fc-s5);}
+  .kpis{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--fc-s3);margin-bottom:var(--fc-s5);}
+  .kpis--dense .kpi{padding:var(--fc-s3);}
+  .kpis--dense .kpi__value{font-size:20px;}
+  .kpis--dense .kpi__unit{display:block;margin:0;line-height:1.2;}
+  .kpis--dense .kpi__sub{font-size:11px;line-height:1.35;}
   .kpi{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s4);background:var(--fc-bg);position:relative;}
   .kpi--main{background:var(--fc-surface);border-color:var(--fc-border-strong);box-shadow:inset 0 3px 0 var(--fc-accent);}
   .kpi__label{font-size:12px;font-weight:600;color:var(--fc-text-dim);}
   .kpi__value{font-family:'Kanit','Inter',sans-serif;font-weight:600;font-size:28px;line-height:1.35;font-variant-numeric:tabular-nums;margin-top:var(--fc-s1);}
   .kpi__unit{font-size:12px;font-weight:500;color:var(--fc-text-mute);margin-left:var(--fc-s1);}
   .kpi__sub{font-size:12px;color:var(--fc-text-mute);}
+  .kpi__unit{white-space:nowrap;}
 
   /* filters */
   .filters{display:flex;gap:var(--fc-s3);align-items:flex-end;flex-wrap:wrap;}
@@ -250,6 +257,8 @@
     .form-grid--12 .c4,.form-grid--12 .c5,.form-grid--12 .c12{grid-column:1 / -1;}
   }
 
+  .kpi__sub{overflow-wrap:anywhere;}
+
   /* gasoline calculation dialog */
   .calc-tbl{width:100%;border-collapse:collapse;font-size:14px;}
   .calc-tbl td{padding:5px var(--fc-s2);border-bottom:1px solid var(--fc-border);}
@@ -298,6 +307,8 @@
   .adv-sig{display:inline-block;min-width:34mm;border-bottom:1px solid #000;text-align:center;font-weight:700;}
   @media print{
     @page{size:A4 portrait;margin:0;}
+    /* the page-wide rule above (backup codes) hides every element when printing: show the Payment advice dialog again */
+    body.adv-print #advModal,body.adv-print #advModal *{visibility:visible !important;}
     body.adv-print > *:not(#advModal){display:none !important;}
     body.adv-print{background:#fff !important;}
     body.adv-print #advModal{position:static !important;display:block !important;background:none !important;padding:0 !important;}
@@ -322,6 +333,7 @@
   @media (max-width:640px){ .form-grid{grid-template-columns:1fr;} }
 
   /* responsive: bill rows become cards on phones */
+  @media (max-width:1100px){ .kpis{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));} }
   @media (max-width:900px){
     .fc-container{padding:var(--fc-s4) var(--fc-s3) var(--fc-s6);}
     .grid{grid-template-columns:minmax(0,1fr);}
@@ -335,7 +347,7 @@
     .bar-actions{flex:1 1 100%;margin-left:0;justify-content:space-between;}
     .bar-actions .bar-btn{padding:var(--fc-s2);}
     .admin-tag,.bar-sep{display:none;}
-    .kpis{grid-template-columns:minmax(0,1fr);}
+    .kpis{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);}
     .hero__name{font-size:20px;}
     .profile__head{flex-direction:column;text-align:center;}
     .kv{text-align:center;}
@@ -378,6 +390,7 @@
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18M5 16v2.5M19 16v2.5M7 12h10"/><circle cx="8" cy="14" r=".8"/><circle cx="16" cy="14" r=".8"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/></symbol>
   <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7v-7Z"/></symbol>
+  <symbol id="i-side" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5ZM9 5v14"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
@@ -522,6 +535,7 @@
             <h3 class="panel__title">My fuel bills</h3>
             <p class="panel__sub">Gasoline, tollgate and other claims, by billing month</p>
           </div>
+          <button type="button" class="bar-btn push" id="btnSide" aria-expanded="true" title="Hide the profile column to give the bills more room"><svg class="ico"><use href="#i-side"/></svg><span class="lbl">Hide profile</span></button>
         </div>
         <div class="panel__body">
           <div class="kpis" id="fuelKpis"></div>
@@ -945,7 +959,7 @@
 <script src="users-admin.js?v=202610141730"></script>
 <script src="homemap.js?v=202610141146"></script>
 <script src="fuel-calc.js?v=202610151400"></script>
-<script src="advice.js?v=202610152100"></script>
+<script src="advice.js?v=202610152200"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -1392,12 +1406,27 @@ function renderFuel(){
   const pending = list.filter(b => b.pay_status !== 'paid').reduce((s, b) => s + Number(b.total || 0), 0);
   const n = k => `${k} bill${k === 1 ? '' : 's'}`;
 
+  // how the gasoline amount splits (from the calculation details; only for bills that have them — needs 017_fuel_calc.sql and the monthly import with the Calculation sheet)
+  const cs = list.map(x => CALCS.get(x.id)).filter(Boolean);
+  let usage = [];
+  if (cs.length) {
+    const sum = k => cs.reduce((s, c) => s + Number(c[k] || 0), 0);
+    const priv = sum('private_amount'), claim = sum('claim_amount'), fuel = sum('fuel_amount'), km = sum('total_km'), l = sum('litres');
+    const part = cs.length < list.length ? ` · ${cs.length}/${list.length} bills` : '';
+    usage = [
+      ['Gasoline claimed', money(claim), `${cK(sum('claim_km'))} km · ${cK(l)} L${part}`, false, 'THB'],
+      ['Private use (not claimed)', money(priv), `${cK(sum('private_km'))} km · ${fuel ? Math.round(priv / fuel * 100) : 0}% of fuel bill${part}`, false, 'THB'],
+      ['Average cost per km', km ? money(fuel / km) : '—', `${l ? money(fuel / l) : '—'} THB per litre${part}`, false, 'THB / km'],
+    ];
+  }
   $('fuelKpis').innerHTML = [
     ['Total claimed', money(total), n(list.length), true],
-    ['Pending payment', money(pending), n(list.filter(b => b.pay_status !== 'paid').length)],
-    ['Paid', money(total - pending), n(list.filter(b => b.pay_status === 'paid').length)],
-  ].map(([l, v, s, main]) => `<div class="kpi${main ? ' kpi--main' : ''}"><div class="kpi__label">${l}</div>
-    <div class="kpi__value">${v}<span class="kpi__unit">THB</span></div><div class="kpi__sub">${s}</div></div>`).join('');
+    ['Pending payment', money(pending), n(list.filter(x => x.pay_status !== 'paid').length)],
+    ['Paid', money(total - pending), n(list.filter(x => x.pay_status === 'paid').length)],
+    ...usage,
+  ].map(([l, v, s, main, unit]) => `<div class="kpi${main ? ' kpi--main' : ''}"><div class="kpi__label">${l}</div>
+    <div class="kpi__value">${v}<span class="kpi__unit">${unit || 'THB'}</span></div><div class="kpi__sub">${s}</div></div>`).join('');
+  $('fuelKpis').classList.toggle('kpis--dense', usage.length > 0);
 
   if (!list.length) {
     $('fuelBody').innerHTML = `<tr><td colspan="15" style="display:table-cell"><div class="fc-empty">
@@ -1430,6 +1459,16 @@ wireCalc();
 wireUsers();
 wireHomemap();
 wirePhoto();
+// the whole left column (profile, home location, sign-in security) can be hidden so the fuel bills get the full width; remembered per browser
+function setSide(hidden, save){
+  $('mainGrid').classList.toggle('side-hidden', hidden);
+  $('btnSide').setAttribute('aria-expanded', String(!hidden));
+  $('btnSide').title = hidden ? 'Show the profile column' : 'Hide the profile column to give the bills more room';
+  $('btnSide').querySelector('.lbl').textContent = hidden ? 'Show profile' : 'Hide profile';
+  if (save) { try { localStorage.setItem('fth_side_hidden', hidden ? '1' : '0'); } catch {} }
+}
+{ let s = null; try { s = localStorage.getItem('fth_side_hidden'); } catch {} setSide(s === '1', false); }
+$('btnSide').onclick = () => setSide(!$('mainGrid').classList.contains('side-hidden'), true);
 // collapsible side cards (state is remembered per browser; Sign-in security starts folded)
 function foldCard(el, collapsed, save){
   el.classList.toggle('collapsed', collapsed);
