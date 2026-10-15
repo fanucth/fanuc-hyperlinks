@@ -191,7 +191,15 @@ async function advLoadList(){
   ADV.paid = new Map();
   if (m) { const pr = await sb.from('fuel_bills').select('id,paid_at').eq('billing_month', m).limit(5000); (pr.data || []).forEach(x => ADV.paid.set(x.id, x.paid_at)); }
   await loadCalcs(ADV.list.map(r => r.id));
+  advFillDept();
   advRenderList();
+}
+// department filter: the departments that really occur in this billing month (with the number of bills)
+function advFillDept(){
+  const cur = $('advDept').value, dep = r => (r.department || '').trim();
+  const ds = [...new Set(ADV.list.map(dep).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+  $('advDept').innerHTML = '<option value="">All departments</option>' + ds.map(d => `<option value="${esc(d)}">${esc(d)} (${ADV.list.filter(r => dep(r) === d).length})</option>`).join('');
+  $('advDept').value = ds.includes(cur) ? cur : '';
 }
 function advCalcCell(r){
   const c = CALCS.get(r.id); if (!c) return '<span class="dash">—</span>';
@@ -201,8 +209,8 @@ function advCalcCell(r){
 }
 function advRenderList(){
   const q = $('advSearch').value.trim().toLowerCase();
-  const pay = $('advPay').value;
-  const shown = ADV.list.filter(r => (!q || `${r.fname} ${r.lname} ${r.employee_no} ${r.department} ${r.car_no}`.toLowerCase().includes(q)) && (!pay || (pay === 'paid') === (r.pay_status === 'paid')));
+  const pay = $('advPay').value, dept = $('advDept').value;
+  const shown = ADV.list.filter(r => (!dept || (r.department || '').trim() === dept) && (!q || `${r.fname} ${r.lname} ${r.employee_no} ${r.department} ${r.car_no}`.toLowerCase().includes(q)) && (!pay || (pay === 'paid') === (r.pay_status === 'paid')));
   const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
   $('advBody').innerHTML = shown.length ? shown.map(r => `<tr>
       <td><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
@@ -252,6 +260,12 @@ function wireAdvice(){
   $('advTickAll').onchange = e => { document.querySelectorAll('.advTick').forEach(x => { x.checked = e.target.checked; }); advCount(); };
   $('advBody').onchange = e => { if (e.target.classList.contains('advTick')) advCount(); };
   $('advPay').onchange = advRenderList;
+  $('advDept').onchange = advRenderList;
+  $('advReset').onclick = async () => {
+    $('advSearch').value = ''; $('advPay').value = ''; $('advDept').value = '';
+    const first = $('advMonth').options[0] ? $('advMonth').options[0].value : '';
+    if (first && $('advMonth').value !== first) { $('advMonth').value = first; await advLoadList(); } else advRenderList();   // advRenderList also clears the ticks
+  };
   $('advMarkPaid').onclick = () => advMark(true);
   $('advMarkPending').onclick = () => advMark(false);
   $('advPrintSel').onclick = () => { const ids = new Set(advTicked()); advOpen(ADV.list.filter(r => ids.has(r.id))); };

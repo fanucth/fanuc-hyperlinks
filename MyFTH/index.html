@@ -261,7 +261,7 @@
   .calc-warn{margin-top:var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);border:1px solid var(--fc-warn);border-radius:var(--fc-radius);color:var(--fc-warn);font-size:13px;}
 
   /* Import row: file, billing month and the two buttons share one height and baseline */
-  #viewImport .filters .fc-input,#viewImport .filters .fc-btn{height:42px;box-sizing:border-box;}
+  #viewImport .filters .fc-input,#viewImport .filters .fc-btn,#viewAdvice .filters .fc-input,#viewAdvice .filters .fc-btn{height:42px;box-sizing:border-box;}
 
   /* payment advice (screen + print) */
   .adv-dlg{max-width:min(980px,96vw);width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;padding:var(--fc-s4);}
@@ -638,14 +638,16 @@
         <p class="fc-note" style="margin-top:0">Choose a billing month, tick the people and print. Each document is one A4 sheet (two copies, top and bottom). The number is <b>PC-year/ G&lt;billing month&gt;-&lt;No.&gt;</b> (a September bill gives G9). After you pay, tick the people and press <b>Mark as paid</b>.</p>
         <div class="filters" style="margin-bottom:var(--fc-s3)">
           <label class="fc-field"><span class="fc-field__label">Billing month</span><select id="advMonth" class="fc-input"></select></label>
-          <label class="fc-field" style="flex:1;min-width:200px"><span class="fc-field__label">Search</span>
+          <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
             <input type="search" id="advSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
+          <label class="fc-field"><span class="fc-field__label">Department</span><select id="advDept" class="fc-input"><option value="">All departments</option></select></label>
           <label class="fc-field"><span class="fc-field__label">Payment</span>
             <select id="advPay" class="fc-input"><option value="">All</option><option value="pending">Pending</option><option value="paid">Paid</option></select></label>
-          <button class="fc-btn" id="advMarkPaid" type="button" disabled style="margin-bottom:var(--fc-s3)"><span>Mark as paid</span></button>
-          <button class="fc-btn" id="advMarkPending" type="button" disabled style="margin-bottom:var(--fc-s3)"><span>Mark as pending</span></button>
-          <button class="fc-btn" id="advPrintSel" type="button" disabled style="margin-bottom:var(--fc-s3)"><span>Print selected</span></button>
-          <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button" style="margin-bottom:var(--fc-s3)">Print whole month</button>
+          <button class="fc-btn" id="advReset" type="button" title="Back to the default filters: latest month, no search, all payments">Reset</button>
+          <button class="fc-btn" id="advMarkPaid" type="button" disabled><span>Mark as paid</span></button>
+          <button class="fc-btn" id="advMarkPending" type="button" disabled><span>Mark as pending</span></button>
+          <button class="fc-btn" id="advPrintSel" type="button" disabled><span>Print selected</span></button>
+          <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button">Print whole month</button>
         </div>
         <p class="summary" id="advStatus"></p>
         <div class="tbl-wrap">
@@ -943,7 +945,7 @@
 <script src="users-admin.js?v=202610141730"></script>
 <script src="homemap.js?v=202610141146"></script>
 <script src="fuel-calc.js?v=202610151400"></script>
-<script src="advice.js?v=202610151800"></script>
+<script src="advice.js?v=202610152100"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
