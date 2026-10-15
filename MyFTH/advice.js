@@ -43,7 +43,14 @@ function bahtText(amount){
 
 /* ---------- document pieces ---------- */
 const advToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-function advDateTxt(iso){ const [y, m, d] = iso.split('-'); return `${+d}-${ADV_MON3[+m - 1]}-${y.slice(2)}`; }   // 25-Apr-26
+const advDmy = iso => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };          // 2026-10-15 -> 15/10/2026
+function advParseDmy(t){                                                                          // "15/10/2026" -> "2026-10-15" (null when not a real date)
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(t || '').trim()); if (!m) return null;
+  const d = +m[1], mo = +m[2], y = +m[3], dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+const advDateTxt = iso => advDmy(iso);                                                           // printed date: dd/mm/yyyy
 function advPeriod(bm){
   if (!/^\d{4}-\d{2}$/.test(bm || '')) return 'Gasoline, tollgate and other expenses claim';
   const [y, m] = bm.split('-').map(Number), last = new Date(y, m, 0).getDate();
@@ -104,10 +111,11 @@ function advCopy(r, ctx){
 
 function advRender(){
   const copies = +$('advCopies').value;
-  const iso = $('advDate').value || advToday(), [dy, dm] = iso.split('-');
+  const iso = advParseDmy($('advDate').value) || advToday(), [dy, dm] = iso.split('-');
   const prep = $('advPrep').value;
   $('advPages').innerHTML = ADV.rows.map(r => {
-    const one = advCopy(r, { docNo: `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep });
+    const bm = /^(\d{4})-(\d{2})$/.exec(r.billing_month || '');           // PC-<year>/ G<billing month>-<No.>  e.g. September 2026 -> PC-2026/ G9-5
+    const one = advCopy(r, { docNo: bm ? `PC-${bm[1]}/ G${+bm[2]}-${r.seq}` : `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep });
     return `<div class="adv-sheet${copies === 2 ? '' : ' one'}">${one}${copies === 2 ? '<div class="adv-cut"></div>' + one : ''}</div>`;
   }).join('');
   let big = 0;
@@ -120,12 +128,32 @@ function advRender(){
   $('advInfo').textContent = `${ADV.rows.length} document${ADV.rows.length === 1 ? '' : 's'} · one A4 sheet each` + (big ? ` · ${big} with many lines printed as one copy` : '');
 }
 
-function advOpen(rows){
+// "Prepare by": first names of the active employees of the General Admin department (fuel admins can read the list); anyone else keeps the remembered name
+async function advPrepNames(){
+  if (ADV.prepNames) return ADV.prepNames;
+  let names = [];
+  try {
+    const { data, error } = await sb.rpc('fuel_employee_lookup');
+    if (!error) names = [...new Set((data || []).filter(e => /^\s*general\s+admin\s*$/i.test(e.department || '')).map(e => String(e.fname || '').trim()).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+  } catch { /* not a fuel admin */ }
+  return (ADV.prepNames = names);
+}
+async function advFillPrep(){
+  const opts = (await advPrepNames()).slice();
+  let saved = ''; try { saved = localStorage.getItem('fth_adv_prep') || ''; } catch {}
+  const want = saved || (opts.includes('Butchadeekarn') ? 'Butchadeekarn' : opts[0] || 'Butchadeekarn');
+  if (!opts.includes(want)) opts.unshift(want);
+  $('advPrep').innerHTML = opts.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  $('advPrep').value = want;
+}
+
+async function advOpen(rows){
   if (!rows.length) { toast('Nothing to print', true); return; }
   ADV.rows = rows;
-  try { $('advPrep').value = localStorage.getItem('fth_adv_prep') ?? 'Butchadeekarn'; } catch { $('advPrep').value = 'Butchadeekarn'; }
-  if (!$('advDate').value) $('advDate').value = advToday();
+  if (!advParseDmy($('advDate').value)) $('advDate').value = advDmy(advToday());
+  ADV.lastDate = $('advDate').value;
   $('advModal').classList.remove('hidden');
+  await advFillPrep();
   advRender();
   $('advPages').scrollTop = 0;
 }
@@ -160,6 +188,8 @@ async function advLoadMonths(){
 async function advLoadList(){
   const m = $('advMonth').value;
   ADV.list = m ? (await advFetch({ p_month: m, p_ids: null })) || [] : [];
+  ADV.paid = new Map();
+  if (m) { const pr = await sb.from('fuel_bills').select('id,paid_at').eq('billing_month', m).limit(5000); (pr.data || []).forEach(x => ADV.paid.set(x.id, x.paid_at)); }
   await loadCalcs(ADV.list.map(r => r.id));
   advRenderList();
 }
@@ -171,7 +201,8 @@ function advCalcCell(r){
 }
 function advRenderList(){
   const q = $('advSearch').value.trim().toLowerCase();
-  const shown = ADV.list.filter(r => !q || `${r.fname} ${r.lname} ${r.employee_no} ${r.department} ${r.car_no}`.toLowerCase().includes(q));
+  const pay = $('advPay').value;
+  const shown = ADV.list.filter(r => (!q || `${r.fname} ${r.lname} ${r.employee_no} ${r.department} ${r.car_no}`.toLowerCase().includes(q)) && (!pay || (pay === 'paid') === (r.pay_status === 'paid')));
   const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
   $('advBody').innerHTML = shown.length ? shown.map(r => `<tr>
       <td><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
@@ -182,7 +213,7 @@ function advRenderList(){
       <td class="num">${num(r.parking_fee)}</td><td class="num" title="${esc(fuelExtraTip(r))}">${num(fuelExtraSum(r))}</td><td class="num">${num(r.adjustment)}</td>
       <td class="num total">${money(r.total)}</td>
       <td>${advCalcCell(r)}</td>
-      <td>${r.pay_status === 'paid' ? '<span class="fc-badge fc-badge--ok">Paid</span>' : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td></tr>`).join('')
+      <td>${r.pay_status === 'paid' ? `<span class="fc-badge fc-badge--ok">Paid${ADV.paid && ADV.paid.get(r.id) ? ' · ' + dmy(ADV.paid.get(r.id)) : ''}</span>` : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td></tr>`).join('')
     : `<tr><td colspan="14"><div class="fc-empty"><div class="fc-empty__title">${ADV.list.length ? 'No one matches' : 'No bills in this month'}</div></div></td></tr>`;
   $('advStatus').textContent = ADV.list.length ? `${shown.length} of ${ADV.list.length} bills` : '';
   $('advTickAll').checked = false; advCount();
@@ -191,6 +222,26 @@ function advTicked(){ return [...document.querySelectorAll('.advTick:checked')].
 function advCount(){
   const n = advTicked().length;
   $('advPrintSel').disabled = !n; $('advPrintSel').querySelector('span').textContent = n ? `Print selected (${n})` : 'Print selected';
+  $('advMarkPaid').disabled = !n; $('advMarkPaid').querySelector('span').textContent = n ? `Mark as paid (${n})` : 'Mark as paid';
+  $('advMarkPending').disabled = !n; $('advMarkPending').querySelector('span').textContent = n ? `Mark as pending (${n})` : 'Mark as pending';
+}
+
+// payment status of the ticked bills (a fuel admin may change it; the date is the day the money was transferred)
+async function advMark(paid){
+  const ids = advTicked(); if (!ids.length) return;
+  const plural = ids.length === 1 ? '' : 's';
+  let iso = null;
+  if (paid) {
+    const t = prompt(`Mark ${ids.length} bill${plural} as paid.\nPayment date (dd/mm/yyyy):`, advDmy(advToday()));
+    if (t === null) return;
+    iso = advParseDmy(t); if (!iso) { toast('Use the date format dd/mm/yyyy', true); return; }
+  } else if (!confirm(`Mark ${ids.length} bill${plural} as pending again?`)) return;
+  const { data: { user } } = await sb.auth.getUser();
+  const patch = paid ? { pay_status: 'paid', paid_at: `${iso}T12:00:00+07:00`, paid_by: user?.email || null } : { pay_status: 'pending', paid_at: null, paid_by: null };
+  const { data, error } = await sb.from('fuel_bills').update(patch).in('id', ids).select('id');
+  if (error) return toast('Could not update: ' + error.message, true);
+  toast(`${data.length} bill${data.length === 1 ? '' : 's'} marked as ${paid ? 'paid' : 'pending'}`);
+  await advLoadList();
 }
 
 function wireAdvice(){
@@ -200,13 +251,24 @@ function wireAdvice(){
   $('advSearch').oninput = advRenderList;
   $('advTickAll').onchange = e => { document.querySelectorAll('.advTick').forEach(x => { x.checked = e.target.checked; }); advCount(); };
   $('advBody').onchange = e => { if (e.target.classList.contains('advTick')) advCount(); };
+  $('advPay').onchange = advRenderList;
+  $('advMarkPaid').onclick = () => advMark(true);
+  $('advMarkPending').onclick = () => advMark(false);
   $('advPrintSel').onclick = () => { const ids = new Set(advTicked()); advOpen(ADV.list.filter(r => ids.has(r.id))); };
   $('advPrintAll').onclick = () => advOpen(ADV.list);
   // my own bills (profile page)
   $('fuelBody').addEventListener('click', e => { const b = e.target.closest('[data-adv]'); if (b) adviceForIds([+b.dataset.adv]); });
   // preview dialog
-  ['advDate', 'advCopies'].forEach(id => { $(id).onchange = advRender; });
-  $('advPrep').oninput = () => { try { localStorage.setItem('fth_adv_prep', $('advPrep').value); } catch {} advRender(); };
+  $('advCopies').onchange = advRender;
+  $('advDate').oninput = e => {                                   // type digits only, slashes are added: 15102026 -> 15/10/2026
+    const d = e.target.value.replace(/\D/g, '').slice(0, 8);
+    e.target.value = d.length > 4 ? d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4) : d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+  };
+  $('advDate').onchange = () => {
+    if (!advParseDmy($('advDate').value)) { toast('Use the date format dd/mm/yyyy', true); $('advDate').value = ADV.lastDate || advDmy(advToday()); return; }
+    ADV.lastDate = $('advDate').value; advRender();
+  };
+  $('advPrep').onchange = () => { try { localStorage.setItem('fth_adv_prep', $('advPrep').value); } catch {} advRender(); };
   $('advClose').onclick = advClose;
   $('advPrint').onclick = () => { document.body.classList.add('adv-print'); window.print(); };
   window.addEventListener('afterprint', () => document.body.classList.remove('adv-print'));

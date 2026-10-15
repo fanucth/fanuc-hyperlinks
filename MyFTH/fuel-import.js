@@ -273,6 +273,7 @@ function renderImport(){
 
 async function onPickFile(file){
   $('impResult').classList.add('hidden'); $('impPreview').classList.add('hidden'); $('impErr').textContent = '';
+  $('btnDoImport').disabled = true; $('btnDoImport').textContent = 'Import';
   if (!file) return;
   try {
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
@@ -314,7 +315,7 @@ async function doImport(){
   try { await doImportRun(); }
   catch (e) {
     console.error(e);
-    $('btnDoImport').disabled = false;
+    if (IMP_ROWS.length) renderImport(); else { $('btnDoImport').disabled = true; $('btnDoImport').textContent = 'Import'; }
     const box = $('impResult'); box.classList.remove('hidden');
     box.innerHTML = `<span class="fc-badge fc-badge--danger">Import failed</span> <span class="fc-note">${esc(e.message || String(e))}</span>`;
     toast('Import failed: ' + (e.message || e), true);
@@ -374,7 +375,8 @@ async function doImportRun(){
   if (u) u.onclick = undoImport;
   $('impFile').value = '';
   IMP_ROWS = [];
-  // the result box is at the top of the page while the Import button was at the bottom: bring it into view and say so
+  $('btnDoImport').disabled = true; $('btnDoImport').textContent = 'Import';
+  // bring the result into view and say so
   toast(err ? 'Import stopped — see the message at the top' : `Imported ${done} bill${done === 1 ? '' : 's'}${calcDone ? ' and saved ' + calcDone + ' calculation' + (calcDone === 1 ? '' : 's') : ''}`, !!err);
   box.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
 }
