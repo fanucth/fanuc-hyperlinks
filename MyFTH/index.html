@@ -288,7 +288,7 @@
   .calc-warn{margin-top:var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);border:1px solid var(--fc-warn);border-radius:var(--fc-radius);color:var(--fc-warn);font-size:calc(13px * var(--ts,1));}
 
   /* Import row: file, billing month and the two buttons share one height and baseline */
-  #viewImport .filters .fc-input,#viewImport .filters .fc-btn,#viewAdvice .filters .fc-input,#viewAdvice .filters .fc-btn,#viewClaims .filters .fc-input,#viewClaims .filters .fc-btn{height:42px;box-sizing:border-box;}
+  #viewImport .filters .fc-input,#viewImport .filters .fc-btn,#viewAdvice .filters .fc-input,#viewAdvice .filters .fc-btn,#viewClaims .filters .fc-input,#viewClaims .filters .fc-btn,#viewUsers .filters .fc-input,#viewUsers .filters .fc-btn{height:42px;box-sizing:border-box;}
 
   /* payment advice (screen + print) */
   .adv-dlg{max-width:min(980px,96vw);width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;padding:var(--fc-s4);}
@@ -490,7 +490,7 @@
           <input id="mfaCode" class="fc-input code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••" required>
           <span class="fc-field__error" id="mfaErr" role="alert"></span>
         </label>
-        <label class="check" id="mfaTrustWrap" style="margin-bottom:var(--fc-s3)"><input type="checkbox" id="mfaTrust"> <span id="mfaTrustLbl">Remember this browser</span></label>
+        <label class="check" id="mfaTrustWrap"><input type="checkbox" id="mfaTrust"> <span id="mfaTrustLbl">Remember this browser</span></label>
         <button class="fc-btn fc-btn--primary full" id="mfaVerify" type="submit">Verify and continue</button>
         <p style="text-align:center;margin:var(--fc-s4) 0 0"><button type="button" class="linkbtn" id="mfaResend" disabled>Resend code</button></p>
         <p class="mfa-alts" id="mfaAlts">
@@ -653,9 +653,9 @@
             <select id="uRole" class="fc-input"><option value="">Any</option><option value="any">Has any admin role</option><option value="platform:admin">Platform admin</option><option value="fuel:admin">Fuel admin</option><option value="homemap:viewer">Home map viewer</option><option value="none">No admin role</option></select></label>
           <label class="fc-field"><span class="fc-field__label">Status</span>
             <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
-          <button class="fc-btn" id="uClear" type="button" style="margin-bottom:var(--fc-s3)" title="Clear all filters">Clear</button>
-          <button type="button" class="fc-btn" style="margin-bottom:var(--fc-s3)" id="btnXlsUsers" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
-          <button class="fc-btn fc-btn--primary" id="btnAddUser" style="margin-bottom:var(--fc-s3)">Add employee</button>
+          <button class="fc-btn" id="uClear" type="button" title="Clear all filters">Clear</button>
+          <button type="button" class="fc-btn" id="btnXlsUsers" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
+          <button class="fc-btn fc-btn--primary" id="btnAddUser">Add employee</button>
         </div>
         <p class="summary" id="usersSummary"></p>
         <div class="tbl-wrap">
@@ -678,7 +678,7 @@
       <div class="panel__body">
         <p class="fc-note" style="margin-top:0">Choose the billing month, then add or edit one claim per person. Enter the km, litres and the actual fuel bill and Gasoline is calculated for you (same formula as the Excel “Calculation” sheet); add tollgate, car wash, parking and the other expenses. Employees see the bill as soon as you save. Paid bills cannot be changed. Claims the employees submit themselves wait here until you approve them.</p>
         <div id="clSubs"></div>
-        <div class="filters" style="margin-bottom:var(--fc-s3)">
+        <div class="filters">
           <label class="fc-field"><span class="fc-field__label">Billing month</span><input type="month" id="clMonth" class="fc-input"></label>
           <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
             <input type="search" id="clSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
@@ -707,7 +707,7 @@
       </div>
       <div class="panel__body">
         <p class="fc-note" style="margin-top:0">Choose a billing month, tick the people and print. Each document is one A4 sheet (two copies, top and bottom). The number is <b>PC-year/ G&lt;billing month&gt;-&lt;No.&gt;</b> (a September bill gives G9). After you pay, tick the people and press <b>Mark as paid</b>.</p>
-        <div class="filters" style="margin-bottom:var(--fc-s3)">
+        <div class="filters">
           <label class="fc-field"><span class="fc-field__label">Billing month</span><select id="advMonth" class="fc-input"></select></label>
           <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
             <input type="search" id="advSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
@@ -756,7 +756,7 @@
         <button type="button" class="fc-btn" id="btnTemplate" title="An example file in the exact layout the importer reads, with instructions">Download Excel template</button>
         <button type="button" class="fc-btn fc-btn--primary" id="btnDoImport" disabled>Import</button>
         </div>
-        <div class="fc-field__error" id="impErr" role="alert" style="margin-bottom:var(--fc-s3)"></div>
+        <div class="fc-field__error" id="impErr" role="alert"></div>
         <div id="impResult" class="result hidden"></div>
         <div id="impPreview" class="hidden">
           <p class="summary" id="impSummary"></p>
@@ -993,7 +993,7 @@
 <!-- Backup codes (shown once) -->
 <div class="fc-modal hidden" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupTitle">
   <div class="fc-modal__box" style="max-width:460px;max-height:94vh;overflow:auto">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--fc-s3)"><h3 id="backupTitle" style="margin-bottom:var(--fc-s3)">Your backup codes</h3>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--fc-s3)"><h3 id="backupTitle">Your backup codes</h3>
       <button type="button" class="bar-btn" id="backupClose" aria-label="Close" title="Close" style="padding:var(--fc-s1) var(--fc-s2)"><svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <p class="fc-note" style="margin-top:0"><b>Save these now — they are shown only once.</b> Each code works one time, when you cannot use the email code or your authenticator app.
       Creating new codes makes the old ones stop working. Keep them somewhere safe (print them or store them in the company password manager), not in the same email account.</p>
@@ -1087,7 +1087,7 @@
 <script src="claims.js?v=202610162000"></script>
 <script src="advice.js?v=202610162000"></script>
 <script src="photo.js?v=202610141420"></script>
-<script src="export-xlsx.js?v=202610162000"></script>
+<script src="export-xlsx.js?v=202610162100"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
