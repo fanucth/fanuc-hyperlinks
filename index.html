@@ -287,6 +287,12 @@
             display: block;
         }
 
+        /* เมนูย่อยของกล่องที่อยู่ชิดขอบขวา ให้ชิดขอบขวาของกล่องแทน จะได้ไม่หลุดจอ */
+        .dropdown-menu.align-right {
+            left: auto;
+            right: 0;
+        }
+
         .link-box.active {
             border-color: var(--accent-color);
             box-shadow: 0 5px 15px rgba(0,0,0,0.08);
@@ -821,6 +827,22 @@ document.querySelectorAll('.link-box').forEach(box => {
             // เปิด/ปิดเมนูปัจจุบัน
             this.classList.toggle('active');
         });
+    }
+});
+
+// ถ้าเมนูย่อยจะเลยขอบขวาของจอ ให้เปิดชิดขอบขวาของกล่อง (ถ้าด้านซ้ายพอที่)
+function fitDropdown(box) {
+    const menu = box.querySelector('.dropdown-menu');
+    if (!menu) return;
+    const r = box.getBoundingClientRect();
+    const w = menu.offsetWidth || 200;
+    const vw = document.documentElement.clientWidth;
+    menu.classList.toggle('align-right', r.left + w > vw - 8 && r.right - w >= 8);
+}
+document.querySelectorAll('.link-box').forEach(box => {
+    if (box.querySelector('.dropdown-menu')) {
+        box.addEventListener('mouseenter', () => fitDropdown(box));
+        box.addEventListener('click', () => fitDropdown(box));
     }
 });
 
