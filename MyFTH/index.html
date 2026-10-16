@@ -7,16 +7,16 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2048%2048'%3E%3Crect%20width%3D'48'%20height%3D'48'%20rx%3D'8'%20fill%3D'%23FFD702'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%231b1b1f'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Crect%20x%3D'10'%20y%3D'11'%20width%3D'28'%20height%3D'26'%20rx%3D'3.5'%2F%3E%3Cpath%20d%3D'M20.5%2011v2.2h7V11'%2F%3E%3Ccircle%20cx%3D'19.5'%20cy%3D'23'%20r%3D'3.2'%2F%3E%3Cpath%20d%3D'M13.8%2032c.8-3%203-4.4%205.7-4.4s4.9%201.4%205.7%204.4M29%2022h5M29%2027h5'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="fanuc-ui.css?v=202610141146">
+<link rel="stylesheet" href="fanuc-ui.css?v=202610161600">
 <style>
   /* Page-level overrides on top of the FANUC UI kit (tokens only — no raw colours) */
-  body.fc{font-family:'Inter','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:14px;line-height:1.6;
+  body.fc{font-family:'Inter','Noto Sans Thai','Segoe UI',system-ui,-apple-system,'Sarabun',sans-serif;font-size:calc(14px * var(--ts,1));line-height:1.6;
     -webkit-font-smoothing:antialiased;}
   .fc-container{max-width:none;margin:0;padding:var(--fc-s5) var(--fc-s5) var(--fc-s7);}   /* full width, left aligned */
-  h1,h2,h3{font-family:'Kanit','Inter',sans-serif;}
+  h1,h2,h3{font-family:'Kanit','Noto Sans Thai','Inter',sans-serif;}
 
   .ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
   .ico--lg{width:20px;height:20px;}
@@ -29,8 +29,14 @@
   :root[data-theme="dark"] .brand .brand__logo{background:#fff;border-radius:var(--fc-radius);padding:2px var(--fc-s2);}   /* the logo has black text: keep it readable in dark mode */
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand .brand__logo{background:#fff;border-radius:var(--fc-radius);padding:2px var(--fc-s2);} }
   .brand__div{width:1px;height:28px;background:var(--fc-border-strong);}
-  .brand__name{font-family:'Kanit',sans-serif;font-weight:600;font-size:20px;line-height:1.2;margin:0;}
-  .brand__sub{font-size:12px;color:var(--fc-text-mute);display:block;line-height:1.2;}
+  .brand__name{font-family:'Kanit',sans-serif;font-weight:600;font-size:calc(20px * var(--ts,1));line-height:1.2;margin:0;}
+  .brand__sub{font-size:calc(12px * var(--ts,1));color:var(--fc-text-mute);display:block;line-height:1.2;}
+  .lang-sw{display:inline-flex;border:1px solid var(--fc-border-strong);border-radius:var(--fc-radius);overflow:hidden;}
+  .lang-sw button{font:inherit;font-size:calc(13px * var(--ts,1));font-weight:600;min-height:34px;padding:0 var(--fc-s3);border:0;background:transparent;color:var(--fc-text-dim);cursor:pointer;}
+  .lang-sw button + button{border-left:1px solid var(--fc-border-strong);}
+  .lang-sw button:hover{background:var(--fc-zebra);color:var(--fc-text);}
+  .lang-sw button.is-on{background:var(--fc-primary);color:var(--fc-primary-ink);}
+  .lang-sw button:focus-visible{outline:none;box-shadow:var(--fc-focus);}
   .bar-actions{display:flex;align-items:center;gap:var(--fc-s1);margin-left:auto;}
   .bar-btn{display:inline-flex;align-items:center;gap:var(--fc-s2);min-height:36px;padding:var(--fc-s2) var(--fc-s3);
     font:inherit;font-weight:500;color:var(--fc-text-dim);background:transparent;border:1px solid transparent;
@@ -40,26 +46,26 @@
   .bar-btn--accent{color:var(--fc-text);border-color:var(--fc-border-strong);background:var(--fc-surface);}
   .bar-btn--accent:hover{border-color:var(--fc-primary);color:var(--fc-primary);}
   .bar-sep{width:1px;height:20px;background:var(--fc-border);margin:0 var(--fc-s1);}
-  .admin-tag{font-size:12px;font-weight:600;color:var(--fc-info);background:var(--fc-info-bg);padding:2px var(--fc-s2);border-radius:var(--fc-radius);}
+  .admin-tag{font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-info);background:var(--fc-info-bg);padding:2px var(--fc-s2);border-radius:var(--fc-radius);}
 
   /* hero */
   .hero{display:flex;align-items:center;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;}
   .thumb{width:32px;height:32px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-th-bg);color:var(--fc-text-dim);
-    display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;}
+    display:inline-flex;align-items:center;justify-content:center;font-size:calc(12px * var(--ts,1));font-weight:600;}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .thumb--lg{width:56px;height:56px;font-size:20px;}
+  .thumb--lg{width:56px;height:56px;font-size:calc(20px * var(--ts,1));}
   .dept-chips{display:flex;flex-wrap:wrap;gap:var(--fc-s1);margin-top:var(--fc-s2);}
-  .dept-chip{font:inherit;font-size:12px;font-weight:600;color:var(--fc-text-dim);background:var(--fc-surface);border:1px solid var(--fc-border);
+  .dept-chip{font:inherit;font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-dim);background:var(--fc-surface);border:1px solid var(--fc-border);
     border-radius:var(--fc-radius);padding:2px var(--fc-s2);cursor:pointer;}
   .dept-chip:hover,.dept-chip.is-on{color:var(--fc-primary);border-color:var(--fc-primary);}
   .photo-row{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
   .who{display:flex;align-items:center;gap:var(--fc-s3);}
   .avatar{width:72px;height:72px;border-radius:var(--fc-radius);flex:none;overflow:hidden;background:var(--fc-primary);color:var(--fc-primary-ink);
-    display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:28px;}
-  .hero__eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
-  .hero__name{font-size:28px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
+    display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:600;font-size:calc(28px * var(--ts,1));}
+  .hero__eyebrow{font-size:calc(12px * var(--ts,1));font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fc-text-mute);}
+  .hero__name{font-size:calc(28px * var(--ts,1));line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
   .chips{display:flex;gap:var(--fc-s2);flex-wrap:wrap;margin-top:var(--fc-s2);}
-  .chip{display:inline-flex;align-items:center;gap:var(--fc-s1);font-size:12px;font-weight:600;color:var(--fc-text-dim);
+  .chip{display:inline-flex;align-items:center;gap:var(--fc-s1);font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-dim);
     background:var(--fc-surface);border:1px solid var(--fc-border);padding:2px var(--fc-s3);border-radius:var(--fc-radius);}
 
   /* layout */
@@ -69,8 +75,8 @@
   .grid.side-hidden > .stack{display:none;}
   .panel{background:var(--fc-surface);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
   .panel__head{display:flex;align-items:center;gap:var(--fc-s3);padding:var(--fc-s4) var(--fc-s5);border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
-  .panel__title{font-size:20px;font-weight:600;line-height:1.35;margin:0;}
-  .panel__sub{font-size:14px;color:var(--fc-text-dim);margin:0;}
+  .panel__title{font-size:calc(20px * var(--ts,1));font-weight:600;line-height:1.35;margin:0;}
+  .panel__sub{font-size:calc(14px * var(--ts,1));color:var(--fc-text-dim);margin:0;}
   .panel__body{padding:var(--fc-s5);}
   .push{margin-left:auto;}
 
@@ -85,14 +91,14 @@
   .ph-stage{position:relative;width:min(320px,100%);aspect-ratio:1;margin:var(--fc-s3) auto;border-radius:var(--fc-radius);overflow:hidden;background:var(--fc-th-bg);touch-action:none;}
   .ph-stage canvas{width:100%;height:100%;display:block;cursor:grab;}
   .ph-stage canvas:active{cursor:grabbing;}
-  .ph-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:var(--fc-s4);color:var(--fc-text-dim);font-size:14px;pointer-events:none;}
+  .ph-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:var(--fc-s4);color:var(--fc-text-dim);font-size:calc(14px * var(--ts,1));pointer-events:none;}
   .ph-tools{display:flex;align-items:center;gap:var(--fc-s3);margin-bottom:var(--fc-s3);}
   .ph-tools input[type=range]{flex:1;accent-color:var(--fc-primary);}
   .ph-actions{display:flex;gap:var(--fc-s2);flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:var(--fc-s3);}
 
   /* compact side cards (home location, sign-in security): small header, collapsible */
   .panel--compact .panel__head{padding:var(--fc-s3) var(--fc-s4);gap:var(--fc-s2);cursor:pointer;user-select:none;}
-  .panel--compact .panel__title{font-size:16px;}
+  .panel--compact .panel__title{font-size:calc(16px * var(--ts,1));}
   .panel--compact .panel__sub{display:none;}
   .panel--compact .panel__body{padding:var(--fc-s3) var(--fc-s4) var(--fc-s4);}
   .panel--compact .ico--lg{width:16px;height:16px;}
@@ -106,42 +112,42 @@
   /* compact profile card */
   .profile{padding:0;overflow:hidden;}
   .profile__head{display:flex;align-items:center;gap:var(--fc-s4);padding:var(--fc-s4) var(--fc-s4) var(--fc-s3);}
-  .profile__name{font-size:20px;line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
-  .profile__sub{font-size:14px;color:var(--fc-text-dim);overflow-wrap:anywhere;}
+  .profile__name{font-size:calc(20px * var(--ts,1));line-height:1.35;font-weight:600;margin:0;overflow-wrap:anywhere;}
+  .profile__sub{font-size:calc(14px * var(--ts,1));color:var(--fc-text-dim);overflow-wrap:anywhere;}
   .kv{margin:0;padding:var(--fc-s3) var(--fc-s4) var(--fc-s4);display:grid;grid-template-columns:1fr 1fr;gap:var(--fc-s3) var(--fc-s4);
     border-top:1px solid var(--fc-border);}
   .kv__row{min-width:0;}
   .kv__row.span2{grid-column:1 / -1;}
   .kv__ico{color:var(--fc-text-mute);}
-  .kv__label{font-size:12px;font-weight:600;color:var(--fc-text-mute);display:flex;align-items:center;gap:var(--fc-s1);}
+  .kv__label{font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-mute);display:flex;align-items:center;gap:var(--fc-s1);}
   .kv__label .ico{width:12px;height:12px;}
-  .kv__val{display:block;font-size:14px;font-weight:500;color:var(--fc-text);overflow-wrap:anywhere;line-height:1.5;}
+  .kv__val{display:block;font-size:calc(14px * var(--ts,1));font-weight:500;color:var(--fc-text);overflow-wrap:anywhere;line-height:1.5;}
 
 
   /* KPIs */
   .kpis{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--fc-s3);margin-bottom:var(--fc-s5);}
   .kpis--dense .kpi{padding:var(--fc-s3);}
-  .kpis--dense .kpi__value{font-size:20px;}
+  .kpis--dense .kpi__value{font-size:calc(20px * var(--ts,1));}
   .kpis--dense .kpi__unit{display:block;margin:0;line-height:1.2;}
-  .kpis--dense .kpi__sub{font-size:11px;line-height:1.35;}
+  .kpis--dense .kpi__sub{font-size:calc(11px * var(--ts,1));line-height:1.35;}
   .kpi{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s4);background:var(--fc-bg);position:relative;}
   .kpi--main{background:var(--fc-surface);border-color:var(--fc-border-strong);box-shadow:inset 0 3px 0 var(--fc-accent);}
-  .kpi__label{font-size:12px;font-weight:600;color:var(--fc-text-dim);}
-  .kpi__value{font-family:'Kanit','Inter',sans-serif;font-weight:600;font-size:28px;line-height:1.35;font-variant-numeric:tabular-nums;margin-top:var(--fc-s1);}
-  .kpi__unit{font-size:12px;font-weight:500;color:var(--fc-text-mute);margin-left:var(--fc-s1);}
-  .kpi__sub{font-size:12px;color:var(--fc-text-mute);}
+  .kpi__label{font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-dim);}
+  .kpi__value{font-family:'Kanit','Inter',sans-serif;font-weight:600;font-size:calc(28px * var(--ts,1));line-height:1.35;font-variant-numeric:tabular-nums;margin-top:var(--fc-s1);}
+  .kpi__unit{font-size:calc(12px * var(--ts,1));font-weight:500;color:var(--fc-text-mute);margin-left:var(--fc-s1);}
+  .kpi__sub{font-size:calc(12px * var(--ts,1));color:var(--fc-text-mute);}
   .kpi__unit{white-space:nowrap;}
 
   /* filters */
   .filters{display:flex;gap:var(--fc-s3);align-items:flex-end;flex-wrap:wrap;}
   .filters .fc-field{margin:0;}
-  .filters .fc-field__label{font-size:12px;}
-  .fc-input{font-size:14px;}
+  .filters .fc-field__label{font-size:calc(12px * var(--ts,1));}
+  .fc-input{font-size:calc(14px * var(--ts,1));}
 
   /* fuel table */
   .tbl-wrap{border:1px solid var(--fc-border);border-radius:var(--fc-radius);overflow:auto;max-height:68vh;}
-  table.tbl{width:100%;border-collapse:collapse;font-size:14px;}
-  .tbl th{position:sticky;top:0;z-index:1;background:var(--fc-th-bg);color:var(--fc-text);font-size:12px;font-weight:600;
+  table.tbl{width:100%;border-collapse:collapse;font-size:calc(14px * var(--ts,1));}
+  .tbl th{position:sticky;top:0;z-index:1;background:var(--fc-th-bg);color:var(--fc-text);font-size:calc(12px * var(--ts,1));font-weight:600;
     text-align:left;padding:var(--fc-s3);white-space:nowrap;border-bottom:1px solid var(--fc-border-strong);}
   .tbl td{padding:var(--fc-s3);border-bottom:1px solid var(--fc-border);white-space:nowrap;vertical-align:middle;}
   .tbl tbody tr:last-child td{border-bottom:0;}
@@ -151,15 +157,15 @@
   .tbl td.total{font-weight:700;}
   .tbl td.remark{white-space:normal;min-width:140px;color:var(--fc-text-dim);}
   .dash{color:var(--fc-text-mute);}
-  .fc-badge{font-size:12px;}
+  .fc-badge{font-size:calc(12px * var(--ts,1));}
 
-  .cta-note{display:flex;gap:var(--fc-s3);align-items:flex-start;color:var(--fc-text-dim);font-size:14px;}
+  .cta-note{display:flex;gap:var(--fc-s3);align-items:flex-start;color:var(--fc-text-dim);font-size:calc(14px * var(--ts,1));}
 
   /* login */
   .login{max-width:400px;margin:var(--fc-s7) auto;}
   .login__top{text-align:center;margin-bottom:var(--fc-s5);}
   .login__top .emblem{width:56px;height:56px;display:block;margin:0 auto var(--fc-s4);}
-  .login__title{font-size:28px;line-height:1.35;margin:0 0 var(--fc-s1);}
+  .login__title{font-size:calc(28px * var(--ts,1));line-height:1.35;margin:0 0 var(--fc-s1);}
   .login .panel__body{padding:var(--fc-s5);}
   .fc-btn{font-weight:600;}
   .full{width:100%;}
@@ -167,10 +173,10 @@
   .link:hover{text-decoration:underline;}
 
   /* import */
-  .steps{display:flex;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;font-size:14px;color:var(--fc-text-dim);}
+  .steps{display:flex;gap:var(--fc-s4);margin-bottom:var(--fc-s5);flex-wrap:wrap;font-size:calc(14px * var(--ts,1));color:var(--fc-text-dim);}
   .step{display:flex;align-items:center;gap:var(--fc-s2);}
-  .step b{width:24px;height:24px;border-radius:50%;background:var(--fc-th-bg);color:var(--fc-text);display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
-  .summary{font-size:14px;margin:0 0 var(--fc-s3);display:flex;gap:var(--fc-s2);flex-wrap:wrap;align-items:center;}
+  .step b{width:24px;height:24px;border-radius:50%;background:var(--fc-th-bg);color:var(--fc-text);display:inline-flex;align-items:center;justify-content:center;font-size:calc(12px * var(--ts,1));}
+  .summary{font-size:calc(14px * var(--ts,1));margin:0 0 var(--fc-s3);display:flex;gap:var(--fc-s2);flex-wrap:wrap;align-items:center;}
   .result{display:flex;gap:var(--fc-s3);align-items:center;flex-wrap:wrap;margin-bottom:var(--fc-s4);}
   .result[hidden]{display:none;}
   .hidden{display:none !important;}
@@ -190,21 +196,21 @@
   #ovMap{height:calc(100vh - 230px);min-height:480px;}
   .side{display:grid;gap:var(--fc-s4);max-height:calc(100vh - 230px);min-height:480px;overflow:auto;align-content:start;}
   #mapSummary{display:grid;gap:var(--fc-s3);}
-  .side h4{font-size:12px;font-weight:600;color:var(--fc-text-mute);margin:0 0 var(--fc-s2);}
-  .bar{display:grid;grid-template-columns:96px 1fr 28px;gap:var(--fc-s2);align-items:center;font-size:12px;margin-bottom:var(--fc-s1);}
+  .side h4{font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-mute);margin:0 0 var(--fc-s2);}
+  .bar{display:grid;grid-template-columns:96px 1fr 28px;gap:var(--fc-s2);align-items:center;font-size:calc(12px * var(--ts,1));margin-bottom:var(--fc-s1);}
   .bar b{text-align:right;font-variant-numeric:tabular-nums;}
   .bar__track{height:8px;background:var(--fc-th-bg);border-radius:4px;overflow:hidden;}
   .bar__track i{display:block;height:100%;background:var(--fc-primary);}
   .plist{border:1px solid var(--fc-border);border-radius:var(--fc-radius);max-height:260px;overflow:auto;}
   .plist__row{display:flex;justify-content:space-between;width:100%;padding:var(--fc-s2) var(--fc-s3);background:transparent;border:0;border-bottom:1px solid var(--fc-border);
-    font:inherit;font-size:14px;color:var(--fc-text);cursor:pointer;text-align:left;}
+    font:inherit;font-size:calc(14px * var(--ts,1));color:var(--fc-text);cursor:pointer;text-align:left;}
   .plist__row:last-child{border-bottom:0;}
   .plist__row:hover{background:var(--fc-row-hover);}
   .leaflet-container{font-family:inherit;}
   @media (max-width:900px){ .mapgrid{grid-template-columns:minmax(0,1fr);} #ovMap{height:60vh;min-height:360px;} .side{max-height:none;min-height:0;} }
 
   /* email code (2FA) */
-  .code-input{font-size:28px;letter-spacing:.5em;text-align:center;font-variant-numeric:tabular-nums;font-family:var(--fc-font-mono);padding-left:.5em;}
+  .code-input{font-size:calc(28px * var(--ts,1));letter-spacing:.5em;text-align:center;font-variant-numeric:tabular-nums;font-family:var(--fc-font-mono);padding-left:.5em;}
   .linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--fc-primary);cursor:pointer;}
   .linkbtn:disabled{color:var(--fc-text-mute);cursor:default;}
   .linkbtn:not(:disabled):hover{text-decoration:underline;}
@@ -213,29 +219,29 @@
   .seccard__txt{flex:1 1 280px;min-width:0;}
   .seccard__txt strong{display:block;margin-bottom:var(--fc-s1);}
   .seccard .fc-field{margin:0;}
-  .seccard .fc-field__label{font-size:12px;}
+  .seccard .fc-field__label{font-size:calc(12px * var(--ts,1));}
 
   /* sign-in security card + dialogs */
   .sec-row{display:flex;gap:var(--fc-s3);align-items:center;justify-content:space-between;padding:var(--fc-s3) 0;border-bottom:1px solid var(--fc-border);flex-wrap:wrap;}
   .sec-row:last-child{border-bottom:0;padding-bottom:0;}
   .sec-row:first-child{padding-top:0;}
   .sec-row__t{min-width:0;}
-  .sec-row__t b{display:block;font-size:14px;}
-  .sec-row__t span{font-size:12px;color:var(--fc-text-dim);}
+  .sec-row__t b{display:block;font-size:calc(14px * var(--ts,1));}
+  .sec-row__t span{font-size:calc(12px * var(--ts,1));color:var(--fc-text-dim);}
   .totp-qr{display:block;margin:var(--fc-s3) auto;width:208px;height:208px;image-rendering:pixelated;background:#fff;padding:var(--fc-s2);border:1px solid var(--fc-border);border-radius:var(--fc-radius);}
-  .totp-secret{font-family:var(--fc-font-mono);font-size:14px;font-weight:600;letter-spacing:.08em;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);text-align:center;user-select:all;overflow-wrap:anywhere;}
+  .totp-secret{font-family:var(--fc-font-mono);font-size:calc(14px * var(--ts,1));font-weight:600;letter-spacing:.08em;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);text-align:center;user-select:all;overflow-wrap:anywhere;}
   .codes{display:grid;grid-template-columns:1fr 1fr;gap:var(--fc-s2);margin:var(--fc-s3) 0;}
-  .codes code{font-family:var(--fc-font-mono);font-size:16px;font-weight:600;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2);text-align:center;user-select:all;}
-  .mfa-alts{text-align:center;margin:var(--fc-s3) 0 0;font-size:14px;display:flex;gap:var(--fc-s4);justify-content:center;flex-wrap:wrap;}
+  .codes code{font-family:var(--fc-font-mono);font-size:calc(16px * var(--ts,1));font-weight:600;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2);text-align:center;user-select:all;}
+  .mfa-alts{text-align:center;margin:var(--fc-s3) 0 0;font-size:calc(14px * var(--ts,1));display:flex;gap:var(--fc-s4);justify-content:center;flex-wrap:wrap;}
   @media print{ body *{visibility:hidden;} #backupModal,#backupModal *{visibility:visible;} #backupModal{position:absolute;inset:0;background:#fff;} #backupModal button{display:none;} }
 
   /* compact dialogs */
   .fc-modal__box.compact{padding:var(--fc-s4);}
-  .fc-modal__box.compact h3{font-size:16px;margin:0 0 var(--fc-s2);}
+  .fc-modal__box.compact h3{font-size:calc(16px * var(--ts,1));margin:0 0 var(--fc-s2);}
   .compact .fc-field{margin-bottom:var(--fc-s2);}
-  .compact .fc-field__label{font-size:12px;margin-bottom:2px;}
-  .compact .fc-input{min-height:34px;padding:var(--fc-s1) var(--fc-s3);font-size:14px;}
-  .compact .hint{font-size:12px;display:block;margin-top:2px;min-height:0;}
+  .compact .fc-field__label{font-size:calc(12px * var(--ts,1));margin-bottom:2px;}
+  .compact .fc-input{min-height:34px;padding:var(--fc-s1) var(--fc-s3);font-size:calc(14px * var(--ts,1));}
+  .compact .hint{font-size:calc(12px * var(--ts,1));display:block;margin-top:2px;min-height:0;}
   .compact .hint:empty{display:none;}
   .form-grid--12{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 var(--fc-s3);}
   .form-grid--12 .c2{grid-column:span 2;} .form-grid--12 .c3{grid-column:span 3;} .form-grid--12 .c4{grid-column:span 4;}
@@ -245,7 +251,7 @@
   .ue-head{display:flex;align-items:center;justify-content:space-between;gap:var(--fc-s3);margin-bottom:var(--fc-s2);}
   .ue-head h3{margin:0 !important;}
   .ue-head .photo-row{margin:0;gap:var(--fc-s2);}
-  .ue-head .thumb--lg{width:36px;height:36px;font-size:14px;}
+  .ue-head .thumb--lg{width:36px;height:36px;font-size:calc(14px * var(--ts,1));}
   .strip{display:flex;flex-wrap:wrap;gap:var(--fc-s1) var(--fc-s5);align-items:center;border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);margin:var(--fc-s1) 0 var(--fc-s2);}
   .roles-inline{display:flex;flex-wrap:wrap;gap:var(--fc-s1) var(--fc-s4);border:0;margin:0;padding:0;min-width:0;}
   .roles-inline.hidden{display:none;}
@@ -259,22 +265,34 @@
 
   .kpi__sub{overflow-wrap:anywhere;}
 
+  /* monthly fuel claim form */
+  .cl-h{grid-column:1 / -1;font-size:calc(12px * var(--ts,1));font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fc-text-mute);margin:var(--fc-s3) 0 var(--fc-s1);}
+  .cl-res{display:grid;grid-template-columns:1fr auto;gap:2px var(--fc-s4);align-content:start;border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s2) var(--fc-s3);margin-bottom:var(--fc-s2);font-size:calc(13px * var(--ts,1));}
+  .cl-res__k{color:var(--fc-text-mute);} .cl-res__v{text-align:right;font-variant-numeric:tabular-nums;}
+  .cl-total{display:flex;justify-content:flex-end;align-items:baseline;gap:var(--fc-s2);margin:var(--fc-s3) 0;font-size:calc(15px * var(--ts,1));} .cl-total b{font-size:calc(22px * var(--ts,1));font-variant-numeric:tabular-nums;}
+  .cl-chips{display:flex;flex-wrap:wrap;gap:var(--fc-s2);}
+  .cl-subs{margin-bottom:var(--fc-s4);border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s3);}
+  .cl-subs__h{font-weight:700;margin-bottom:var(--fc-s2);display:flex;gap:var(--fc-s2);align-items:center;}
+  .cl-adm.hidden{display:none !important;}
+  .form-grid--12 .c8{grid-column:span 8;}
+  @media (max-width:640px){ .form-grid--12 .c8{grid-column:1 / -1;} }
+
   /* gasoline calculation dialog */
-  .calc-tbl{width:100%;border-collapse:collapse;font-size:14px;}
+  .calc-tbl{width:100%;border-collapse:collapse;font-size:calc(14px * var(--ts,1));}
   .calc-tbl td{padding:5px var(--fc-s2);border-bottom:1px solid var(--fc-border);}
-  .calc-tbl td.k{color:var(--fc-text-mute);font-size:12px;white-space:nowrap;width:1%;}
-  .calc-tbl td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;} .calc-tbl td.u{color:var(--fc-text-mute);font-size:12px;white-space:nowrap;width:1%;}
-  .calc-tbl tr.calc-grp td{background:var(--fc-surface-2, rgba(128,128,128,.12));font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:0;}
+  .calc-tbl td.k{color:var(--fc-text-mute);font-size:calc(12px * var(--ts,1));white-space:nowrap;width:1%;}
+  .calc-tbl td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;} .calc-tbl td.u{color:var(--fc-text-mute);font-size:calc(12px * var(--ts,1));white-space:nowrap;width:1%;}
+  .calc-tbl tr.calc-grp td{background:var(--fc-surface-2, rgba(128,128,128,.12));font-weight:700;font-size:calc(12px * var(--ts,1));text-transform:uppercase;letter-spacing:.04em;border-bottom:0;}
   .calc-tbl tr.calc-strong td{font-weight:700;} .calc-tbl tr.calc-result td{background:rgba(212,160,23,.14);font-weight:700;}
   .calc-tbl tr.calc-good td.v{color:var(--fc-ok);} .calc-tbl tr.calc-bad td{color:var(--fc-danger, #c0392b);font-weight:700;}
-  .calc-warn{margin-top:var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);border:1px solid var(--fc-warn);border-radius:var(--fc-radius);color:var(--fc-warn);font-size:13px;}
+  .calc-warn{margin-top:var(--fc-s3);padding:var(--fc-s2) var(--fc-s3);border:1px solid var(--fc-warn);border-radius:var(--fc-radius);color:var(--fc-warn);font-size:calc(13px * var(--ts,1));}
 
   /* Import row: file, billing month and the two buttons share one height and baseline */
-  #viewImport .filters .fc-input,#viewImport .filters .fc-btn,#viewAdvice .filters .fc-input,#viewAdvice .filters .fc-btn{height:42px;box-sizing:border-box;}
+  #viewImport .filters .fc-input,#viewImport .filters .fc-btn,#viewAdvice .filters .fc-input,#viewAdvice .filters .fc-btn,#viewClaims .filters .fc-input,#viewClaims .filters .fc-btn{height:42px;box-sizing:border-box;}
 
   /* payment advice (screen + print) */
   .adv-dlg{max-width:min(980px,96vw);width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;padding:var(--fc-s4);}
-  .adv-controls h3{margin:0 0 var(--fc-s2);font-size:16px;}
+  .adv-controls h3{margin:0 0 var(--fc-s2);font-size:calc(16px * var(--ts,1));}
   .adv-ctl{display:flex;flex-wrap:wrap;gap:var(--fc-s3);align-items:flex-end;}
   .adv-ctl .fc-field{margin:0;} .adv-btns{margin-left:auto;display:flex;gap:var(--fc-s2);}
   .adv-pages{overflow:auto;background:#e4e7ec;padding:var(--fc-s3);margin-top:var(--fc-s3);flex:1;min-height:200px;}
@@ -323,12 +341,12 @@
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--fc-s3);}
   .form-grid .fc-field{margin-bottom:var(--fc-s3);}
   .roles{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s3) var(--fc-s4);margin:var(--fc-s2) 0;}
-  .roles legend{font-size:12px;font-weight:600;color:var(--fc-text-mute);padding:0 var(--fc-s2);}
-  .check{display:flex;gap:var(--fc-s2);align-items:flex-start;padding:var(--fc-s1) 0;font-size:14px;cursor:pointer;}
+  .roles legend{font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-mute);padding:0 var(--fc-s2);}
+  .check{display:flex;gap:var(--fc-s2);align-items:flex-start;padding:var(--fc-s1) 0;font-size:calc(14px * var(--ts,1));cursor:pointer;}
   .check input{margin-top:4px;accent-color:var(--fc-primary);}
   .pwbox{display:flex;align-items:center;justify-content:space-between;gap:var(--fc-s3);background:var(--fc-bg);border:1px solid var(--fc-border-strong);
     border-radius:var(--fc-radius);padding:var(--fc-s3) var(--fc-s4);margin-bottom:var(--fc-s3);}
-  .pwbox code{font-family:var(--fc-font-mono);font-size:16px;font-weight:600;user-select:all;overflow-wrap:anywhere;}
+  .pwbox code{font-family:var(--fc-font-mono);font-size:calc(16px * var(--ts,1));font-weight:600;user-select:all;overflow-wrap:anywhere;}
   .bar-btn:disabled{opacity:.4;cursor:not-allowed;}
   @media (max-width:640px){ .form-grid{grid-template-columns:1fr;} }
 
@@ -348,7 +366,7 @@
     .bar-actions .bar-btn{padding:var(--fc-s2);}
     .admin-tag,.bar-sep{display:none;}
     .kpis{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);}
-    .hero__name{font-size:20px;}
+    .hero__name{font-size:calc(20px * var(--ts,1));}
     .profile__head{flex-direction:column;text-align:center;}
     .kv{text-align:center;}
     .kv__label{justify-content:center;}
@@ -357,12 +375,14 @@
     .tbl.cards,.tbl.cards tbody,.tbl.cards tr,.tbl.cards td{display:block;width:100%;}
     .tbl.cards tr{border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:var(--fc-s3);margin-bottom:var(--fc-s3);background:var(--fc-surface);}
     .tbl.cards td{display:flex;justify-content:space-between;gap:var(--fc-s3);border:0;padding:var(--fc-s1) 0;white-space:normal;text-align:right;}
-    .tbl.cards td::before{content:attr(data-l);font-size:12px;font-weight:600;color:var(--fc-text-mute);text-align:left;}
+    .tbl.cards td::before{content:attr(data-l);font-size:calc(12px * var(--ts,1));font-weight:600;color:var(--fc-text-mute);text-align:left;}
     .tbl.cards td.hide-empty:empty{display:none;}
     .tbl.cards tbody tr:hover td{background:transparent;}
   }
   @media print{ .fc-appbar .bar-actions{display:none;} }
 </style>
+<script src="i18n-th.js?v=202610161900"></script>
+<script src="i18n.js?v=202610161500"></script>
 </head>
 <body class="fc">
 
@@ -408,9 +428,11 @@
     <span class="admin-tag hidden" id="adminTag"></span>
     <button class="bar-btn bar-btn--accent hidden" id="btnMap"><svg class="ico"><use href="#i-map"/></svg><span class="lbl">Home map</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnUsers"><svg class="ico"><use href="#i-users"/></svg><span class="lbl">Manage users</span></button>
+    <button class="bar-btn bar-btn--accent hidden" id="btnClaims"><svg class="ico"><use href="#i-fuel"/></svg><span class="lbl">Monthly claim</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnAdvice"><svg class="ico"><use href="#i-print"/></svg><span class="lbl">Payment advice</span></button>
     <button class="bar-btn bar-btn--accent hidden" id="btnImport"><svg class="ico"><use href="#i-upload"/></svg><span class="lbl">Import bills</span></button>
     <button class="bar-btn hidden" id="btnChgPw"><svg class="ico"><use href="#i-key"/></svg><span class="lbl">Change password</span></button>
+    <div class="lang-sw" role="group" aria-label="Language" data-notr><button type="button" data-lang="th" title="ภาษาไทย">ไทย</button><button type="button" data-lang="en" title="English">EN</button></div>
     <button class="bar-btn" id="btnTheme" aria-label="Toggle light / dark mode"><svg class="ico" id="themeIco"><use href="#i-moon"/></svg></button>
     <span class="bar-sep hidden" id="barSep"></span>
     <button class="bar-btn hidden" id="btnLogout"><svg class="ico"><use href="#i-out"/></svg><span class="lbl">Sign out</span></button>
@@ -535,9 +557,11 @@
             <h3 class="panel__title">My fuel bills</h3>
             <p class="panel__sub">Gasoline, tollgate and other claims, by billing month</p>
           </div>
-          <button type="button" class="bar-btn push" id="btnSide" aria-expanded="true" title="Hide the profile column to give the bills more room"><svg class="ico"><use href="#i-side"/></svg><span class="lbl">Hide profile</span></button>
+          <button type="button" class="fc-btn fc-btn--primary fc-btn--sm push hidden" id="btnMyClaim" title="Enter your own fuel claim for a month">New claim</button>
+          <button type="button" class="bar-btn" id="btnSide" aria-expanded="true" title="Hide the profile column to give the bills more room"><svg class="ico"><use href="#i-side"/></svg><span class="lbl">Hide profile</span></button>
         </div>
         <div class="panel__body">
+          <div id="mySubs"></div>
           <div class="kpis" id="fuelKpis"></div>
           <div class="filters" style="margin-bottom:var(--fc-s4)">
             <label class="fc-field"><span class="fc-field__label">Year</span><select id="fYear" class="fc-input"></select></label>
@@ -637,6 +661,35 @@
             <tbody id="usersBody"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Monthly fuel claim (fuel admin only): enter / edit the bills of a month -->
+  <section id="viewClaims" class="hidden">
+    <div class="panel">
+      <div class="panel__head">
+        <h3 class="panel__title">Monthly fuel claim</h3>
+        <button class="back-btn push" id="btnClBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
+      </div>
+      <div class="panel__body">
+        <p class="fc-note" style="margin-top:0">Choose the billing month, then add or edit one claim per person. Enter the km, litres and the actual fuel bill and Gasoline is calculated for you (same formula as the Excel “Calculation” sheet); add tollgate, car wash, parking and the other expenses. Employees see the bill as soon as you save. Paid bills cannot be changed. Claims the employees submit themselves wait here until you approve them.</p>
+        <div id="clSubs"></div>
+        <div class="filters" style="margin-bottom:var(--fc-s3)">
+          <label class="fc-field"><span class="fc-field__label">Billing month</span><input type="month" id="clMonth" class="fc-input"></label>
+          <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
+            <input type="search" id="clSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
+          <label class="fc-field" style="flex:0 1 280px;min-width:190px"><span class="fc-field__label">New claim</span><select id="clAddEmp" class="fc-input"></select></label>
+        </div>
+        <p class="summary" id="clStatus"></p>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Employee</th><th>Department</th><th>Car plate</th><th class="num">Distance</th><th class="num">Gasoline</th><th class="num">Tollgate</th>
+              <th class="num">Other</th><th class="num">Adjustment</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
+            <tbody id="clBody"></tbody>
+          </table>
+        </div>
+        <div id="clMissing"></div>
       </div>
     </div>
   </section>
@@ -745,6 +798,59 @@
   </div>
 </div>
 
+<!-- Monthly fuel claim: one person, one month -->
+<div class="fc-modal hidden" id="clModal" role="dialog" aria-modal="true" aria-labelledby="clTitle">
+  <form class="fc-modal__box compact" id="clForm" style="max-width:780px;max-height:94vh;overflow:auto">
+    <h3 id="clTitle">Edit claim</h3>
+    <p class="fc-note" id="clWho" style="margin:0 0 var(--fc-s2)"></p>
+    <p class="fc-note hidden" id="clNote" style="margin:0 0 var(--fc-s2)"></p>
+    <div class="form-grid--12">
+      <label class="fc-field c4 hidden" id="clMonthRow"><span class="fc-field__label">Billing month</span><input class="fc-input" id="cl_month" type="month"></label>
+      <label class="fc-field c4"><span class="fc-field__label">Car plate</span><input class="fc-input" id="cl_car" autocomplete="off" maxlength="20"></label>
+      <label class="fc-field c5 cl-adm"><span class="fc-field__label">Cost center</span><input class="fc-input" id="cl_cc" autocomplete="off" placeholder="e.g. FTH1SA2"></label>
+      <label class="fc-field c3 cl-adm"><span class="fc-field__label">Type</span><select class="fc-input" id="cl_type"><option value="">—</option><option value="S">S (Sales)</option><option value="V">V (Service)</option></select></label>
+
+      <div class="cl-h">Fuel</div>
+      <label class="fc-field c3"><span class="fc-field__label">Odometer (km)</span><input class="fc-input" id="cl_odo" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Total use (km)</span><input class="fc-input" id="cl_a" type="number" step="any" inputmode="decimal" min="0"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Private (km)</span><input class="fc-input" id="cl_b" type="number" step="any" inputmode="decimal" min="0"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Fuel filled in (litres)</span><input class="fc-input" id="cl_d" type="number" step="any" inputmode="decimal" min="0"></label>
+      <label class="fc-field c4"><span class="fc-field__label">Actual fuel bill (THB)</span><input class="fc-input" id="cl_e" type="number" step="any" inputmode="decimal" min="0"></label>
+      <div class="c8 cl-res" id="clRes"></div>
+      <label class="fc-field c4 hidden" id="clGasRow"><span class="fc-field__label">Gasoline (THB)</span><input class="fc-input" id="cl_g" type="number" step="any" inputmode="decimal" min="0"></label>
+
+      <div class="cl-h">Other claims (THB)</div>
+      <label class="fc-field c3"><span class="fc-field__label">Tollgate</span><input class="fc-input" id="cl_toll" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Car wash</span><input class="fc-input" id="cl_wash" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Parking</span><input class="fc-input" id="cl_park" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Car rental</span><input class="fc-input" id="cl_rent" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">F&amp;D</span><input class="fc-input" id="cl_fnd" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Taxi</span><input class="fc-input" id="cl_taxi" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Hotel fee</span><input class="fc-input" id="cl_hotel" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Misc.</span><input class="fc-input" id="cl_misc" type="number" step="any" inputmode="decimal"></label>
+
+      <div class="c12 form-grid--12 cl-adm">
+      <div class="cl-h">Tax and adjustment (THB, may be negative)</div>
+      <label class="fc-field c3"><span class="fc-field__label">Vat</span><input class="fc-input" id="cl_vat" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Adjustment</span><input class="fc-input" id="cl_adj" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">WT</span><input class="fc-input" id="cl_wt" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Transportation for tax (km)</span><input class="fc-input" id="cl_tk" type="number" step="any" inputmode="decimal"></label>
+      <label class="fc-field c3"><span class="fc-field__label">Toll gate for tax</span><input class="fc-input" id="cl_tt" type="number" step="any" inputmode="decimal"></label>
+      </div>
+      <label class="fc-field c12"><span class="fc-field__label">Remark</span><input class="fc-input" id="cl_remark" autocomplete="off"></label>
+    </div>
+    <div class="cl-total">Total of this bill <b id="clTotal">0.00</b> <span class="fc-mut">THB</span></div>
+    <div class="fc-field__error" id="clErr" role="alert"></div>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end;align-items:center">
+      <button type="button" class="fc-btn hidden" id="clDelete" style="margin-right:auto;color:var(--fc-danger,#c0392b)">Delete claim</button>
+      <button type="button" class="fc-btn hidden" id="clReject" style="color:var(--fc-danger,#c0392b)">Send back…</button>
+      <button type="button" class="fc-btn" id="clCancel">Close</button>
+      <button type="button" class="fc-btn hidden" id="clDraft">Save draft</button>
+      <button type="submit" class="fc-btn fc-btn--primary" id="clSave">Save</button>
+    </div>
+  </form>
+</div>
+
 <!-- Gasoline calculation details -->
 <div class="fc-modal hidden" id="calcModal" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
   <div class="fc-modal__box compact" style="max-width:560px;max-height:94vh;overflow:auto">
@@ -765,11 +871,11 @@
         <label class="fc-field"><span class="fc-field__label">Copies on a sheet</span>
           <select id="advCopies" class="fc-input"><option value="2">2 (top and bottom)</option><option value="1">1</option></select></label>
         <span class="fc-note" id="advInfo"></span>
-        <span class="adv-btns"><button type="button" class="fc-btn" id="advClose">Close</button><button type="button" class="fc-btn fc-btn--primary" id="advPrint">Print</button></span>
+        <span class="adv-btns"><button type="button" class="fc-btn" id="advClose">Close</button><button type="button" class="fc-btn hidden" id="advMail" title="Email this payment advice to my own email">Email me</button><button type="button" class="fc-btn fc-btn--primary" id="advPrint">Print</button></span>
       </div>
       <p class="fc-note" style="margin:var(--fc-s1) 0 0">Click any text on the document to edit it before printing. In the print dialog choose A4 and margins “None”. Changing the date, Prepare by or copies redraws the page.</p>
     </div>
-    <div id="advPages" class="adv-pages"></div>
+    <div id="advPages" class="adv-pages" data-notr></div>
   </div>
 </div>
 
@@ -948,6 +1054,20 @@
   </form>
 </div>
 
+<!-- Mark as paid: pick the payment date -->
+<div class="fc-modal hidden" id="payDateModal" role="dialog" aria-modal="true" aria-labelledby="payDateTitle">
+  <form class="fc-modal__box" id="payDateForm" style="max-width:380px">
+    <h3 id="payDateTitle">Mark as paid</h3>
+    <p class="fc-note" id="payDateInfo" style="margin-top:0"></p>
+    <label class="fc-field"><span class="fc-field__label">Payment date</span>
+      <input type="date" id="payDateIn" class="fc-input" required></label>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="payDateCancel">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn--primary">Mark as paid</button>
+    </div>
+  </form>
+</div>
+
 <div class="fc-toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -956,10 +1076,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-<script src="users-admin.js?v=202610141730"></script>
-<script src="homemap.js?v=202610141146"></script>
+<script src="users-admin.js?v=202610161600"></script>
+<script src="homemap.js?v=202610161600"></script>
 <script src="fuel-calc.js?v=202610151400"></script>
-<script src="advice.js?v=202610152200"></script>
+<script src="claims.js?v=202610161600"></script>
+<script src="advice.js?v=202610161900"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -987,16 +1108,17 @@ function toast(msg, err){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = 'fc-toast', 3600);
 }
 function show(id){
-  ['viewLoading','viewLogin','viewMfa','viewNoEmp','viewMain','viewImport','viewUsers','viewMap','viewAdvice'].forEach(v => $(v).classList.toggle('hidden', v !== id));
-  const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap','viewAdvice'].includes(id);
+  ['viewLoading','viewLogin','viewMfa','viewNoEmp','viewMain','viewImport','viewUsers','viewMap','viewAdvice','viewClaims'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  const inApp = ['viewMain','viewNoEmp','viewImport','viewUsers','viewMap','viewAdvice','viewClaims'].includes(id);
   $('btnImport').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
   $('btnAdvice').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
+  $('btnClaims').classList.toggle('hidden', !(IS_FUEL_ADMIN && id === 'viewMain'));
   $('btnUsers').classList.toggle('hidden', !(IS_PLATFORM_ADMIN && id === 'viewMain'));
   $('btnMap').classList.toggle('hidden', !(IS_HOMEMAP_VIEWER && id === 'viewMain'));
   $('btnMapLog').classList.toggle('hidden', !IS_PLATFORM_ADMIN);
   $('adminTag').textContent = IS_PLATFORM_ADMIN ? 'Platform admin' : 'Fuel admin';
   $('adminTag').classList.toggle('hidden', !((IS_PLATFORM_ADMIN || IS_FUEL_ADMIN) && inApp));
-  $('btnChgPw').classList.toggle('hidden', !['viewMain','viewImport','viewUsers','viewMap','viewAdvice'].includes(id));
+  $('btnChgPw').classList.toggle('hidden', !['viewMain','viewImport','viewUsers','viewMap','viewAdvice','viewClaims'].includes(id));
   $('btnLogout').classList.toggle('hidden', !inApp);
   $('barSep').classList.toggle('hidden', !inApp);
 }
@@ -1056,6 +1178,9 @@ $('linkForgot').onclick = async e => {
 async function logout(){ try { await sb.auth.signOut(); } catch {} IS_FUEL_ADMIN = false; IS_PLATFORM_ADMIN = false; IS_HOMEMAP_VIEWER = false; CAN_SEE_FUEL = false; show('viewLogin'); }
 $('btnLogout').onclick = logout;
 $('btnNoEmpOut').onclick = logout;
+if (window.FTHLang) FTHLang.onUserChoice = async l => {          // remember the choice in the account (user_metadata.lang)
+  try { const { data: { user } } = await sb.auth.getUser(); if (user) await sb.auth.updateUser({ data: { ...(user.user_metadata || {}), lang: l } }); } catch { /* signed out: browser only */ }
+};
 $('btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
 sb.auth.onAuthStateChange(ev => {
@@ -1313,6 +1438,10 @@ async function boot(){
   const { data: { user }, error: uErr } = await sb.auth.getUser();   // fresh metadata from the server
   if (uErr || !user) { await sb.auth.signOut().catch(() => {}); return show('viewLogin'); }
 
+  // language: the account's own choice follows the person to any computer
+  const ul = user.user_metadata && user.user_metadata.lang;
+  if ((ul === 'th' || ul === 'en') && window.FTHLang && FTHLang.lang !== ul) FTHLang.set(ul);
+
   // Email code (2FA): if this account must verify and this session has not, ask for the code first.
   // (If the server part is not installed yet, mfa_status does not exist and we simply carry on.)
   const ms = await sb.rpc('mfa_status');
@@ -1350,6 +1479,7 @@ async function reloadBills(){
   if (r.error) { toast('Could not load fuel bills: ' + r.error.message, true); BILLS = []; }
   else BILLS = r.data || [];
   await loadCalcs(BILLS.map(b => b.id));      // calculation details (017_fuel_calc.sql) — silent if not installed
+  await selfLoad();                            // my claims waiting for approval (021_fuel_claim_submissions.sql) — silent if not installed
   setupFilters();
   renderFuel();
 }
@@ -1449,13 +1579,14 @@ function renderFuel(){
     <td data-l="Car plate">${esc(b.car_no || '—')}</td><td data-l="Cost center">${esc(b.cost_center || '—')}</td>
     <td data-l="Type">${esc(b.bill_type || '—')}</td>
     <td class="remark hide-empty" data-l="Remark">${esc(b.remark || '')}</td>
-    <td data-l="Document">${CALCS.has(b.id) ? `<button type="button" class="bar-btn" data-calc="${b.id}" title="How the gasoline amount was calculated"><svg class="ico"><use href="#i-receipt"/></svg><span class="lbl">Details</span></button>` : ''}<button type="button" class="bar-btn" data-adv="${b.id}" title="Print payment advice"><svg class="ico"><use href="#i-print"/></svg><span class="lbl">Print</span></button></td></tr>`).join('');
+    <td data-l="Document">${CALCS.has(b.id) ? `<button type="button" class="bar-btn" data-calc="${b.id}" title="How the gasoline amount was calculated"><svg class="ico"><use href="#i-receipt"/></svg><span class="lbl">Details</span></button>` : ''}<button type="button" class="bar-btn" data-adv="${b.id}" title="Print payment advice"><svg class="ico"><use href="#i-print"/></svg><span class="lbl">Print</span></button><button type="button" class="bar-btn" data-mail="${b.id}" title="Email this payment advice to my own email"><svg class="ico"><use href="#i-mail"/></svg><span class="lbl">Email me</span></button></td></tr>`).join('');
 }
 
 try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch { setTheme('light'); }
 wireImport();
 wireAdvice();
 wireCalc();
+wireClaims();
 wireUsers();
 wireHomemap();
 wirePhoto();

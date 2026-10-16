@@ -139,10 +139,10 @@ function renderUsers(){
     const resigned = u.status !== 'active';
     return `<tr>
       <td><div class="who"><span class="thumb">${thumbInner(u, true)}</span>
-        <div><strong>${esc(u.fname)} ${esc(u.lname)}</strong><div class="fc-mut" style="font-size:12px">${esc(u.email)}</div></div></div></td>
-      <td>${esc(u.department || '—')}<div class="fc-mut" style="font-size:12px">${esc(u.title || '')}</div></td>
+        <div><strong>${esc(u.fname)} ${esc(u.lname)}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(u.email)}</div></div></div></td>
+      <td>${esc(u.department || '—')}<div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(u.title || '')}</div></td>
       <td style="white-space:nowrap">${u.hire_date ? dmy(u.hire_date) : '<span class="dash">—</span>'}</td>
-      <td>${esc(u.cost_center_name || '—')}${u.cost_center_id ? `<div class="fc-mut" style="font-size:12px">${esc(u.cost_center_id)}</div>` : ''}</td>
+      <td>${esc(u.cost_center_name || '—')}${u.cost_center_id ? `<div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(u.cost_center_id)}</div>` : ''}</td>
       <td>${resigned ? '<span class="fc-badge fc-badge--neutral">Resigned</span>' : '<span class="fc-badge fc-badge--ok">Active</span>'}
         ${u.auth_user_id ? '' : '<span class="fc-badge fc-badge--warn">No login</span>'}</td>
       <td style="white-space:nowrap">${mfaCell(u)}</td>

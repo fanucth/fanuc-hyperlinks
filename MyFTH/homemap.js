@@ -262,17 +262,17 @@ function drawOverview(){
 
 function popupFor(r){
   const el = document.createElement('div');
-  el.innerHTML = `<strong>${esc(r.province || 'Thailand')}</strong><div class="fc-mut" style="font-size:12px;margin:4px 0 8px">${esc(r.region || '')} region</div>
+  el.innerHTML = `<strong>${esc(r.province || 'Thailand')}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1));margin:4px 0 8px">${esc(r.region || '')} region</div>
     <button class="fc-btn fc-btn--sm" type="button">Show who</button>
-    <div class="fc-mut" style="font-size:12px;margin-top:6px">Opening a name is recorded in the access log.</div>`;
+    <div class="fc-mut" style="font-size:calc(12px * var(--ts,1));margin-top:6px">Opening a name is recorded in the access log.</div>`;
   el.querySelector('button').onclick = async ev => {
     ev.target.disabled = true;
     const { data, error } = await sb.rpc('homemap_person', { p_id: r.id });
     if (error || !data || !data[0]) { toast(error ? error.message : 'Not available', true); ev.target.disabled = false; return; }
     const p = data[0];
     el.innerHTML = `<strong>${esc(p.fname)} ${esc(p.lname)}</strong>
-      <div class="fc-mut" style="font-size:12px;margin-top:4px">${esc(p.department || '')}<br>${esc(p.province || '')}</div>
-      <div class="fc-mut" style="font-size:12px;margin-top:6px">Logged: you opened this record.</div>`;
+      <div class="fc-mut" style="font-size:calc(12px * var(--ts,1));margin-top:4px">${esc(p.department || '')}<br>${esc(p.province || '')}</div>
+      <div class="fc-mut" style="font-size:calc(12px * var(--ts,1));margin-top:6px">Logged: you opened this record.</div>`;
   };
   return el;
 }

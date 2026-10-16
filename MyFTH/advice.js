@@ -147,9 +147,10 @@ async function advFillPrep(){
   $('advPrep').value = want;
 }
 
-async function advOpen(rows){
+async function advOpen(rows, own){
   if (!rows.length) { toast('Nothing to print', true); return; }
-  ADV.rows = rows;
+  ADV.rows = rows; ADV.own = !!own;
+  $('advMail').classList.toggle('hidden', !(own && rows.length === 1));
   if (!advParseDmy($('advDate').value)) $('advDate').value = advDmy(advToday());
   ADV.lastDate = $('advDate').value;
   $('advModal').classList.remove('hidden');
@@ -169,7 +170,28 @@ async function advFetch(args){
 }
 async function adviceForIds(ids){
   const rows = await advFetch({ p_month: null, p_ids: ids });
-  if (rows) advOpen(rows);
+  if (rows) advOpen(rows, true);
+}
+
+/* ---------- email my own payment advice (Edge Function send-advice; always goes to the signed-in person's own address) ---------- */
+let ADV_MAILING = false;
+async function advMailMe(id){
+  if (ADV_MAILING) return;
+  ADV_MAILING = true; toast('Sending…');
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/send-advice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CONFIG.anonKey, Authorization: 'Bearer ' + (session?.access_token || '') },
+      body: JSON.stringify({ id, lang: window.FTHLang ? FTHLang.lang : 'th' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) toast('Payment advice sent to ' + data.to + (data.pdf === false ? ' (the PDF could not be attached)' : ', with the PDF'));
+    else if (res.status === 404 && !data.error) toast('Not available yet — IT needs to deploy the send-advice function.', true);
+    else toast('Could not send: ' + (data.error || res.status), true);
+  } catch (e) {
+    toast('Could not send: ' + (e.message || e), true);
+  } finally { ADV_MAILING = false; }
 }
 
 /* ---------- fuel admin: pick a month, tick people ---------- */
@@ -215,7 +237,7 @@ function advRenderList(){
   $('advBody').innerHTML = shown.length ? shown.map(r => `<tr>
       <td><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
       <td>${r.seq}</td>
-      <td><strong>${esc(r.fname)} ${esc(r.lname)}</strong><div class="fc-mut" style="font-size:12px">${esc(r.employee_no || '')}</div></td>
+      <td><strong>${esc(r.fname)} ${esc(r.lname)}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(r.employee_no || '')}</div></td>
       <td>${esc(r.department || '—')}</td><td>${esc(r.car_no || '—')}</td>
       <td class="num">${num(r.gasoline)}</td><td class="num">${num(r.tollgate)}</td><td class="num">${num(r.car_wash)}</td>
       <td class="num">${num(r.parking_fee)}</td><td class="num" title="${esc(fuelExtraTip(r))}">${num(fuelExtraSum(r))}</td><td class="num">${num(r.adjustment)}</td>
@@ -234,15 +256,27 @@ function advCount(){
   $('advMarkPending').disabled = !n; $('advMarkPending').querySelector('span').textContent = n ? `Mark as pending (${n})` : 'Mark as pending';
 }
 
+// calendar dialog for the payment date (returns yyyy-mm-dd, or null when cancelled)
+function advAskPayDate(info){
+  return new Promise(resolve => {
+    $('payDateInfo').textContent = info;
+    $('payDateIn').value = advToday();
+    $('payDateModal').classList.remove('hidden');
+    const done = v => { $('payDateModal').classList.add('hidden'); $('payDateForm').onsubmit = null; $('payDateCancel').onclick = null; resolve(v); };
+    $('payDateForm').onsubmit = e => { e.preventDefault(); const v = $('payDateIn').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) done(v); };
+    $('payDateCancel').onclick = () => done(null);
+    setTimeout(() => { try { $('payDateIn').focus(); } catch {} }, 0);
+  });
+}
+
 // payment status of the ticked bills (a fuel admin may change it; the date is the day the money was transferred)
 async function advMark(paid){
   const ids = advTicked(); if (!ids.length) return;
   const plural = ids.length === 1 ? '' : 's';
   let iso = null;
   if (paid) {
-    const t = prompt(`Mark ${ids.length} bill${plural} as paid.\nPayment date (dd/mm/yyyy):`, advDmy(advToday()));
-    if (t === null) return;
-    iso = advParseDmy(t); if (!iso) { toast('Use the date format dd/mm/yyyy', true); return; }
+    iso = await advAskPayDate(`Mark ${ids.length} bill${plural} as paid.`);
+    if (!iso) return;
   } else if (!confirm(`Mark ${ids.length} bill${plural} as pending again?`)) return;
   const { data: { user } } = await sb.auth.getUser();
   const patch = paid ? { pay_status: 'paid', paid_at: `${iso}T12:00:00+07:00`, paid_by: user?.email || null } : { pay_status: 'pending', paid_at: null, paid_by: null };
@@ -271,7 +305,11 @@ function wireAdvice(){
   $('advPrintSel').onclick = () => { const ids = new Set(advTicked()); advOpen(ADV.list.filter(r => ids.has(r.id))); };
   $('advPrintAll').onclick = () => advOpen(ADV.list);
   // my own bills (profile page)
-  $('fuelBody').addEventListener('click', e => { const b = e.target.closest('[data-adv]'); if (b) adviceForIds([+b.dataset.adv]); });
+  $('fuelBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-adv]'); if (b) return adviceForIds([+b.dataset.adv]);
+    const m = e.target.closest('[data-mail]'); if (m) advMailMe(+m.dataset.mail);
+  });
+  $('advMail').onclick = () => { if (ADV.own && ADV.rows.length === 1) advMailMe(ADV.rows[0].id); };
   // preview dialog
   $('advCopies').onchange = advRender;
   $('advDate').oninput = e => {                                   // type digits only, slashes are added: 15102026 -> 15/10/2026
