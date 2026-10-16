@@ -234,6 +234,7 @@ function advRenderList(){
   const pay = $('advPay').value, dept = $('advDept').value;
   const shown = ADV.list.filter(r => (!dept || (r.department || '').trim() === dept) && (!q || `${r.fname} ${r.lname} ${r.employee_no} ${r.department} ${r.car_no}`.toLowerCase().includes(q)) && (!pay || (pay === 'paid') === (r.pay_status === 'paid')));
   const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
+  ADV.shown = shown;                                            // used by Export Excel
   $('advBody').innerHTML = shown.length ? shown.map(r => `<tr>
       <td><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
       <td>${r.seq}</td>

@@ -381,7 +381,7 @@
   }
   @media print{ .fc-appbar .bar-actions{display:none;} }
 </style>
-<script src="i18n-th.js?v=202610161900"></script>
+<script src="i18n-th.js?v=202610162000"></script>
 <script src="i18n.js?v=202610161500"></script>
 </head>
 <body class="fc">
@@ -412,6 +412,7 @@
   <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7v-7Z"/></symbol>
   <symbol id="i-side" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5ZM9 5v14"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6V3ZM14 3v5h5M9 12h6M9 16h6M12 11v7"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6"/></symbol>
 </svg>
 
@@ -566,6 +567,7 @@
           <div class="filters" style="margin-bottom:var(--fc-s4)">
             <label class="fc-field"><span class="fc-field__label">Year</span><select id="fYear" class="fc-input"></select></label>
             <label class="fc-field"><span class="fc-field__label">Month</span><select id="fMonth" class="fc-input"></select></label>
+            <button type="button" class="fc-btn" id="btnXlsFuel" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
           </div>
           <div class="tbl-wrap">
             <table class="tbl cards" id="fuelTable">
@@ -652,6 +654,7 @@
           <label class="fc-field"><span class="fc-field__label">Status</span>
             <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
           <button class="fc-btn" id="uClear" type="button" style="margin-bottom:var(--fc-s3)" title="Clear all filters">Clear</button>
+          <button type="button" class="fc-btn" style="margin-bottom:var(--fc-s3)" id="btnXlsUsers" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
           <button class="fc-btn fc-btn--primary" id="btnAddUser" style="margin-bottom:var(--fc-s3)">Add employee</button>
         </div>
         <p class="summary" id="usersSummary"></p>
@@ -680,6 +683,7 @@
           <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
             <input type="search" id="clSearch" class="fc-input" placeholder="Name, employee ID, department, car plate" autocomplete="off"></label>
           <label class="fc-field" style="flex:0 1 280px;min-width:190px"><span class="fc-field__label">New claim</span><select id="clAddEmp" class="fc-input"></select></label>
+          <button type="button" class="fc-btn" id="btnXlsClaims" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
         </div>
         <p class="summary" id="clStatus"></p>
         <div class="tbl-wrap">
@@ -715,6 +719,7 @@
           <button class="fc-btn" id="advMarkPending" type="button" disabled><span>Mark as pending</span></button>
           <button class="fc-btn" id="advPrintSel" type="button" disabled><span>Print selected</span></button>
           <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button">Print whole month</button>
+          <button type="button" class="fc-btn" id="btnXlsAdv" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
         </div>
         <p class="summary" id="advStatus"></p>
         <div class="tbl-wrap">
@@ -1079,9 +1084,10 @@
 <script src="users-admin.js?v=202610161600"></script>
 <script src="homemap.js?v=202610161600"></script>
 <script src="fuel-calc.js?v=202610151400"></script>
-<script src="claims.js?v=202610161600"></script>
-<script src="advice.js?v=202610161900"></script>
+<script src="claims.js?v=202610162000"></script>
+<script src="advice.js?v=202610162000"></script>
 <script src="photo.js?v=202610141420"></script>
+<script src="export-xlsx.js?v=202610162000"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ---------- CONFIG (the anon key is public by design — security lives in RLS) ---------- */
@@ -1532,6 +1538,7 @@ function renderFuel(){
     const [by, bm] = String(b.bill_date).split('-');
     return (!y || by === y) && (!m || Number(bm) === Number(m));
   });
+  window.FUEL_SHOWN = list;                       // used by Export Excel
   const total = list.reduce((s, b) => s + Number(b.total || 0), 0);
   const pending = list.filter(b => b.pay_status !== 'paid').reduce((s, b) => s + Number(b.total || 0), 0);
   const n = k => `${k} bill${k === 1 ? '' : 's'}`;
@@ -1585,6 +1592,7 @@ function renderFuel(){
 try { setTheme(localStorage.getItem('fthTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch { setTheme('light'); }
 wireImport();
 wireAdvice();
+wireExport();
 wireCalc();
 wireClaims();
 wireUsers();

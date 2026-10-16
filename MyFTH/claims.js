@@ -61,6 +61,7 @@ function clRender(){
   const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
   const rows = CL.bills.map(b => ({ b, n: CL.names.get(b.id) || {}, c: CL.calcs.get(b.employee_id) }))
     .filter(r => !q || `${r.n.fname} ${r.n.lname} ${r.n.employee_no} ${r.n.department} ${r.b.car_no}`.toLowerCase().includes(q));
+  CL.shown = rows;                                              // used by Export Excel
   $('clBody').innerHTML = rows.length ? rows.map(({ b, n, c }) => {
     const other = Number(b.car_wash) + Number(b.parking_fee) + Number(b.car_rental) + Number(b.fnd) + Number(b.taxi) + Number(b.hotel_fee) + Number(b.misc) + Number(b.vat) + Number(b.wt);
     return `<tr>
