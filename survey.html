@@ -10,6 +10,10 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.10.16b - แผนก Service - Robot โชว์เป็น "Robot" ในหน้าภาษาไทย (เดิม "หุ่นยนต์") — ไม่ต้องรัน SQL
+       2026.10.16a - หน้าสร้าง QR: ช่อง Service Report No. / Service Order No. ใส่ได้หลายเลข (กด Enter ขึ้นบรรทัดใหม่ บรรทัดละ 1 เลข) และรับเฉพาะ "ตัวเลข"
+                     (ตัวอักษร/เครื่องหมายถูกตัดออกอัตโนมัติ + แจ้งเตือน); มีคำอธิบายและตัวอย่างในหน้า; เก็บเป็น "1234567, 1234568" ในคอลัมน์เดิม
+                     (ไม่ต้องแก้ตาราง); เช็คเลขซ้ำทีละเลข  [ต้องรัน migrate_multi_job_no.sql เพื่อให้เช็คซ้ำทีละเลข — ไม่รันก็ใช้งานได้]
        2026.10.05b - เช็คสิทธิ์ผู้บริหารจาก DB (RPC am_i_exec) แทนรายชื่อในโค้ด เพื่อให้แก้สิทธิ์ได้จากหน้า "จัดการสิทธิ์" ใน dashboard
                      (ยังมี EXEC_ALLOWLIST ในโค้ดเป็น fallback ถ้า RPC ใช้ไม่ได้)  [ต้องรัน migrate_exec_roles.sql]
        2026.10.05a - login: คนที่เป็นทั้งผู้บริหาร (EXEC_ALLOWLIST) และวิศวกร (มีแถวใน engineers) เข้าได้ทั้งสองแท็บ
@@ -99,6 +103,16 @@
   input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{
     width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;margin-bottom:12px;}
   textarea{resize:vertical;min-height:64px;font-family:inherit;line-height:1.5;margin-bottom:0;}
+  /* เลข Service Report / Order: ตัวเลขเท่านั้น ใส่ได้หลายเลข */
+  .nohelp{background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;padding:10px 12px;margin:0 0 12px;font-size:12.5px;line-height:1.55;color:var(--sub);text-align:left;}
+  .nohelp b{color:var(--text);}
+  .nohelp p{margin:0 0 6px;}
+  table.noex{border-collapse:collapse;margin:2px 0 0;font-size:12.5px;color:var(--text);}
+  table.noex th,table.noex td{border:1px solid var(--line);padding:3px 10px;text-align:left;font-weight:400;}
+  table.noex th{color:var(--sub);font-size:11.5px;}
+  .nobox{margin-bottom:12px;}
+  .nobox textarea{margin-bottom:0;min-height:0;font-variant-numeric:tabular-nums;letter-spacing:.3px;}
+  .nowarn{display:none;margin-top:4px;font-size:12px;color:var(--warn,#e0a000);text-align:left;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;margin-bottom:8px;}
   .btn-primary{background:var(--accent);color:#1a1500;}
   .btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--line);}
@@ -207,10 +221,19 @@
     <div class="card">
       <h2 data-i18n="engHead">สร้าง QR สำหรับงานนี้</h2>
       <p class="muted" id="engWho" style="text-align:left;padding:0 0 12px"></p>
+      <div class="nohelp">
+        <p id="noHelp1" data-i18n="noHelp1">กรอกเฉพาะ "ตัวเลข" เท่านั้น</p>
+        <p id="noHelp2" data-i18n="noHelp2">ถ้างานนี้มีหลายเลข ให้กด Enter ขึ้นบรรทัดใหม่ แล้วพิมพ์เลขตัวถัดไป (บรรทัดละ 1 เลข)</p>
+        <p style="margin:0 0 4px" data-i18n="noExample">ตัวอย่าง งานที่มี 2 เลข:</p>
+        <table class="noex"><tr><th>Service Report No.</th><th>Service Order No.</th></tr>
+          <tr><td>1234567</td><td>7654321</td></tr><tr><td>1234568</td><td>7654322</td></tr></table>
+      </div>
       <label data-i18n="srNo">Service Report No. (จากกระดาษ)</label>
-      <input type="text" id="srNo" autocapitalize="characters">
+      <div class="nobox"><textarea id="srNo" rows="2" autocomplete="off" spellcheck="false" enterkeyhint="enter" data-i18n-ph="srPh"></textarea>
+        <div class="nowarn" id="srWarn"></div></div>
       <label data-i18n="soNo">Service Order No. (จาก SAP BYD)</label>
-      <input type="text" id="soNo" autocapitalize="characters">
+      <div class="nobox"><textarea id="soNo" rows="2" autocomplete="off" spellcheck="false" enterkeyhint="enter" data-i18n-ph="soPh"></textarea>
+        <div class="nowarn" id="soWarn"></div></div>
       <label data-i18n="custName">ชื่อลูกค้า</label>
       <input type="text" id="custNameIn">
       <p class="muted" style="text-align:left;padding:0 0 12px" data-i18n="custNameNote">ใช้ชื่อเดียวกับที่ระบุใน SAP BYD</p>
@@ -365,7 +388,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.10.05b";
+const APP_VERSION = "2026.10.16b";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -484,7 +507,15 @@ const I18N = {
   stWait:{th:"รอลูกค้า",en:"Waiting",ja:"待機中"},
   stExpired:{th:"หมดอายุ",en:"Expired",ja:"期限切れ"},
   // toast / error
-  needBothNo:{th:"กรุณากรอกเลข Report และ Order ให้ครบ",en:"Please fill in both Report No. and Order No.",ja:"レポート番号とオーダー番号を両方入力してください"},
+  noHelp1:{th:"กรอกเฉพาะ \"ตัวเลข\" เท่านั้น (ไม่ต้องพิมพ์ตัวอักษร ขีด หรือเครื่องหมายใดๆ)",en:"Type NUMBERS only (no letters, dashes or symbols).",ja:"「数字」のみ入力してください（文字・ハイフン・記号は不要）。"},
+  noHelp2:{th:"ถ้างานนี้มีหลายเลข ให้กด Enter ขึ้นบรรทัดใหม่ แล้วพิมพ์เลขตัวถัดไป (บรรทัดละ 1 เลข)",en:"If this job has more than one number, press Enter to start a new line and type the next one (one number per line).",ja:"この案件に番号が複数ある場合は、Enterキーで改行して次の番号を入力してください（1行に1つ）。"},
+  noExample:{th:"ตัวอย่าง งานที่มี 2 เลข:",en:"Example — a job with 2 numbers:",ja:"例：番号が2つある案件："},
+  srPh:{th:"เช่น 1234567 (มีหลายเลข: กด Enter ขึ้นบรรทัดใหม่)",en:"e.g. 1234567 (more than one: press Enter for a new line)",ja:"例: 1234567（複数ある場合はEnterで改行）"},
+  soPh:{th:"เช่น 7654321 (มีหลายเลข: กด Enter ขึ้นบรรทัดใหม่)",en:"e.g. 7654321 (more than one: press Enter for a new line)",ja:"例: 7654321（複数ある場合はEnterで改行）"},
+  noDigitsOnly:{th:"พิมพ์ได้เฉพาะตัวเลข — ตัวอักษรและเครื่องหมายถูกลบออกแล้ว (กด Enter เพื่อขึ้นบรรทัดใหม่)",en:"Numbers only — letters and symbols were removed (press Enter for a new line).",ja:"数字のみ入力できます。文字と記号は削除されました（Enterで改行）。"},
+  noTooLong:{th:"แต่ละเลขต้องไม่เกิน {n} หลัก — กรุณาตรวจเลขนี้: {no}",en:"Each number can have at most {n} digits — please check: {no}",ja:"各番号は最大{n}桁までです。確認してください：{no}"},
+  noTooMany:{th:"ใส่ได้ไม่เกิน {n} เลขต่อช่อง",en:"At most {n} numbers per box.",ja:"1つの欄に入力できる番号は最大{n}件です。"},
+  needBothNo:{th:"กรุณากรอกเลข Report และ Order ให้ครบ (เฉพาะตัวเลข)",en:"Please fill in both Report No. and Order No. (numbers only)",ja:"レポート番号とオーダー番号を両方入力してください"},
   qrCreated:{th:"สร้าง QR แล้ว ให้ลูกค้าสแกน",en:"QR created — ask the customer to scan",ja:"QRを作成しました。お客様に読み取ってもらってください"},
   linkCopied:{th:"คัดลอกลิงก์แล้ว",en:"Link copied",ja:"リンクをコピーしました"},
   answerAll:{th:"กรุณาตอบให้ครบทุกข้อ",en:"Please answer every question",ja:"すべての質問に回答してください"},
@@ -529,7 +560,7 @@ async function loadQuestionsFromDb(){
 // IT เพิ่ม/แก้แผนกจริงได้ตรงนี้ ถ้าไม่เจอใน map จะโชว์ค่าดิบตามที่เก็บใน DB
 const DEPT_I18N = {
   "Service - FA":                  { th:"FA",                   en:"FA",                   ja:"FA" },
-  "Service - Robot":               { th:"หุ่นยนต์",              en:"Robot",                ja:"ロボット" },
+  "Service - Robot":               { th:"Robot",                en:"Robot",                ja:"ロボット" },
   "Service - Robomachine":         { th:"Robomachine",          en:"Robomachine",          ja:"ロボマシン" },
   "Service - Robodrill & Robocut": { th:"Robodrill & Robocut",  en:"Robodrill & Robocut",  ja:"ロボドリル・ロボカット" },
   "Service - Roboshot":            { th:"Roboshot",             en:"Roboshot",             ja:"ロボショット" },
@@ -914,6 +945,7 @@ function startEngineer(eng){
   loadTeamCandidates();
   $('teamSearch').oninput = e => renderTeamSearch(e.target.value);
   $('btnMakeQr').onclick = makeQr;
+  bindNoField('srNo', 'srWarn'); bindNoField('soNo', 'soWarn');
   $('btnNewJob').onclick = () => {
     currentToken = null;
     hide('qrCard'); $('srNo').value = ''; $('soNo').value = ''; $('custNameIn').value = '';
@@ -982,11 +1014,35 @@ function renderQrCard(id, sr, so){
   $('qrCard').scrollIntoView({ behavior:'smooth' });
 }
 
+// ===== เลข Service Report / Order: ตัวเลขเท่านั้น ใส่ได้หลายเลข (ขึ้นบรรทัดใหม่ทีละเลข) =====
+const NO_MAX_LEN = 20, NO_MAX_COUNT = 10;
+// ช่องว่าง , ; กลายเป็นขึ้นบรรทัดใหม่ (วางจากที่อื่นมาก็แยกให้) ที่เหลือที่ไม่ใช่ตัวเลขลบทิ้ง
+const cleanNoText = v => String(v).replace(/[,;\s]+/g, '\n').replace(/[^\d\n]/g, '').replace(/\n{2,}/g, '\n').replace(/^\n/, '');
+const parseNos = v => [...new Set(String(v || '').split('\n').map(x => x.replace(/\D/g, '')).filter(Boolean))];
+function bindNoField(id, warnId){
+  const el = $(id), warn = $(warnId); let timer;
+  if (el.dataset.noBound) return;                      // startEngineer() อาจถูกเรียกหลายครั้ง — ผูกครั้งเดียวพอ
+  el.dataset.noBound = '1';
+  el.addEventListener('input', () => {
+    const raw = el.value, pos = el.selectionStart, cleaned = cleanNoText(raw);
+    const caret = cleanNoText(raw.slice(0, pos)).length;
+    if (cleaned !== raw) { el.value = cleaned; try { el.setSelectionRange(caret, caret); } catch {} }
+    if (/[^\d,;\s]/.test(raw)) {                         // มีตัวอักษร/เครื่องหมายที่ถูกลบ -> แจ้งให้ทราบ
+      warn.textContent = t('noDigitsOnly'); warn.style.display = 'block';
+      clearTimeout(timer); timer = setTimeout(() => { warn.style.display = 'none'; }, 5000);
+    }
+    el.rows = Math.min(6, Math.max(2, el.value.split('\n').length));
+  });
+}
+
 async function makeQr(){
-  const sr = $('srNo').value.trim();
-  const so = $('soNo').value.trim();
+  const srList = parseNos($('srNo').value), soList = parseNos($('soNo').value);
   const custName = $('custNameIn').value.trim();
-  if (!sr || !so) return toast(t('needBothNo'), true);
+  if (!srList.length || !soList.length) return toast(t('needBothNo'), true);
+  if (srList.length > NO_MAX_COUNT || soList.length > NO_MAX_COUNT) return toast(t('noTooMany', { n: NO_MAX_COUNT }), true);
+  const longNo = [...srList, ...soList].find(x => x.length > NO_MAX_LEN);
+  if (longNo) return toast(t('noTooLong', { n: NO_MAX_LEN, no: longNo }), true);
+  const sr = srList.join(', '), so = soList.join(', ');          // เก็บในคอลัมน์เดิมเป็น "1234567, 1234568"
   if (!custName) return toast(t('needCustName'), true);
   $('btnMakeQr').disabled = true;
   try {
@@ -994,7 +1050,7 @@ async function makeQr(){
     const { data: dups } = await sb.rpc('check_job_dup', { p_report: sr, p_order: so });
     if (dups && dups.length) {
       const lines = dups.map(d => {
-        const f = d.match_field === 'both' ? `${sr} + ${so}` : (d.match_field === 'report' ? sr : so);
+        const f = d.matched || (d.match_field === 'both' ? `${sr} + ${so}` : (d.match_field === 'report' ? sr : so));   // matched = เลขที่ซ้ำจริง (ต้องรัน migrate_multi_job_no.sql)
         const st = d.used ? t('stUsed') : t('stWait');
         return `• ${f} — ${d.engineer_name}, ${fmtDateTime(d.created_at)} (${st})`;
       }).join('\n');
