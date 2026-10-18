@@ -50,6 +50,7 @@ function advParseDmy(t){                                                        
   if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
+const advBkk = ts => new Date(ts).toLocaleDateString('en-GB', { timeZone: 'Asia/Bangkok' });          // approval time -> dd/mm/yyyy (Thai time)
 const advDateTxt = iso => advDmy(iso);                                                           // printed date: dd/mm/yyyy
 function advPeriod(bm){
   if (!/^\d{4}-\d{2}$/.test(bm || '')) return 'Gasoline, tollgate and other expenses claim';
@@ -103,29 +104,61 @@ function advCopy(r, ctx){
     </div>
     <div class="adv-sign">
       <div>Prepare by ${advCe('prep', ctx.prep, 'adv-sig')}</div>
-      <div>Check by ${advCe('chk', '', 'adv-sig')}</div>
-      <div>HR Div. ${advCe('hr', '', 'adv-sig')}</div>
+      <div class="adv-hr"><div>HR Div. <span class="adv-sig adv-hrline">${ctx.appr && ctx.appr.signature ? `<img class="adv-sigpic" src="${esc(ctx.appr.signature)}" alt="">` : ''}</span></div>
+        ${ctx.appr ? `<div class="adv-signame">${esc(ctx.appr.approver_name)} · ${esc(advBkk(ctx.appr.approved_at))}</div>` : ''}</div>
     </div>
   </div>`;
 }
 
+// the lower half of a sheet: the calculation table of the "Calculation" sheet (litres, amount on bill, averages, use / claim / total)
+// and, for fuel admins only, the "Transportation for Tax calculation" lines (the database returns the tax columns only to fuel admins)
+function advCalcBlock(c, r){
+  const cn = (v, d) => v == null ? '—' : cN(v, d), km = v => v == null ? '—' : cK(v);
+  const who = `${r.fname || ''} ${r.lname || ''}`.trim() + (r.employee_no ? ` (${r.employee_no})` : '');
+  const taxed = c.tax_km != null || c.tax_total != null;
+  const diff = Math.abs(Number(c.diff)) > 0.005 ? cn(c.diff) : '-';
+  return `<div class="adv-copy adv-calcbox">
+    <div class="adv-ctitle"><b>Gasoline calculation</b> — ${esc(who)} · billing month ${esc(r.billing_month || '')}${c.car_no ? ' · car ' + esc(c.car_no) : ''}</div>
+    <table class="adv-ctbl">
+      <thead><tr><th class="l"></th><th>Liter</th><th>amount on bill</th><th>Average cost /litre</th><th>Average KM /litre</th><th>Average cost /km</th><th></th><th>use</th><th>claim</th><th>Total</th><th></th></tr></thead>
+      <tbody>
+        <tr class="adv-ctot"><td class="l">Total</td><td>${cn(c.litres)}</td><td>${cn(c.fuel_amount)}</td><td>${cn(c.price_per_litre)}</td><td>${cn(c.km_per_litre)}</td><td>${cn(c.cost_per_km, 4)}</td>
+          <td class="k">KM</td><td>${km(c.private_km)}</td><td>${km(c.claim_km)}</td><td>${km(c.total_km)}</td><td></td></tr>
+        <tr class="adv-cdot"><td colspan="6"></td><td class="k">amount(Bht)</td><td>${cn(c.private_amount)}</td><td>${cn(c.claim_amount)}</td><td>${cn(c.fuel_amount)}</td><td class="mut">${diff}</td></tr>
+      </tbody>
+    </table>
+    ${taxed ? `<table class="adv-ctbl adv-ctax">
+      <thead><tr><th class="l" style="width:46%">Transportation for Tax calculation</th><th></th><th>Gasoline</th><th>Tollgate</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr><td></td><td class="k">KM</td><td>${km(c.tax_km)}</td><td></td><td></td></tr>
+        <tr class="adv-cdot"><td></td><td class="k">amount(Bht)</td><td>${cn(c.tax_km_amount)}</td><td>${cn(c.tax_toll)}</td><td>${cn(c.tax_total)}</td></tr>
+      </tbody></table>` : ''}
+  </div>`;
+}
+
 function advRender(){
-  const copies = +$('advCopies').value;
+  const mode = $('advCopies').value;                     // 'calc' = advice + calculation (when the bill has one, else two copies) · '2' = two copies · '1' = one copy
   const iso = advParseDmy($('advDate').value) || advToday(), [dy, dm] = iso.split('-');
   const prep = $('advPrep').value;
-  $('advPages').innerHTML = ADV.rows.map(r => {
+  $('advPages').innerHTML = ADV.rows.map((r, i) => {
     const bm = /^(\d{4})-(\d{2})$/.exec(r.billing_month || '');           // PC-<year>/ G<billing month>-<No.>  e.g. September 2026 -> PC-2026/ G9-5
-    const one = advCopy(r, { docNo: bm ? `PC-${bm[1]}/ G${+bm[2]}-${r.seq}` : `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep });
-    return `<div class="adv-sheet${copies === 2 ? '' : ' one'}">${one}${copies === 2 ? '<div class="adv-cut"></div>' + one : ''}</div>`;
+    const one = advCopy(r, { docNo: bm ? `PC-${bm[1]}/ G${+bm[2]}-${r.seq}` : `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep, appr: ADV.sig ? ADV.sig.get(r.id) : null });
+    const c = CALCS.get(r.id), withCalc = mode === 'calc' && !!c;
+    const lower = withCalc ? advCalcBlock(c, r) : (mode === '1' ? '' : one);
+    return `<div class="adv-sheet${lower ? '' : ' one'}" data-i="${i}" data-calc="${withCalc ? 1 : 0}">${one}${lower ? '<div class="adv-cut"></div>' + lower : ''}</div>`;
   }).join('');
   let big = 0;
-  if (copies === 2 && !$('advModal').classList.contains('hidden')) {
-    document.querySelectorAll('#advPages .adv-sheet').forEach(sh => {
+  if (mode !== '1' && !$('advModal').classList.contains('hidden')) {
+    document.querySelectorAll('#advPages .adv-sheet:not(.one)').forEach(sh => {
       const cp = sh.querySelector('.adv-copy');
-      if (cp.scrollHeight > cp.clientHeight + 1) { sh.classList.add('one'); sh.querySelector('.adv-cut').remove(); sh.querySelectorAll('.adv-copy')[1].remove(); big++; }
+      if (cp.scrollHeight > cp.clientHeight + 1) {         // too many lines for half a sheet: the advice takes the whole sheet, the calculation goes to the next sheet
+        sh.classList.add('one'); sh.querySelector('.adv-cut').remove(); sh.querySelectorAll('.adv-copy')[1].remove(); big++;
+        if (sh.dataset.calc === '1') { const r = ADV.rows[+sh.dataset.i]; sh.insertAdjacentHTML('afterend', `<div class="adv-sheet one">${advCalcBlock(CALCS.get(r.id), r)}</div>`); }
+      }
     });
   }
-  $('advInfo').textContent = `${ADV.rows.length} document${ADV.rows.length === 1 ? '' : 's'} · one A4 sheet each` + (big ? ` · ${big} with many lines printed as one copy` : '');
+  const sheets = document.querySelectorAll('#advPages .adv-sheet').length || ADV.rows.length;
+  $('advInfo').textContent = `${ADV.rows.length} document${ADV.rows.length === 1 ? '' : 's'} · ${sheets} A4 sheet${sheets === 1 ? '' : 's'}` + (big ? ` · ${big} with many lines use a whole sheet` : '');
 }
 
 // "Prepare by": first names of the active employees of the General Admin department (fuel admins can read the list); anyone else keeps the remembered name
@@ -147,6 +180,15 @@ async function advFillPrep(){
   $('advPrep').value = want;
 }
 
+// who approved which bill, with the signature image (024_advice_approval.sql); a bill without approval prints with an empty HR Div. line
+async function advLoadSigs(rows){
+  ADV.sig = new Map();
+  try {
+    const { data, error } = await sb.rpc('fuel_advice_approvals', { p_ids: rows.map(r => r.id), p_sig: true });
+    if (!error) (data || []).forEach(a => ADV.sig.set(a.bill_id, a));
+  } catch { /* 024 not installed yet: no signatures */ }
+}
+
 async function advOpen(rows, own){
   if (!rows.length) { toast('Nothing to print', true); return; }
   ADV.rows = rows; ADV.own = !!own;
@@ -154,7 +196,7 @@ async function advOpen(rows, own){
   if (!advParseDmy($('advDate').value)) $('advDate').value = advDmy(advToday());
   ADV.lastDate = $('advDate').value;
   $('advModal').classList.remove('hidden');
-  await advFillPrep();
+  await Promise.all([advFillPrep(), advLoadSigs(rows), loadCalcs(rows.map(r => r.id).filter(id => !CALCS.has(id)))]);   // calculation details for the lower half of the sheet
   advRender();
   $('advPages').scrollTop = 0;
 }
@@ -170,6 +212,7 @@ async function advFetch(args){
 }
 async function adviceForIds(ids){
   const rows = await advFetch({ p_month: null, p_ids: ids });
+  if (rows && !rows.length) { toast('This payment advice is not available yet', true); return; }       // a month the fuel team has not opened to employees
   if (rows) advOpen(rows, true);
 }
 
@@ -194,6 +237,37 @@ async function advMailMe(id){
   } finally { ADV_MAILING = false; }
 }
 
+/* ---------- which months employees may print / email (023_advice_release.sql) ---------- */
+// FUEL_REL.on = false while 023 is not installed (then nothing is hidden); FUEL_REL.months = months the fuel team has opened
+const FUEL_REL = { on: false, months: new Map() };
+async function loadRelease(){
+  try {
+    const { data, error } = await sb.from('fuel_advice_release').select('billing_month,released');
+    FUEL_REL.on = !error;
+    FUEL_REL.months = new Map((data || []).map(x => [x.billing_month, x.released === true]));
+  } catch { FUEL_REL.on = false; }
+}
+const advReleased = m => !FUEL_REL.on || IS_FUEL_ADMIN || FUEL_REL.months.get(m) === true;      // may this person print / email the bill of month m?
+
+function advRelPaint(){
+  const m = $('advMonth').value, box = $('advRel');
+  if (!m || !FUEL_REL.on) { box.classList.add('hidden'); return; }
+  const on = FUEL_REL.months.get(m) === true;
+  box.classList.remove('hidden');
+  $('advRelState').innerHTML = on ? '<span class="fc-badge fc-badge--ok">Employees can print and email</span>' : '<span class="fc-badge fc-badge--neutral">Hidden from employees</span>';
+  $('advRelBtn').textContent = on ? 'Hold from employees' : 'Open to employees';
+}
+async function advRelToggle(){
+  const m = $('advMonth').value; if (!m) return;
+  const on = FUEL_REL.months.get(m) === true;
+  if (!confirm(on ? `Hold ${m} from employees? Their Print and Email buttons disappear for this month.`
+                  : `Open ${m} to employees? They will be able to print and email their own payment advice for this month.`)) return;
+  const { error } = await sb.rpc('fuel_advice_set_release', { p_month: m, p_released: !on });
+  if (error) return toast('Could not update: ' + error.message, true);
+  FUEL_REL.months.set(m, !on); advRelPaint();
+  toast(on ? `${m} is hidden from employees` : `${m} is open to employees`);
+}
+
 /* ---------- fuel admin: pick a month, tick people ---------- */
 async function advLoadMonths(){
   const { data, error } = await sb.rpc('fuel_advice_months');
@@ -209,12 +283,21 @@ async function advLoadMonths(){
 }
 async function advLoadList(){
   const m = $('advMonth').value;
+  await loadRelease(); advRelPaint();
   ADV.list = m ? (await advFetch({ p_month: m, p_ids: null })) || [] : [];
   ADV.paid = new Map();
   if (m) { const pr = await sb.from('fuel_bills').select('id,paid_at').eq('billing_month', m).limit(5000); (pr.data || []).forEach(x => ADV.paid.set(x.id, x.paid_at)); }
-  await loadCalcs(ADV.list.map(r => r.id));
+  await Promise.all([loadCalcs(ADV.list.map(r => r.id)), advLoadApprovals()]);
   advFillDept();
   advRenderList();
+}
+async function advLoadApprovals(){
+  ADV.appr = new Map();
+  if (!ADV.list.length) return;
+  try {
+    const { data, error } = await sb.rpc('fuel_advice_approvals', { p_ids: ADV.list.map(r => r.id), p_sig: false });
+    if (!error) (data || []).forEach(a => ADV.appr.set(a.bill_id, a));
+  } catch { /* 024 not installed yet */ }
 }
 // department filter: the departments that really occur in this billing month (with the number of bills)
 function advFillDept(){
@@ -229,6 +312,10 @@ function advCalcCell(r){
   return `<button type="button" class="bar-btn" data-calc="${r.id}" data-who="${esc(r.fname)} ${esc(r.lname)}" title="Show the calculation">${cK(c.total_km)} km · ${cK(c.litres)} L</button>` +
     (issues.length ? ` <span class="fc-badge fc-badge--warn" title="${esc(issues.join('; '))}">Check</span>` : '');
 }
+const advApprCell = r => {
+  const a = ADV.appr && ADV.appr.get(r.id);
+  return a ? `<span class="fc-badge fc-badge--ok" title="${esc(a.approver_name)} · ${esc(advBkk(a.approved_at))}">Approved</span>` : '<span class="dash">—</span>';
+};
 function advRenderList(){
   const q = $('advSearch').value.trim().toLowerCase();
   const pay = $('advPay').value, dept = $('advDept').value;
@@ -244,8 +331,9 @@ function advRenderList(){
       <td class="num">${num(r.parking_fee)}</td><td class="num" title="${esc(fuelExtraTip(r))}">${num(fuelExtraSum(r))}</td><td class="num">${num(r.adjustment)}</td>
       <td class="num total">${money(r.total)}</td>
       <td>${advCalcCell(r)}</td>
-      <td>${r.pay_status === 'paid' ? `<span class="fc-badge fc-badge--ok">Paid${ADV.paid && ADV.paid.get(r.id) ? ' · ' + dmy(ADV.paid.get(r.id)) : ''}</span>` : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td></tr>`).join('')
-    : `<tr><td colspan="14"><div class="fc-empty"><div class="fc-empty__title">${ADV.list.length ? 'No one matches' : 'No bills in this month'}</div></div></td></tr>`;
+      <td>${advApprCell(r)}</td>
+      <td>${r.pay_status === 'paid' ? `<span class="fc-badge fc-badge--ok">Approved, awaiting payment${ADV.paid && ADV.paid.get(r.id) ? ' · ' + dmy(ADV.paid.get(r.id)) : ''}</span>` : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td></tr>`).join('')
+    : `<tr><td colspan="15"><div class="fc-empty"><div class="fc-empty__title">${ADV.list.length ? 'No one matches' : 'No bills in this month'}</div></div></td></tr>`;
   $('advStatus').textContent = ADV.list.length ? `${shown.length} of ${ADV.list.length} bills` : '';
   $('advTickAll').checked = false; advCount();
 }
@@ -253,7 +341,9 @@ function advTicked(){ return [...document.querySelectorAll('.advTick:checked')].
 function advCount(){
   const n = advTicked().length;
   $('advPrintSel').disabled = !n; $('advPrintSel').querySelector('span').textContent = n ? `Print selected (${n})` : 'Print selected';
-  $('advMarkPaid').disabled = !n; $('advMarkPaid').querySelector('span').textContent = n ? `Mark as paid (${n})` : 'Mark as paid';
+  $('advMarkPaid').disabled = !n; $('advMarkPaid').querySelector('span').textContent = n ? `Mark as approved, awaiting payment (${n})` : 'Mark as approved, awaiting payment';
+  $('advApprove').disabled = !n; $('advUnapprove').disabled = !n;
+  $('advApprove').querySelector('span').textContent = n ? `Approve (${n})` : 'Approve'; $('advUnapprove').querySelector('span').textContent = n ? `Withdraw approval (${n})` : 'Withdraw approval';
   $('advMarkPending').disabled = !n; $('advMarkPending').querySelector('span').textContent = n ? `Mark as pending (${n})` : 'Mark as pending';
 }
 
@@ -270,27 +360,94 @@ function advAskPayDate(info){
   });
 }
 
+// the approver (department General Admin, title mgr): approve the ticked bills = the signature appears in "HR Div."
+async function advApproveSel(on){
+  const ids = advTicked(); if (!ids.length) return;
+  const plural = ids.length === 1 ? '' : 's';
+  if (!confirm(on ? `Approve ${ids.length} payment advice${plural}? Your signature will appear in the HR Div. box.` : `Withdraw the approval of ${ids.length} payment advice${plural}?`)) return;
+  const { data, error } = await sb.rpc('fuel_advice_approve', { p_ids: ids, p_approve: on });
+  if (error) return toast('Could not update: ' + error.message, true);
+  toast(on ? `${data} payment advice${data === 1 ? '' : 's'} approved` : `Approval withdrawn from ${data} payment advice${data === 1 ? '' : 's'}`);
+  await advLoadApprovals(); advRenderList();
+}
+async function advLoadMySig(){
+  const box = $('advSigBox');
+  box.classList.toggle('hidden', !IS_APPROVER);
+  ['advApprove', 'advUnapprove'].forEach(i => $(i).classList.toggle('hidden', !IS_APPROVER));
+  if (!IS_APPROVER) return;
+  const { data } = await sb.rpc('fuel_signature_get');
+  ADV.mySig = data || null;
+  $('advSigImg').src = ADV.mySig || ''; $('advSigImg').classList.toggle('hidden', !ADV.mySig);
+  $('advSigNone').classList.toggle('hidden', !!ADV.mySig);
+  $('advSigRemove').classList.toggle('hidden', !ADV.mySig);
+}
+// a photo / scan of the signature -> small PNG with a transparent background, trimmed to the ink
+function advSigFromFile(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('This image could not be read. Try another file.')); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 900 / img.width), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+      const d = g.getImageData(0, 0, w, h), px = d.data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let i = 0; i < px.length; i += 4) {
+        const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2], a = px[i + 3] / 255;
+        const alpha = a * (lum >= 235 ? 0 : lum <= 170 ? 1 : (235 - lum) / 65);          // white paper -> transparent, ink stays
+        px[i + 3] = Math.round(alpha * 255);
+        if (alpha > 0.15) { const p = i / 4, x = p % w, y = (p - x) / w; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      if (x1 < 0) return reject(new Error('No signature found in this image — use dark ink on white paper.'));
+      g.putImageData(d, 0, 0);
+      const m = 6; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
+      const cw = x1 - x0 + 1, ch = y1 - y0 + 1, s = Math.min(1, 480 / cw, 200 / ch), o = document.createElement('canvas');
+      o.width = Math.max(1, Math.round(cw * s)); o.height = Math.max(1, Math.round(ch * s));
+      o.getContext('2d').drawImage(c, x0, y0, cw, ch, 0, 0, o.width, o.height);
+      resolve(o.toDataURL('image/png'));
+    };
+    img.src = url;
+  });
+}
+async function advSigPick(file){
+  if (!file) return;
+  if (!/^image\//.test(file.type)) return toast('Please choose an image file (JPG, PNG or WebP).', true);
+  try {
+    const png = await advSigFromFile(file);
+    const { error } = await sb.rpc('fuel_signature_set', { p_image: png });
+    if (error) return toast('Could not save: ' + error.message, true);
+    toast('Signature saved'); await advLoadMySig();
+  } catch (e) { toast(e.message || String(e), true); }
+}
+async function advSigRemove(){
+  if (!confirm('Remove your signature? Documents you approved will print without it.')) return;
+  const { error } = await sb.rpc('fuel_signature_set', { p_image: null });
+  if (error) return toast('Could not save: ' + error.message, true);
+  toast('Signature removed'); await advLoadMySig();
+}
+
 // payment status of the ticked bills (a fuel admin may change it; the date is the day the money was transferred)
 async function advMark(paid){
   const ids = advTicked(); if (!ids.length) return;
   const plural = ids.length === 1 ? '' : 's';
   let iso = null;
   if (paid) {
-    iso = await advAskPayDate(`Mark ${ids.length} bill${plural} as paid.`);
+    iso = await advAskPayDate(`Mark ${ids.length} bill${plural} as approved, awaiting payment.`);
     if (!iso) return;
   } else if (!confirm(`Mark ${ids.length} bill${plural} as pending again?`)) return;
   const { data: { user } } = await sb.auth.getUser();
   const patch = paid ? { pay_status: 'paid', paid_at: `${iso}T12:00:00+07:00`, paid_by: user?.email || null } : { pay_status: 'pending', paid_at: null, paid_by: null };
   const { data, error } = await sb.from('fuel_bills').update(patch).in('id', ids).select('id');
   if (error) return toast('Could not update: ' + error.message, true);
-  toast(`${data.length} bill${data.length === 1 ? '' : 's'} marked as ${paid ? 'paid' : 'pending'}`);
+  toast(`${data.length} bill${data.length === 1 ? '' : 's'} marked as ${paid ? 'approved, awaiting payment' : 'pending'}`);
   await advLoadList();
 }
 
 function wireAdvice(){
-  $('btnAdvice').onclick = async () => { show('viewAdvice'); await advLoadMonths(); };
+  $('btnAdvice').onclick = async () => { show('viewAdvice'); await advLoadMonths(); await advLoadMySig(); };
   $('btnAdvBack').onclick = () => show('viewMain');
   $('advMonth').onchange = advLoadList;
+  $('advRelBtn').onclick = advRelToggle;
   $('advSearch').oninput = advRenderList;
   $('advTickAll').onchange = e => { document.querySelectorAll('.advTick').forEach(x => { x.checked = e.target.checked; }); advCount(); };
   $('advBody').onchange = e => { if (e.target.classList.contains('advTick')) advCount(); };
@@ -303,6 +460,11 @@ function wireAdvice(){
   };
   $('advMarkPaid').onclick = () => advMark(true);
   $('advMarkPending').onclick = () => advMark(false);
+  $('advApprove').onclick = () => advApproveSel(true);
+  $('advUnapprove').onclick = () => advApproveSel(false);
+  $('advSigPick').onclick = () => $('advSigFile').click();
+  $('advSigFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; advSigPick(f); };
+  $('advSigRemove').onclick = advSigRemove;
   $('advPrintSel').onclick = () => { const ids = new Set(advTicked()); advOpen(ADV.list.filter(r => ids.has(r.id))); };
   $('advPrintAll').onclick = () => advOpen(ADV.list);
   // my own bills (profile page)

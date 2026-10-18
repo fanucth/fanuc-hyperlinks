@@ -70,7 +70,7 @@ function clRender(){
       <td class="num">${c ? cK(c.total_km) + ' km' : '<span class="dash">—</span>'}${c ? `<div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${cK(c.litres)} L</div>` : ''}</td>
       <td class="num">${num(b.gasoline)}</td><td class="num">${num(b.tollgate)}</td><td class="num">${num(other)}</td><td class="num">${num(b.adjustment)}</td>
       <td class="num total">${money(b.total)}</td>
-      <td>${b.pay_status === 'paid' ? '<span class="fc-badge fc-badge--ok">Paid</span>' : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td>
+      <td>${b.pay_status === 'paid' ? '<span class="fc-badge fc-badge--ok">Approved, awaiting payment</span>' : '<span class="fc-badge fc-badge--warn">Pending</span>'}</td>
       <td><button type="button" class="bar-btn" data-edit="${b.id}">${b.pay_status === 'paid' ? 'View' : 'Edit'}</button></td></tr>`;
   }).join('') : `<tr><td colspan="11"><div class="fc-empty"><div class="fc-empty__title">${CL.bills.length ? 'No one matches' : 'No claims in this month yet'}</div>
       <p>${CL.bills.length ? '' : 'Use “New claim” or the list of people below.'}</p></div></td></tr>`;
@@ -139,7 +139,7 @@ function clOpen(o){
   $('clSave').textContent = mode === 'self' ? 'Submit for approval' : mode === 'review' ? 'Approve and create bill' : 'Save';
   // note line: why it is read only, or what the fuel team said
   let note = '';
-  if (paid) note = `This bill is paid${bill.paid_at ? ' on ' + dmy(bill.paid_at) : ''}. To change it, mark it as pending in Payment advice first.`;
+  if (paid) note = `This bill is approved, awaiting payment${bill.paid_at ? ' (' + dmy(bill.paid_at) + ')' : ''}. To change it, mark it as pending in Payment advice first.`;
   else if (mode === 'self' && s && s.status === 'rejected') note = `Sent back by the fuel team: ${s.reject_reason || '(no reason given)'} — fix it and submit again.`;
   else if (mode === 'self' && s && s.status === 'submitted') note = 'Submitted — waiting for the fuel team. You can still change it; saving it as a draft takes it back.';
   else if (mode === 'self') note = 'Enter your total km, private km, litres and the actual fuel bill — Gasoline is calculated for you. The fuel team checks it before it becomes a bill.';

@@ -245,7 +245,7 @@ function renderImport(){
       <td class="num">${n(r.g)}</td><td class="num">${n(r.t)}</td>
       <td class="num">${n(r.w)}</td><td class="num">${n(r.p)}</td><td class="num">${n(r.o)}</td><td class="num">${n(r.adj)}</td>
       <td class="num total">${money(r.computed)}</td>
-      <td>${r.calc ? `${cK(r.calc.a)} km · ${cK(r.calc.d)} L` +
+      <td>${r.calc ? `<button type="button" class="bar-btn" data-impcalc="${i}" title="Show the calculation">${cK(r.calc.a)} km · ${cK(r.calc.d)} L</button>` +
           (IMP_CALC_EXISTING.has(r.empId + '|' + r.billing_month) ? ' <span class="fc-badge fc-badge--neutral">stored</span>' : calcPending(r) ? ' <span class="fc-badge fc-badge--ok">will save</span>' : '') +
           (r.calcWarn.length ? `<div class="fc-note" style="color:var(--fc-warn);white-space:normal">Check: ${esc(r.calcWarn.join('; '))}</div>` : '')
         : '<span class="dash">—</span>'}</td>
@@ -481,4 +481,10 @@ function wireImport(){
   $('impFile').onchange = e => onPickFile(e.target.files[0]);
   $('impMonth').onchange = () => { if ($('impFile').files[0]) onPickFile($('impFile').files[0]); };
   $('btnDoImport').onclick = doImport;
+  // click the km · litres of a row to see how its Gasoline is calculated (same dialog as on the Payment advice list)
+  $('impBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-impcalc]'); if (!b) return;
+    const r = IMP_ROWS[+b.dataset.impcalc]; if (!r || !r.calc) return;
+    showCalc(calcFromRaw(r.calc, { billing_month: r.billing_month, gasoline: r.g, car_no: r.calc.car || carOf(r) || null }), r.nameRaw);
+  });
 }

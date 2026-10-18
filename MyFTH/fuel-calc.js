@@ -31,8 +31,24 @@ function calcIssues(c){
   return out;
 }
 
+// the calculation as the database view fuel_calc_v would give it, from the raw figures of an Excel file that is not imported yet
+// x = { a: total km, b: private km, d: litres, e: fuel bill, tk: tax km, tt: toll for tax, odo, car }
+function calcFromRaw(x, extra){
+  const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  const price = x.d ? x.e / x.d : null, kmL = x.d ? x.a / x.d : null, h = price != null && kmL ? price / kmL : 0;
+  const claimKm = x.a - x.b, priv = r2(h * x.b), claim = r2(h * claimKm), taxAmt = r2(h * (x.tk || 0));
+  return Object.assign({
+    total_km: x.a, private_km: x.b, litres: x.d, fuel_amount: x.e, car_no: x.car || null, odometer: x.odo || null,
+    claim_km: claimKm, price_per_litre: price, km_per_litre: kmL, cost_per_km: h || null,
+    private_amount: priv, claim_amount: claim, calc_total: r2(priv + claim), diff: r2(x.e - (priv + claim)),
+    tax_km: x.tk || 0, tax_km_amount: taxAmt, tax_toll: x.tt || 0, tax_total: r2(taxAmt + (x.tt || 0)),
+  }, extra || {});
+}
+
 function openCalc(billId, who){
-  const c = CALCS.get(billId); if (!c) return;
+  const c = CALCS.get(billId); if (c) showCalc(c, who);
+}
+function showCalc(c, who){
   const admin = c.tax_km != null || c.tax_total != null;      // tax columns are only returned to fuel admins
   const issues = calcIssues(c);
   const row = (k, l, v, u, cls) => `<tr class="${cls || ''}"><td class="k">${k}</td><td>${l}</td><td class="v">${v}</td><td class="u">${u || ''}</td></tr>`;
