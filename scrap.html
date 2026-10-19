@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.25</title>
-<!-- VERSION: v3.25 | Updated: 2026-10-19
+<title>Scrap Photo Capture - v3.26</title>
+<!-- VERSION: v3.26 | Updated: 2026-10-19
+     Changes (v3.26):
+       - แสดงอีเมลที่ login อยู่ + บทบาท (Admin/User) ใต้ชื่อระบบ
+     Changes (v3.25):
      Changes (v3.25):
        - Export Excel/PDF: เพิ่มช่องเลือก 'แสดง QTY ที่จะทำลายในไฟล์' (Excel เพิ่มคอลัมน์ QTY, PDF แสดง Disposal Qty ข้างวันที่บันทึก)
        - ปุ่ม PDF รายตัว: เปิดดูตัวอย่างในแท็บใหม่ (มีปุ่มดาวน์โหลด) แทนการดาวน์โหลดทันที; ใช้ค่า QTY ที่เลือกไว้ล่าสุด
@@ -235,6 +238,7 @@
       <h1>📦 Scrap Photo Capture <span class="tag" id="verTag">v3.1</span></h1>
       <p data-i18n="appSubtitle">สแกน Code 39 → ถ่ายภาพก่อน–หลังทำลาย → Export รายงาน</p>
       <span class="mode" id="modeBadge" data-i18n="modeLocal">โหมด: เก็บข้อมูลในเครื่อง</span>
+      <span class="mode" id="userBadge" style="display:none;margin-left:6px;"></span>
     </div>
     <div class="header-actions" id="headerActions">
       <select class="lang-select" id="langSelect" title="Language">
@@ -425,7 +429,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.25';
+const APP_VERSION = 'v3.26';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -1402,6 +1406,18 @@ async function loadAdminFlag(){
     isScrapAdmin = !error && data === true;
   } catch (e) { isScrapAdmin = false; }
   document.getElementById('adminQtyImport').style.display = 'none';
+  await updateUserBadge();
+}
+
+// แสดงอีเมลที่ login อยู่ + บทบาท (Admin/User) ใต้ชื่อระบบ — จะได้รู้ว่าใช้บัญชีไหนอยู่
+async function updateUserBadge(){
+  const el = document.getElementById('userBadge');
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { el.style.display = 'none'; return; }
+    el.textContent = `👤 ${session.user.email} (${isScrapAdmin ? 'Admin' : 'User'})`;
+    el.style.display = 'inline-block';
+  } catch (e) { el.style.display = 'none'; }
 }
 
 // แก้รหัสชิ้นงานที่ใส่ผิด (เฉพาะ admin) — DB trigger บล็อกคนอื่นอีกชั้น และเก็บ log ใน scrap_code_log
@@ -1898,6 +1914,7 @@ function showLoginScreen(){
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appMain').style.display = 'none';
   document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'none';
 }
 function showAppScreen(){
   document.getElementById('loginScreen').style.display = 'none';
