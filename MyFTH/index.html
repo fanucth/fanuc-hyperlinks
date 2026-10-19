@@ -396,7 +396,7 @@
   }
   @media print{ .fc-appbar .bar-actions{display:none;} }
 </style>
-<script src="i18n-th.js?v=202610181700"></script>
+<script src="i18n-th.js?v=202610191000"></script>
 <script src="i18n.js?v=202610161500"></script>
 </head>
 <body class="fc">
@@ -1164,17 +1164,21 @@ function setTheme(m){
 }
 
 /* ---------- password dialog ---------- */
-let pwForced = false;   // true = first sign-in / recovery: the dialog cannot be dismissed
+let pwForced = false;   // true = first sign-in / recovery: the person is asked to choose a password, but may skip ("Not now") and is asked again at the next sign-in
+let PW_SKIPPED = false;
 function openPwModal(forced, title, hint){
   pwForced = forced;
   $('pwTitle').textContent = title;
   $('pwHint').textContent = hint || '';
   $('pwNew').value = ''; $('pwNew2').value = ''; $('pwErr').textContent = '';
-  $('pwCancel').classList.toggle('hidden', forced);
+  $('pwCancel').textContent = forced ? 'Not now' : 'Cancel';
   $('pwModal').classList.remove('hidden');
   $('pwNew').focus();
 }
-$('pwCancel').onclick = () => $('pwModal').classList.add('hidden');
+$('pwCancel').onclick = () => {
+  $('pwModal').classList.add('hidden');
+  if (pwForced) { pwForced = false; PW_SKIPPED = true; boot(); }       // skipped: carry on into the app (the question comes back at the next sign-in)
+};
 $('btnChgPw').onclick = () => openPwModal(false, 'Change password');
 $('pwForm').onsubmit = async e => {
   e.preventDefault();
@@ -1210,7 +1214,7 @@ $('linkForgot').onclick = async e => {
   if (error) return toast(error.message, true);
   toast('A password reset link was sent to your email');
 };
-async function logout(){ try { await sb.auth.signOut(); } catch {} IS_FUEL_ADMIN = false; IS_APPROVER = false; IS_PLATFORM_ADMIN = false; IS_HOMEMAP_VIEWER = false; CAN_SEE_FUEL = false; show('viewLogin'); }
+async function logout(){ try { await sb.auth.signOut(); } catch {} PW_SKIPPED = false; IS_FUEL_ADMIN = false; IS_APPROVER = false; IS_PLATFORM_ADMIN = false; IS_HOMEMAP_VIEWER = false; CAN_SEE_FUEL = false; show('viewLogin'); }
 $('btnLogout').onclick = logout;
 $('btnNoEmpOut').onclick = logout;
 if (window.FTHLang) FTHLang.onUserChoice = async l => {          // remember the choice in the account (user_metadata.lang)
@@ -1219,7 +1223,7 @@ if (window.FTHLang) FTHLang.onUserChoice = async l => {          // remember the
 $('btnTheme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
 sb.auth.onAuthStateChange(ev => {
-  if (ev === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true, 'Set a new password', 'Choose a new password to continue.'); }
+  if (ev === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true, 'Set a new password', 'Choose a new password. You can skip this for now and set it later.'); }
 });
 
 /* ---------- email code (2FA) ---------- */
@@ -1483,9 +1487,9 @@ async function boot(){
   const mst = !ms.error && ms.data && ms.data[0];
   if (mst && mst.needed && !mst.verified) return startMfa(user, mst);
 
-  if (user.user_metadata?.must_change_password) {
+  if (user.user_metadata?.must_change_password && !PW_SKIPPED) {
     show('viewLogin');
-    return openPwModal(true, 'Set your own password', 'First sign-in: please choose your own password. The one you were given will stop working.');
+    return openPwModal(true, 'Set your own password', 'First sign-in: please choose your own password. The one you were given will stop working once you change it. You can skip this for now; you will be asked again at your next sign-in.');
   }
 
   // RLS returns only your own row (and only for active employees)

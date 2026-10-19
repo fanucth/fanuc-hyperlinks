@@ -36,9 +36,10 @@ window.I18N_TH = {
 
   /* ---------- password dialog ---------- */
   'Set a new password': 'ตั้งรหัสผ่านใหม่',
-  'Choose a new password to continue.': 'เลือกรหัสผ่านใหม่เพื่อดำเนินการต่อ',
+  'Choose a new password. You can skip this for now and set it later.': 'เลือกรหัสผ่านใหม่ ข้ามไปก่อนแล้วตั้งทีหลังก็ได้',
   'Set your own password': 'ตั้งรหัสผ่านของคุณเอง',
-  'First sign-in: please choose your own password. The one you were given will stop working.': 'เข้าสู่ระบบครั้งแรก: กรุณาตั้งรหัสผ่านของคุณเอง รหัสผ่านที่ได้รับมาจะใช้ไม่ได้อีก',
+  'First sign-in: please choose your own password. The one you were given will stop working once you change it. You can skip this for now; you will be asked again at your next sign-in.': 'เข้าสู่ระบบครั้งแรก: กรุณาตั้งรหัสผ่านของคุณเอง เมื่อเปลี่ยนแล้วรหัสผ่านที่ได้รับมาจะใช้ไม่ได้อีก ข้ามไปก่อนได้ แต่จะถูกถามอีกครั้งเมื่อเข้าสู่ระบบครั้งถัดไป',
+  'Not now': 'ไว้ก่อน',
   'New password (at least 8 characters)': 'รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)',
   'Confirm new password': 'ยืนยันรหัสผ่านใหม่',
   'Save password': 'บันทึกรหัสผ่าน',
