@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Scrap Photo Capture - v3.24</title>
-<!-- VERSION: v3.24 | Updated: 2026-10-14
+<title>Scrap Photo Capture - v3.25</title>
+<!-- VERSION: v3.25 | Updated: 2026-10-19
+     Changes (v3.25):
+       - Export Excel/PDF: เพิ่มช่องเลือก 'แสดง QTY ที่จะทำลายในไฟล์' (Excel เพิ่มคอลัมน์ QTY, PDF แสดง Disposal Qty ข้างวันที่บันทึก)
+       - ปุ่ม PDF รายตัว: เปิดดูตัวอย่างในแท็บใหม่ (มีปุ่มดาวน์โหลด) แทนการดาวน์โหลดทันที; ใช้ค่า QTY ที่เลือกไว้ล่าสุด
+     Changes (v3.24):
      Changes (v3.24):
        - คอลัมน์ Item Code ในตารางข้อ 3 ไม่ตัดบรรทัด คอลัมน์อื่นหดเข้ามาแทน
      Changes (v3.23):
@@ -369,6 +373,12 @@
           <button type="button" class="chip" data-phase="after" data-i18n="phaseOnlyAfter">After อย่างเดียว</button>
         </div>
       </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer;">
+          <input type="checkbox" id="showQtyChk" checked>
+          <span data-i18n="showQtyLabel">แสดง QTY ที่จะทำลายในไฟล์</span>
+        </label>
+      </div>
       <div class="date-grid">
         <div>
           <label for="dateFrom" data-i18n="dateFromLabel">ตั้งแต่วันที่</label>
@@ -415,7 +425,7 @@ const CLOUD_MODE = !!SUPABASE_CONFIG.url;
 
 // ตัวแปรเดียวที่บอกเวอร์ชันจริงของไฟล์นี้ — badge หัวเว็บ + สแตมป์มุมจอ + console ดึงจากตรงนี้ทั้งหมด
 // bump ทุกครั้งก่อน push ขึ้น GitHub เพื่อเช็คได้ไวว่าเว็บที่เปิดอยู่โหลดไฟล์เวอร์ชันไหนจริงๆ
-const APP_VERSION = 'v3.24';
+const APP_VERSION = 'v3.25';
 document.title = document.title.replace(/v[\d.]+$/, APP_VERSION);
 document.getElementById('verTag').textContent = APP_VERSION;
 document.getElementById('verStamp').textContent = `scrap.html ${APP_VERSION}`;
@@ -466,6 +476,7 @@ const TRANSLATIONS = {
   afterLabel:        { th:'📷 หลังทำลาย', en:'📷 After destruction', ja:'📷 廃棄後' },
   btnSaveLabel:      { th:'💾 บันทึกรายการนี้', en:'💾 Save this record', ja:'💾 この記録を保存' },
   editQtyBtn:        { th:'🔢 แก้ QTY', en:'🔢 Fix QTY', ja:'🔢 数量修正' },
+  showQtyLabel:      { th:'แสดง QTY ที่จะทำลายในไฟล์', en:'Include Disposal Qty in the file', ja:'廃棄数量をファイルに含める' },
   colPdf:            { th:'PDF', en:'PDF', ja:'PDF' },
   pdfRowBtn:         { th:'📄 PDF', en:'📄 PDF', ja:'📄 PDF' },
   editQtyPrompt:     { th:'แก้ QTY ที่จะทำลาย ({code})\nค่าเดิม: {qty}\nใส่จำนวนที่ถูกต้อง:', en:'Fix disposal qty ({code})\nCurrent: {qty}\nEnter the correct quantity:', ja:'廃棄数量を修正 ({code})\n現在: {qty}\n正しい数量を入力:' },
@@ -1481,7 +1492,15 @@ async function fetchAllCloudRecords(range){
   return all;
 }
 
-// เปิดหน้าต่างเลือกช่วงวันที่ คืนค่า {from: Date|null, to: Date|null} หรือ null ถ้ายกเลิก
+// จำตัวเลือก "แสดง QTY ที่จะทำลายในไฟล์" ต่อเครื่อง (ใช้กับ Export Excel/PDF และปุ่ม PDF รายตัว) ค่าเริ่มต้น = แสดง
+function getShowQtyPref(){
+  try { return localStorage.getItem('exportShowQty') !== '0'; } catch (e) { return true; }
+}
+function setShowQtyPref(v){
+  try { localStorage.setItem('exportShowQty', v ? '1' : '0'); } catch (e) {}
+}
+
+// เปิดหน้าต่างเลือกช่วงวันที่ คืนค่า {from: Date|null, to: Date|null, phase, showQty} หรือ null ถ้ายกเลิก
 function askDateRange(showPhase){
   return new Promise((resolve) => {
     const modal = document.getElementById('dateModal');
@@ -1490,6 +1509,8 @@ function askDateRange(showPhase){
     const chips = modal.querySelectorAll('#dateChips .chip');
     const phaseChips = modal.querySelectorAll('#phaseChips .chip');
     let phase = 'all';
+    const qtyChk = document.getElementById('showQtyChk');
+    qtyChk.checked = getShowQtyPref();
     document.getElementById('phaseBox').style.display = showPhase ? 'block' : 'none';
     phaseChips.forEach(c => {
       c.classList.toggle('active', c.dataset.phase === 'all');
@@ -1530,7 +1551,8 @@ function askDateRange(showPhase){
       const from = fromEl.value ? new Date(fromEl.value + 'T00:00:00') : null;
       const to   = toEl.value   ? new Date(toEl.value   + 'T23:59:59.999') : null;
       if (from && to && from > to){ toast(t('dateRangeInvalid'), true); return; }
-      done({ from, to, phase });
+      setShowQtyPref(qtyChk.checked);
+      done({ from, to, phase, showQty: qtyChk.checked });
     };
     document.getElementById('dateModalClose').onclick = () => done(null);
     modal.onclick = (e) => { if (e.target === modal) done(null); };
@@ -1579,6 +1601,7 @@ document.getElementById('btnExportExcel').onclick = async () => {
       return {
         'ลำดับ': i+1,
         'รหัสชิ้นงาน': r.item_code,
+        ...(range.showQty ? { 'QTY ที่จะทำลาย': r.disposal_qty ?? '' } : {}),
         'จำนวนภาพก่อนทำลาย': nBefore,
         'จำนวนภาพหลังทำลาย': nAfter,
         'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
@@ -1591,6 +1614,7 @@ document.getElementById('btnExportExcel').onclick = async () => {
     return {
       'ลำดับ': i+1,
       'รหัสชิ้นงาน': r.code,
+      ...(range.showQty ? { 'QTY ที่จะทำลาย': r.disposalQty ?? '' } : {}),
       'จำนวนภาพก่อนทำลาย': nBefore,
       'จำนวนภาพหลังทำลาย': nAfter,
       'สถานะ': (nBefore > 0 && nAfter > 0) ? 'ครบก่อน/หลัง' : 'บันทึกบางส่วน',
@@ -1675,7 +1699,8 @@ document.getElementById('btnExportPdf').onclick = async () => {
 
 // สร้าง PDF จากรายการที่ส่งเข้ามา (ใช้ทั้งปุ่ม Export PDF รวม และปุ่ม PDF รายตัวในตารางข้อ 3)
 // btnPdf = ปุ่มที่กด (ถูก disable + เปลี่ยนข้อความระหว่างสร้าง); fileTag = ข้อความต่อท้ายชื่อไฟล์ (เช่น item code)
-async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
+// previewWin (ไม่บังคับ) = แท็บที่เปิดไว้แล้วตอนกดปุ่ม: ถ้ามี จะแสดง PDF ในแท็บนั้นแทนการดาวน์โหลด
+async function generatePdfReport(sourceRows, range, btnPdf, fileTag, previewWin){
   btnPdf.disabled = true; const originalPdfLabel = btnPdf.textContent; btnPdf.textContent = t('generatingPdf');
 
   try {
@@ -1745,10 +1770,11 @@ async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
       if (!firstItem){ pdf.addPage(); y = 40; }
       firstItem = false;
 
-      let itemCode, savedAt, beforePhotos, afterPhotos;
+      let itemCode, savedAt, beforePhotos, afterPhotos, qty;
       if (CLOUD_MODE) {
         const photos = r.scrap_photos || [];
         itemCode = r.item_code;
+        qty = r.disposal_qty;
         savedAt  = new Date(r.created_at).toLocaleString('th-TH');
         // รูปจาก cloud เก็บเป็น path (bucket private ตั้งแต่ v3.1) ต้องขอ signed URL ก่อน
         // แล้วค่อย fetch มาแปลงเป็น dataURL ถึงจะฝังใน PDF ได้ — รูปไหนขอ/โหลดไม่สำเร็จ ข้ามไปเงียบๆ
@@ -1762,7 +1788,7 @@ async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
         beforePhotos = beforePhotos.filter(Boolean);
         afterPhotos  = afterPhotos.filter(Boolean);
       } else {
-        itemCode = r.code; savedAt = r.savedAt;
+        itemCode = r.code; savedAt = r.savedAt; qty = r.disposalQty;
         beforePhotos = r.before || []; afterPhotos = r.after || [];
       }
 
@@ -1784,14 +1810,34 @@ async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
       }
 
       pdf.setFontSize(12); pdf.text('Item Code: ' + itemCode, 40, y); y += 14;
-      pdf.setFontSize(9);  pdf.text('Saved: ' + savedAt, 40, y); y += 14;
+      pdf.setFontSize(9);
+      pdf.text('Saved: ' + savedAt + (range.showQty ? '     Disposal Qty: ' + (qty ?? '-') : ''), 40, y); y += 14;
 
       if (showBefore) y = await drawPhotoGrid('Before', beforePhotos, y);
       if (showAfter)  y = await drawPhotoGrid('After',  afterPhotos,  y);
     }
     const tag = fileTag ? '_' + String(fileTag).replace(/[^A-Za-z0-9._-]+/g, '_') : '';
-    pdf.save(`scrap_evidence_report${tag}_${timestampForFilename()}.pdf`);
+    const fileName = `scrap_evidence_report${tag}_${timestampForFilename()}.pdf`;
+    if (previewWin && !previewWin.closed) {
+      // แสดงตัวอย่างในแท็บใหม่ (มีแถบชื่อ + ปุ่มดาวน์โหลดของเราเอง เพราะ blob URL ไม่มีชื่อไฟล์)
+      const url = URL.createObjectURL(pdf.output('blob'));
+      const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      previewWin.document.open();
+      previewWin.document.write(
+        `<!doctype html><html><head><meta charset="utf-8"><title>${esc(fileTag || 'Scrap report')}</title>` +
+        `<style>html,body{margin:0;height:100%;font-family:sans-serif}` +
+        `.bar{display:flex;gap:12px;align-items:center;padding:8px 12px;background:#222;color:#fff;font-size:14px}` +
+        `.bar a{margin-left:auto;background:#fc0;color:#000;padding:6px 12px;border-radius:6px;text-decoration:none;font-weight:600}` +
+        `iframe{display:block;width:100%;height:calc(100% - 44px);border:0}</style></head><body>` +
+        `<div class="bar"><span>${esc(fileTag || '')}</span><a href="${url}" download="${esc(fileName)}">⬇ Download PDF</a></div>` +
+        `<iframe src="${url}"></iframe></body></html>`
+      );
+      previewWin.document.close();
+    } else {
+      pdf.save(fileName);
+    }
   } catch (e) {
+    if (previewWin && !previewWin.closed) previewWin.close();
     toast(t('exportLoadFail', { err: e.message }), true);
   } finally {
     btnPdf.disabled = false;
@@ -1799,11 +1845,18 @@ async function generatePdfReport(sourceRows, range, btnPdf, fileTag){
   }
 }
 
-// ปุ่ม PDF รายตัว: export เฉพาะ 1 รายการ (ก่อน+หลังทั้งหมด) ไม่ต้องเลือกช่วงวันที่
+// ปุ่ม PDF รายตัว: ดูตัวอย่าง PDF ของ 1 รายการ (ก่อน+หลังทั้งหมด) ในแท็บใหม่ ไม่ดาวน์โหลดทันที ไม่ต้องเลือกช่วงวันที่
+// ต้องเปิดแท็บตอนกดปุ่ม (ก่อน await) ไม่งั้นเบราว์เซอร์บล็อกป๊อปอัป — ถ้าถูกบล็อกจะดาวน์โหลดไฟล์แทน
+// การแสดง QTY ใช้ค่าที่เลือกไว้ล่าสุดในหน้าต่าง Export (เริ่มต้น = แสดง)
 function exportSingleRecordPdf(record, btn){
   if (!record) return;
   const code = CLOUD_MODE ? record.item_code : record.code;
-  return generatePdfReport([record], { phase: 'both' }, btn, code);
+  let win = null;
+  try {
+    win = window.open('', '_blank');
+    if (win) win.document.write('<!doctype html><meta charset="utf-8"><title>Generating…</title><body style="font-family:sans-serif;padding:24px">⏳ Generating PDF…</body>');
+  } catch (e) { win = null; }
+  return generatePdfReport([record], { phase: 'both', showQty: getShowQtyPref() }, btn, code, win);
 }
 
 /* ============================================================
