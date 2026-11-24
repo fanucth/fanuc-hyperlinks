@@ -43,7 +43,7 @@ function xlBillCols(withPerson){
     num('Gasoline', 'gasoline'), num('Tollgate', 'tollgate'), num('Car wash', 'car_wash'), num('Parking', 'parking_fee'),
     num('Car rental', 'car_rental'), num('F&D', 'fnd'), num('Taxi', 'taxi'), num('Hotel fee', 'hotel_fee'), num('Misc.', 'misc'),
     num('VAT', 'vat'), num('WT', 'wt'), num('Adjustment', 'adjustment'), num('Total', 'total'),
-    { h: 'Status', v: it => XL_T(it.b.pay_status === 'paid' ? 'Approved, awaiting payment' : 'Pending'), w: 10 },
+    { h: 'Status', v: it => XL_T({ paid: 'Paid', awaiting: 'Approved, awaiting payment', pending: 'Pending' }[advPayState(it.b)]), w: 10 },
     { h: 'Status date', v: it => xlDate(it.paidAt), w: 12 },
     { h: 'Car plate', v: it => it.b.car_no || '', w: 12 },
     { h: 'Cost center', v: it => it.b.cost_center || '', w: 14 },
