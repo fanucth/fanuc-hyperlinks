@@ -140,7 +140,7 @@ function advCopy(r, ctx){
         <tr class="adv-line"><td>Gasoline fee for car no. ${advCe('car', r.car_no || '', 'adv-dash')}</td><td class="c">-</td>
           <td class="n">${advAmt(r.gasoline)}</td><td class="c">-</td><td class="n">${advAmt(r.gasoline)}</td><td class="c">-</td></tr>
         ${items.map((x, k) => line(x[0], x[1], k === items.length - 1)).join('')}
-        <tr><td colspan="2" class="r adv-tp">Total amount</td><td class="n adv-tp adv-ul">${money(lineSum)}</td><td class="n adv-tp">${advAmt(vat)}</td><td class="n adv-tp adv-ul"><b>${money(lineSum + vat)}</b></td><td class="n adv-tp">${advAmt(wt)}</td></tr>
+        <tr><td colspan="2" class="r adv-tp">Total amount</td><td class="n adv-tp adv-ul">${money(lineSum)}</td><td class="${vat ? 'n' : 'c'} adv-tp">${advAmt(vat)}</td><td class="n adv-tp adv-ul"><b>${money(lineSum + vat)}</b></td><td class="${wt ? 'n' : 'c'} adv-tp">${advAmt(wt)}</td></tr>
         <tr><td colspan="4" class="r adv-tp adv-mut">Withholding tax adjustment</td><td class="n adv-tp adv-ul">${money(wt)}</td><td></td></tr>
         <tr><td colspan="4" class="r adv-tp"><b>Total amount</b></td><td class="n adv-tp adv-dbl"><b>${money(total)}</b></td><td></td></tr>
       </tbody>
@@ -162,23 +162,28 @@ function advCopy(r, ctx){
 function advCalcBlock(c, r){
   const cn = (v, d) => v == null ? '—' : cN(v, d), km = v => v == null ? '—' : cK(v);
   const who = `${r.fname || ''} ${r.lname || ''}`.trim() + (r.employee_no ? ` (${r.employee_no})` : '');
+  const mm = /^(\d{4})-(\d{2})$/.exec(r.billing_month || ''), mon = mm ? `${ADV_MON[+mm[2] - 1]} ${mm[1]}` : (r.billing_month || '');
+  const car = c.car_no || r.car_no || '';
   const taxed = c.tax_km != null || c.tax_total != null;
   const diff = Math.abs(Number(c.diff)) > 0.005 ? cn(c.diff) : '-';
   return `<div class="adv-copy adv-calcbox">
-    <div class="adv-ctitle"><b>Gasoline calculation</b> — ${esc(who)} · billing month ${esc(r.billing_month || '')}${c.car_no ? ' · car ' + esc(c.car_no) : ''}</div>
+    <div class="adv-chead">
+      <div class="adv-ctt">Gasoline calculation</div>
+      <div class="adv-cmeta"><span><i>Employee</i><b>${esc(who)}</b></span><span><i>Billing month</i><b>${esc(mon)}</b></span>${car ? `<span><i>Car no.</i><b>${esc(car)}</b></span>` : ''}</div>
+    </div>
     <table class="adv-ctbl">
-      <thead><tr><th class="l"></th><th>Liter</th><th>amount on bill</th><th>Average cost /litre</th><th>Average KM /litre</th><th>Average cost /km</th><th></th><th>use</th><th>claim</th><th>Total</th><th></th></tr></thead>
+      <thead><tr><th class="l"></th><th>Liter</th><th>Amount on bill</th><th>Average cost /litre</th><th>Average KM /litre</th><th>Average cost /km</th><th></th><th>Use</th><th>Claim</th><th>Total</th><th></th></tr></thead>
       <tbody>
         <tr class="adv-ctot"><td class="l">Total</td><td>${cn(c.litres)}</td><td>${cn(c.fuel_amount)}</td><td>${cn(c.price_per_litre)}</td><td>${cn(c.km_per_litre)}</td><td>${cn(c.cost_per_km, 4)}</td>
           <td class="k">KM</td><td>${km(c.private_km)}</td><td>${km(c.claim_km)}</td><td>${km(c.total_km)}</td><td></td></tr>
-        <tr class="adv-cdot"><td colspan="6"></td><td class="k">amount(Bht)</td><td>${cn(c.private_amount)}</td><td>${cn(c.claim_amount)}</td><td>${cn(c.fuel_amount)}</td><td class="mut">${diff}</td></tr>
+        <tr class="adv-cdot"><td colspan="6"></td><td class="k">Amount (Bht)</td><td>${cn(c.private_amount)}</td><td><b>${cn(c.claim_amount)}</b></td><td>${cn(c.fuel_amount)}</td><td class="mut">${diff}</td></tr>
       </tbody>
     </table>
     ${taxed ? `<table class="adv-ctbl adv-ctax">
       <thead><tr><th class="l" style="width:46%">Transportation for Tax calculation</th><th></th><th>Gasoline</th><th>Tollgate</th><th>Total</th></tr></thead>
       <tbody>
         <tr><td></td><td class="k">KM</td><td>${km(c.tax_km)}</td><td></td><td></td></tr>
-        <tr class="adv-cdot"><td></td><td class="k">amount(Bht)</td><td>${cn(c.tax_km_amount)}</td><td>${cn(c.tax_toll)}</td><td>${cn(c.tax_total)}</td></tr>
+        <tr class="adv-cdot"><td></td><td class="k">Amount (Bht)</td><td>${cn(c.tax_km_amount)}</td><td>${cn(c.tax_toll)}</td><td><b>${cn(c.tax_total)}</b></td></tr>
       </tbody></table>` : ''}
   </div>`;
 }
@@ -192,7 +197,7 @@ function advRender(){
     const one = advCopy(r, { docNo: bm ? `PC-${bm[1]}/ G${+bm[2]}-${r.seq}` : `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep, appr: ADV.sig ? ADV.sig.get(r.id) : null });
     const c = CALCS.get(r.id), withCalc = mode === 'calc' && !!c;
     // one A4 sheet per bill: the payment advice, and under it the calculation when the bill has one (never a second copy of the advice)
-    return `<div class="adv-sheet one" data-i="${i}">${one}${withCalc ? '<div class="adv-cut"></div>' + advCalcBlock(c, r) : ''}</div>`;
+    return `<div class="adv-sheet one" data-i="${i}"><img class="adv-wm" src="fanuc-logo.png" alt="">${one}${withCalc ? '<div class="adv-cut"></div>' + advCalcBlock(c, r) : ''}</div>`;
   }).join('');
   // many expense lines (e.g. an Adj. line) + the calculation + the tax block: tighten the spacing step by step so everything stays on the same page
   if (!$('advModal').classList.contains('hidden')) {

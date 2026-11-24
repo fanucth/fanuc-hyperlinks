@@ -325,12 +325,18 @@
   .adv-sign{display:flex;justify-content:space-between;gap:4mm;margin-top:auto;padding-top:5mm;font-size:8.5pt;}
   .adv-rel{display:flex;gap:var(--fc-s3);align-items:center;flex-wrap:wrap;margin:0 0 var(--fc-s3);}
   .adv-calcbox{font-size:8.5pt;}
-  .adv-ctitle{font-size:8.5pt;color:#333;margin:0 0 2mm;}
+  .adv-chead{border-bottom:1.5px solid #000;padding-bottom:1.5mm;margin-bottom:2.5mm;}
+  .adv-ctt{font-size:11pt;font-weight:700;letter-spacing:.2px;}
+  .adv-cmeta{display:flex;flex-wrap:wrap;gap:.8mm 7mm;margin-top:1.2mm;font-size:8.5pt;color:#111;} .adv-cmeta i{font-style:normal;color:#666;margin-right:1.5mm;} .adv-cmeta b{font-weight:700;}
   .adv-ctbl{width:100%;border-collapse:collapse;margin-top:2mm;}
-  .adv-ctbl th{font-weight:400;font-size:8pt;text-align:right;padding:1mm 1.5mm;border-top:1px solid #000;border-bottom:1px solid #000;vertical-align:bottom;}
+  .adv-ctbl th{font-weight:600;font-size:8pt;text-align:right;padding:1.3mm 1.5mm;background:#eeeeee;border-bottom:1px solid #000;vertical-align:bottom;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .adv-ctbl td{font-size:8.5pt;text-align:right;padding:1mm 1.5mm;font-variant-numeric:tabular-nums;}
   .adv-ctbl th.l,.adv-ctbl td.l{text-align:left;} .adv-ctbl td.k{text-align:right;color:#333;} .adv-ctbl td.mut{color:#555;}
-  .adv-ctot td{padding-top:2mm;} .adv-cdot td{border-bottom:1px dotted #777;} .adv-ctax{margin-top:4mm;}
+  .adv-ctot td{padding-top:2mm;font-weight:700;} .adv-ctot td.k{font-weight:400;} .adv-ctbl td.k{white-space:nowrap;} .adv-cdot td{border-bottom:1px solid #999;padding-bottom:1.4mm;} .adv-ctax{margin-top:4mm;}
+  /* faint FANUC logo in the middle of the sheet (an <img>, so it also prints when "background graphics" is off) */
+  .adv-sheet{position:relative;}
+  .adv-wm{position:absolute;left:50%;top:50%;width:125mm;transform:translate(-50%,-50%);opacity:.09;pointer-events:none;user-select:none;z-index:0;}
+  .adv-sheet .adv-copy{position:relative;z-index:1;}
   .adv-hr{display:flex;flex-direction:column;align-items:flex-end;}
   .fc-btn--approve{background:#1f7a3d !important;border-color:#1f7a3d !important;color:#fff !important;font-weight:600;}
   .fc-btn--approve:hover:not(:disabled){background:#17612f !important;}
@@ -1118,7 +1124,7 @@
 <script src="homemap.js?v=202610161600"></script>
 <script src="fuel-calc.js?v=202610181700"></script>
 <script src="claims.js?v=202610181600"></script>
-<script src="advice.js?v=202611251000"></script>
+<script src="advice.js?v=202611251100"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="export-xlsx.js?v=202611241500"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
