@@ -604,7 +604,7 @@ window.I18N_TH = {
   'Save draft': 'บันทึกร่าง',
 
   /* ---------- Payment advice page ---------- */
-  'Choose a billing month, tick the people and print. Each document is one A4 sheet (two copies, top and bottom). The number is': 'เลือกเดือนที่เรียกเก็บ ติ๊กเลือกคน แล้วพิมพ์ เอกสารแต่ละใบคือกระดาษ A4 หนึ่งแผ่น (2 ชุด บนและล่าง) เลขที่คือ',
+  'Choose a billing month, tick the people and print. Each document is one A4 sheet (the advice, with its calculation underneath when there is one). The number is': 'เลือกเดือนที่เรียกเก็บ ติ๊กเลือกคน แล้วพิมพ์ เอกสารแต่ละใบคือกระดาษ A4 หนึ่งแผ่น (2 ชุด บนและล่าง) เลขที่คือ',
   'PC-year/ G<billing month>-<No.>': 'PC-ปี/ G<เดือนที่เรียกเก็บ>-<ลำดับ>',
   '(a September bill gives G9). When a bill is approved and waiting for payment, tick the people and press': '(บิลเดือนกันยายนจะได้ G9) เมื่อบิลอนุมัติแล้วรอจ่าย ให้ติ๊กเลือกคนแล้วกด',
   'Export Excel': 'ส่งออก Excel',
@@ -688,7 +688,7 @@ window.I18N_TH = {
   'Mark as pending ({0})': 'ทำเครื่องหมายว่ารอจ่าย ({0})',
   'Print selected': 'พิมพ์ที่เลือก',
   'Print selected ({0})': 'พิมพ์ที่เลือก ({0})',
-  'Print whole month': 'พิมพ์ทั้งเดือน',
+  'Print all': 'พิมพ์ทั้งหมด',
   'All departments': 'ทุกแผนก',
   'Payment': 'การจ่ายเงิน',
   'Reset': 'รีเซ็ต',

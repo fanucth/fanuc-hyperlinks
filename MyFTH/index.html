@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2048%2048'%3E%3Crect%20width%3D'48'%20height%3D'48'%20rx%3D'8'%20fill%3D'%23FFD702'%2F%3E%3Cg%20fill%3D'none'%20stroke%3D'%231b1b1f'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Crect%20x%3D'10'%20y%3D'11'%20width%3D'28'%20height%3D'26'%20rx%3D'3.5'%2F%3E%3Cpath%20d%3D'M20.5%2011v2.2h7V11'%2F%3E%3Ccircle%20cx%3D'19.5'%20cy%3D'23'%20r%3D'3.2'%2F%3E%3Cpath%20d%3D'M13.8%2032c.8-3%203-4.4%205.7-4.4s4.9%201.4%205.7%204.4M29%2022h5M29%2027h5'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&family=Noto+Sans+Thai:wght@400;500;600;700&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@500;600&family=Noto+Sans+Thai:wght@400;500;600;700&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="fanuc-ui.css?v=202610161600">
@@ -337,8 +337,18 @@
   .fc-btn--unapprove{border-color:#b12a2e !important;color:#b12a2e !important;}
   .fc-btn--unapprove:hover:not(:disabled){background:#f7e2e2 !important;}
   .fc-btn--approve:disabled,.fc-btn--unapprove:disabled{opacity:.45;}
+  /* Payment advice list: tick box, No. and Employee stay in view while the table scrolls sideways */
+  #viewAdvice .tbl .stk1,#viewAdvice .tbl .stk2,#viewAdvice .tbl .stk3{position:sticky;background:var(--fc-surface);z-index:2;}
+  #viewAdvice .tbl thead .stk1,#viewAdvice .tbl thead .stk2,#viewAdvice .tbl thead .stk3{background:var(--fc-th-bg);z-index:4;}
+  #viewAdvice .tbl .stk1{left:0;min-width:44px;max-width:44px;width:44px;}
+  #viewAdvice .tbl .stk2{left:44px;min-width:48px;max-width:48px;width:48px;}
+  #viewAdvice .tbl .stk3{left:92px;box-shadow:2px 0 0 var(--fc-border);}
+  /* a sheet that is too tall (many expense lines + calculation + tax block) gets tighter step by step so it stays on one A4 */
+  .adv-sheet.t1{padding:8mm 12mm;} .adv-sheet.t1 .adv-tbl td{padding-top:.6mm;padding-bottom:.6mm;} .adv-sheet.t1 .adv-cut{margin:2mm 0;} .adv-sheet.t1 .adv-sign{padding-top:3mm;} .adv-sheet.t1 .adv-baht{margin-top:2mm;}
+  .adv-sheet.t2{padding:6mm 11mm;font-size:9pt;} .adv-sheet.t2 .adv-tbl td{padding-top:.3mm;padding-bottom:.3mm;font-size:8.5pt;} .adv-sheet.t2 .adv-ctbl{margin-top:1mm;} .adv-sheet.t2 .adv-ctax{margin-top:2mm;} .adv-sheet.t2 .adv-logo{height:10mm;}
+  .adv-sheet.t3{padding:5mm 10mm;font-size:8.5pt;} .adv-sheet.t3 .adv-tbl td{padding-top:0;padding-bottom:0;font-size:8pt;} .adv-sheet.t3 .adv-ctbl td{padding-top:.4mm;padding-bottom:.4mm;font-size:8pt;} .adv-sheet.t3 .adv-sign{padding-top:1.5mm;}
   .adv-hrline{position:relative;min-width:44mm;height:5mm;vertical-align:bottom;}
-  .adv-sigfont{position:absolute;left:50%;bottom:-0.8mm;transform:translateX(-50%);font-family:"Mrs Saint Delafield","Segoe Script","Brush Script MT",cursive;font-size:25pt;line-height:1;font-weight:400;color:#0b2a6f;white-space:nowrap;}
+  .adv-sigfont{position:absolute;left:50%;bottom:-0.8mm;transform:translateX(-50%);font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-size:19pt;line-height:1;font-weight:600;color:#0b2a6f;white-space:nowrap;}
   .adv-signame{font-size:7pt;color:#222;margin-top:0.6mm;text-align:right;}
   .adv-sigprev{height:40px;max-width:180px;object-fit:contain;background:#fff;border:1px solid var(--fc-border);border-radius:var(--fc-radius);padding:2px 6px;}
   .adv-sig{display:inline-block;min-width:34mm;border-bottom:1px solid #000;text-align:center;font-weight:700;}
@@ -401,7 +411,7 @@
   }
   @media print{ .fc-appbar .bar-actions{display:none;} }
 </style>
-<script src="i18n-th.js?v=202611241500"></script>
+<script src="i18n-th.js?v=202611241800"></script>
 <script src="i18n.js?v=202610161500"></script>
 </head>
 <body class="fc">
@@ -727,7 +737,7 @@
         <button class="back-btn push" id="btnAdvBack"><svg class="ico"><use href="#i-back"/></svg><span>Back to profile</span></button>
       </div>
       <div class="panel__body">
-        <p class="fc-note" style="margin-top:0">Choose a billing month, tick the people and print. Each document is one A4 sheet (two copies, top and bottom). The number is <b>PC-year/ G&lt;billing month&gt;-&lt;No.&gt;</b> (a September bill gives G9). When a bill is approved and waiting for payment, tick the people and press <b>Mark as approved, awaiting payment</b>.</p>
+        <p class="fc-note" style="margin-top:0">Choose a billing month, tick the people and print. Each document is one A4 sheet (the advice, with its calculation underneath when there is one). The number is <b>PC-year/ G&lt;billing month&gt;-&lt;No.&gt;</b> (a September bill gives G9). When a bill is approved and waiting for payment, tick the people and press <b>Mark as approved, awaiting payment</b>.</p>
         <div class="filters">
           <label class="fc-field"><span class="fc-field__label">Billing month</span><select id="advMonth" class="fc-input"></select></label>
           <label class="fc-field" style="flex:0 1 230px;min-width:150px"><span class="fc-field__label">Search</span>
@@ -741,14 +751,14 @@
           <button class="fc-btn fc-btn--approve hidden" id="advApprove" type="button" disabled title="General Admin manager: approve the ticked payment advices — your name appears as the signature in HR Div."><span>Approve</span></button>
           <button class="fc-btn fc-btn--unapprove hidden" id="advUnapprove" type="button" disabled><span>Withdraw approval</span></button>
           <button class="fc-btn" id="advPrintSel" type="button" disabled><span>Print selected</span></button>
-          <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button">Print whole month</button>
+          <button class="fc-btn fc-btn--primary" id="advPrintAll" type="button">Print all</button>
           <button type="button" class="fc-btn" id="btnXlsAdv" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
         </div>
         <div id="advRel" class="adv-rel hidden"><span id="advRelState"></span><span class="fc-note">Employees see the Print and Email buttons of a month automatically from the 24th of the payment month (one day before the 25th payment day), and keep seeing past months. You can always print.</span></div>
         <p class="summary" id="advStatus"></p>
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th><input type="checkbox" id="advTickAll" aria-label="Select all"></th><th>No.</th><th>Employee</th><th>Department</th><th>Car plate</th>
+            <thead><tr><th class="stk1"><input type="checkbox" id="advTickAll" aria-label="Select all"></th><th class="stk2">No.</th><th class="stk3">Employee</th><th>Department</th><th>Car plate</th>
               <th class="num">Gasoline</th><th class="num">Tollgate</th><th class="num">Car wash</th><th class="num">Parking</th><th class="num">Other</th><th class="num">Adjustment</th><th class="num">Total</th><th>Calculation</th><th>Approval</th><th>Status</th></tr></thead>
             <tbody id="advBody"></tbody>
           </table>
@@ -897,7 +907,7 @@
       <div class="adv-ctl">
         <label class="fc-field"><span class="fc-field__label">Prepare by</span><select id="advPrep" class="fc-input"></select></label>
         <label class="fc-field"><span class="fc-field__label">Lower half of the sheet</span>
-          <select id="advCopies" class="fc-input"><option value="calc">Calculation (when available)</option><option value="2">2 (top and bottom)</option><option value="1">1</option></select></label>
+          <select id="advCopies" class="fc-input"><option value="calc">Calculation (when available)</option><option value="1">None</option></select></label>
         <span class="fc-note" id="advInfo"></span>
         <span class="adv-btns"><button type="button" class="fc-btn" id="advClose">Close</button><button type="button" class="fc-btn hidden" id="advMail" title="Email this payment advice to my own email">Email me</button><button type="button" class="fc-btn fc-btn--primary" id="advPrint">Print</button></span>
       </div>
@@ -1108,7 +1118,7 @@
 <script src="homemap.js?v=202610161600"></script>
 <script src="fuel-calc.js?v=202610181700"></script>
 <script src="claims.js?v=202610181600"></script>
-<script src="advice.js?v=202611241500"></script>
+<script src="advice.js?v=202611241800"></script>
 <script src="photo.js?v=202610141420"></script>
 <script src="export-xlsx.js?v=202611241500"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>

@@ -84,6 +84,26 @@ function advPeriod(bm){
   return `Gasoline, tollgate and other expenses claim during 1-${last} ${ADV_MON[m - 1]} ${y}`;
 }
 const advAmt = n => Number(n) ? money(n) : '-';
+/* amount in English words:  6396.22 -> "Six thousand three hundred ninety-six Baht and twenty-two Satang only" */
+const EN_ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+function enBelow1000(n){
+  const h = Math.floor(n / 100), r = n % 100, out = [];
+  if (h) out.push(EN_ONES[h] + ' hundred');
+  if (r) out.push(r < 20 ? EN_ONES[r] : EN_TENS[Math.floor(r / 10)] + (r % 10 ? '-' + EN_ONES[r % 10] : ''));
+  return out.join(' ');
+}
+function enInt(n){
+  if (!n) return 'zero';
+  const names = ['', ' thousand', ' million', ' billion'], parts = [];
+  for (let i = 0; n > 0 && i < names.length; i++, n = Math.floor(n / 1000)) { const g = n % 1000; if (g) parts.unshift(enBelow1000(g) + names[i]); }
+  return parts.join(' ');
+}
+function bahtTextEn(amount){
+  const v = Math.round(Math.abs(Number(amount) || 0) * 100), baht = Math.floor(v / 100), satang = v % 100;
+  const t = (baht || !satang ? enInt(baht) + ' Baht' : '') + (satang ? (baht ? ' and ' : '') + enInt(satang) + ' Satang' : '') + ' only';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 const advSigText = name => String(name || '').trim().split(/\s+/)[0] || '';          // the HR Div. "signature" = the approver's first name in a handwriting font
 const advCe = (k, v, cls) => `<span class="adv-ce ${cls || ''}" contenteditable="true" spellcheck="false" data-k="${k}">${esc(v)}</span>`;
 
@@ -127,7 +147,7 @@ function advCopy(r, ctx){
     </table>
     <div class="adv-baht">
       <div class="adv-baht-l"><u>The sum of Thai Baht</u><br><b>จำนวนเงินบาท :</b></div>
-      ${advCe('baht', `( ${bahtText(total)} )`, 'adv-bahtbox')}
+      ${advCe('baht', `( ${bahtTextEn(total)} )`, 'adv-bahtbox')}
     </div>
     <div class="adv-sign">
       <div>Prepare by ${advCe('prep', ctx.prep, 'adv-sig')}</div>
@@ -164,28 +184,24 @@ function advCalcBlock(c, r){
 }
 
 function advRender(){
-  const mode = $('advCopies').value;                     // 'calc' = advice + calculation (when the bill has one, else two copies) · '2' = two copies · '1' = one copy
+  const mode = $('advCopies').value;                     // 'calc' = advice + the calculation underneath (when the bill has one) · '1' = the advice only
   const prep = $('advPrep').value;
   $('advPages').innerHTML = ADV.rows.map((r, i) => {
     const iso = advPayIso(r.billing_month) || advToday(), [dy, dm] = iso.split('-');          // document date = payment day, always the 25th
     const bm = /^(\d{4})-(\d{2})$/.exec(r.billing_month || '');           // PC-<year>/ G<billing month>-<No.>  e.g. September 2026 -> PC-2026/ G9-5
     const one = advCopy(r, { docNo: bm ? `PC-${bm[1]}/ G${+bm[2]}-${r.seq}` : `PC-${dy}/ G${+dm}-${r.seq}`, dateTxt: advDateTxt(iso), prep, appr: ADV.sig ? ADV.sig.get(r.id) : null });
     const c = CALCS.get(r.id), withCalc = mode === 'calc' && !!c;
-    const lower = withCalc ? advCalcBlock(c, r) : (mode === '1' ? '' : one);
-    return `<div class="adv-sheet${lower ? '' : ' one'}" data-i="${i}" data-calc="${withCalc ? 1 : 0}">${one}${lower ? '<div class="adv-cut"></div>' + lower : ''}</div>`;
+    // one A4 sheet per bill: the payment advice, and under it the calculation when the bill has one (never a second copy of the advice)
+    return `<div class="adv-sheet one" data-i="${i}">${one}${withCalc ? '<div class="adv-cut"></div>' + advCalcBlock(c, r) : ''}</div>`;
   }).join('');
-  let big = 0;
-  if (mode !== '1' && !$('advModal').classList.contains('hidden')) {
-    document.querySelectorAll('#advPages .adv-sheet:not(.one)').forEach(sh => {
-      const cp = sh.querySelector('.adv-copy');
-      if (cp.scrollHeight > cp.clientHeight + 1) {         // too many lines for half a sheet: the advice takes the whole sheet, the calculation goes to the next sheet
-        sh.classList.add('one'); sh.querySelector('.adv-cut').remove(); sh.querySelectorAll('.adv-copy')[1].remove(); big++;
-        if (sh.dataset.calc === '1') { const r = ADV.rows[+sh.dataset.i]; sh.insertAdjacentHTML('afterend', `<div class="adv-sheet one">${advCalcBlock(CALCS.get(r.id), r)}</div>`); }
-      }
+  // many expense lines (e.g. an Adj. line) + the calculation + the tax block: tighten the spacing step by step so everything stays on the same page
+  if (!$('advModal').classList.contains('hidden')) {
+    document.querySelectorAll('#advPages .adv-sheet').forEach(sh => {
+      for (const cls of ['t1', 't2', 't3']) { if (sh.scrollHeight <= sh.clientHeight + 1) break; sh.classList.add(cls); }
     });
   }
   const sheets = document.querySelectorAll('#advPages .adv-sheet').length || ADV.rows.length;
-  $('advInfo').textContent = `${ADV.rows.length} document${ADV.rows.length === 1 ? '' : 's'} · ${sheets} A4 sheet${sheets === 1 ? '' : 's'}` + (big ? ` · ${big} with many lines use a whole sheet` : '');
+  $('advInfo').textContent = `${ADV.rows.length} document${ADV.rows.length === 1 ? '' : 's'} · ${sheets} A4 sheet${sheets === 1 ? '' : 's'}`;
 }
 
 // "Prepare by": first names of the active employees of the General Admin department (fuel admins can read the list); anyone else keeps the remembered name
@@ -222,7 +238,7 @@ async function advOpen(rows, own){
   $('advMail').classList.toggle('hidden', !(own && rows.length === 1));
   $('advModal').classList.remove('hidden');
   await Promise.all([advFillPrep(), advLoadSigs(rows), loadCalcs(rows.map(r => r.id).filter(id => !CALCS.has(id))),   // calculation details for the lower half of the sheet
-    (document.fonts && document.fonts.load) ? document.fonts.load('32px "Mrs Saint Delafield"').catch(() => {}) : null]);   // handwriting font of the HR Div. signature
+    (document.fonts && document.fonts.load) ? document.fonts.load('600 32px "Dancing Script"').catch(() => {}) : null]);   // handwriting font of the HR Div. signature
   advRender();
   $('advPages').scrollTop = 0;
 }
@@ -332,9 +348,9 @@ function advRenderList(){
   const num = v => Number(v) ? money(v) : '<span class="dash">—</span>';
   ADV.shown = shown;                                            // used by Export Excel
   $('advBody').innerHTML = shown.length ? shown.map(r => `<tr>
-      <td><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
-      <td>${r.seq}</td>
-      <td><strong>${esc(r.fname)} ${esc(r.lname)}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(r.employee_no || '')}</div></td>
+      <td class="stk1"><input type="checkbox" class="advTick" data-id="${r.id}" aria-label="Select ${esc(r.fname)} ${esc(r.lname)}"></td>
+      <td class="stk2">${r.seq}</td>
+      <td class="stk3"><strong>${esc(r.fname)} ${esc(r.lname)}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(r.employee_no || '')}</div></td>
       <td>${esc(r.department || '—')}</td><td>${esc(r.car_no || '—')}</td>
       <td class="num">${num(r.gasoline)}</td><td class="num">${num(r.tollgate)}</td><td class="num">${num(r.car_wash)}</td>
       <td class="num">${num(r.parking_fee)}</td><td class="num" title="${esc(fuelExtraTip(r))}">${num(fuelExtraSum(r))}</td><td class="num">${num(r.adjustment)}</td>
