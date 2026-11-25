@@ -692,6 +692,7 @@
             <select id="uStatus" class="fc-input"><option value="">All</option><option value="active" selected>Active</option><option value="resigned">Resigned</option></select></label>
           <button class="fc-btn" id="uClear" type="button" title="Clear all filters">Clear</button>
           <button type="button" class="fc-btn" id="btnXlsUsers" title="Download the list shown here as an Excel file"><svg class="ico"><use href="#i-sheet"/></svg> Export Excel</button>
+          <button type="button" class="fc-btn" id="btnMailLogins" title="Email each person their username and password (first use)">Email sign-in details</button>
           <button class="fc-btn fc-btn--primary" id="btnAddUser">Add employee</button>
         </div>
         <p class="summary" id="usersSummary"></p>
@@ -1070,14 +1071,44 @@
   </div>
 </div>
 
-<!-- Result (temporary password shown once) -->
+<!-- Result (password shown once) -->
 <div class="fc-modal hidden" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="urTitle">
   <div class="fc-modal__box">
     <h3 id="urTitle">Done</h3>
     <p class="fc-note" style="margin-top:0" id="urEmail"></p>
     <div id="urPwRow" class="pwbox hidden"><code id="urPw"></code><button class="fc-btn fc-btn--sm" id="urCopy" type="button">Copy</button></div>
     <p class="fc-note" id="urNote"></p>
+    <div id="urMailRow" class="hidden" style="display:flex;gap:var(--fc-s2);align-items:flex-end;flex-wrap:wrap;margin-bottom:var(--fc-s3)">
+      <label class="fc-field" style="flex:1;min-width:220px;margin:0"><span class="fc-field__label">Email the sign-in details to</span>
+        <input type="email" id="urTo" class="fc-input" autocomplete="off"></label>
+      <button class="fc-btn" id="urMail" type="button">Send email</button>
+    </div>
     <div style="display:flex;justify-content:flex-end"><button class="fc-btn fc-btn--primary" id="urClose" type="button">Done</button></div>
+  </div>
+</div>
+
+<!-- Email sign-in details (username + password) to the people selected — each person gets only their own -->
+<div class="fc-modal hidden" id="mailModal" role="dialog" aria-modal="true" aria-labelledby="mlTitle">
+  <div class="fc-modal__box" style="max-width:760px;width:96vw">
+    <h3 id="mlTitle">Email sign-in details</h3>
+    <p class="fc-note" style="margin-top:0">For first use. Each person receives only their own username and password, at the email address in the box (change it if you want it sent elsewhere). Passwords are NOT changed — the email carries the password they already have. At first sign-in they are advised (not forced) to choose their own. People who already chose their own password cannot be sent one (use Reset password for them); people who signed in or were emailed before are marked in the Result column.</p>
+    <div id="mlDeptRow" class="hidden" style="display:flex;gap:var(--fc-s2);align-items:flex-end;flex-wrap:wrap;margin-bottom:var(--fc-s2)">
+      <label class="fc-field" style="flex:1;min-width:240px;margin:0"><span class="fc-field__label">Department</span>
+        <select id="mlDept" class="fc-input"></select></label>
+      <button type="button" class="fc-btn fc-btn--sm" id="mlNew" title="Tick only the people shown who have never signed in, and untick everyone else">Only people who have not signed in</button>
+      <span class="fc-note" id="mlCount" style="margin:0 0 8px"></span>
+    </div>
+    <div class="tbl-wrap" style="max-height:48vh;overflow:auto;margin:var(--fc-s2) 0">
+      <table class="tbl">
+        <thead><tr><th style="width:32px"><input type="checkbox" id="mlAll" checked title="Select all"></th><th>Employee</th><th>Send to (email)</th><th>Result</th></tr></thead>
+        <tbody id="mlBody"></tbody>
+      </table>
+    </div>
+    <p class="fc-note" id="mlSummary"></p>
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+      <button type="button" class="fc-btn" id="mlClose">Close</button>
+      <button type="button" class="fc-btn fc-btn--primary" id="mlSend">Send emails</button>
+    </div>
   </div>
 </div>
 
@@ -1091,7 +1122,8 @@
     <label class="fc-field"><span class="fc-field__label">Confirm new password</span>
       <input type="password" id="pwNew2" class="fc-input" autocomplete="new-password" required>
       <span class="fc-field__error" id="pwErr" role="alert"></span></label>
-    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end">
+    <div style="display:flex;gap:var(--fc-s2);justify-content:flex-end;flex-wrap:wrap">
+      <button type="button" class="fc-btn hidden" id="pwKeep" title="Keep the password you were given. You can change it any time later.">Keep current password</button>
       <button type="button" class="fc-btn" id="pwCancel">Cancel</button>
       <button type="submit" class="fc-btn fc-btn--primary" id="pwSave">Save password</button>
     </div>
@@ -1176,18 +1208,35 @@ function setTheme(m){
 /* ---------- password dialog ---------- */
 let pwForced = false;   // true = first sign-in / recovery: the person is asked to choose a password, but may skip ("Not now") and is asked again at the next sign-in
 let PW_SKIPPED = false;
-function openPwModal(forced, title, hint){
+function openPwModal(forced, title, hint, allowKeep){
   pwForced = forced;
+  $('pwKeep').classList.toggle('hidden', !(forced && allowKeep));
+  $('pwSave').textContent = forced && allowKeep ? 'Change password now' : 'Save password';
   $('pwTitle').textContent = title;
   $('pwHint').textContent = hint || '';
   $('pwNew').value = ''; $('pwNew2').value = ''; $('pwErr').textContent = '';
-  $('pwCancel').textContent = forced ? 'Not now' : 'Cancel';
+  $('pwCancel').textContent = forced ? (allowKeep ? 'Decide later' : 'Not now') : 'Cancel';
   $('pwModal').classList.remove('hidden');
   $('pwNew').focus();
 }
 $('pwCancel').onclick = () => {
   $('pwModal').classList.add('hidden');
   if (pwForced) { pwForced = false; PW_SKIPPED = true; boot(); }       // skipped: carry on into the app (the question comes back at the next sign-in)
+};
+// "keep current password": remember the choice in the account (must_change_password stays as it is, so the person can still be emailed their login)
+$('pwKeep').onclick = async () => {
+  $('pwKeep').disabled = true;
+  let err = null;
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    ({ error: err } = await sb.auth.updateUser({ data: { ...(user?.user_metadata || {}), pw_kept_at: new Date().toISOString() } }));
+  } catch (e) { err = e; }
+  $('pwKeep').disabled = false;
+  if (err) { $('pwErr').textContent = 'Could not save: ' + (err.message || err); return; }
+  $('pwModal').classList.add('hidden');
+  pwForced = false; PW_SKIPPED = true;
+  toast('OK — you keep your current password. You can change it any time from “Change password”.');
+  boot();
 };
 $('btnChgPw').onclick = () => openPwModal(false, 'Change password');
 $('pwForm').onsubmit = async e => {
@@ -1497,9 +1546,9 @@ async function boot(){
   const mst = !ms.error && ms.data && ms.data[0];
   if (mst && mst.needed && !mst.verified) return startMfa(user, mst);
 
-  if (user.user_metadata?.must_change_password && !PW_SKIPPED) {
+  if (user.user_metadata?.must_change_password && !user.user_metadata?.pw_kept_at && !PW_SKIPPED) {
     show('viewLogin');
-    return openPwModal(true, 'Set your own password', 'First sign-in: please choose your own password. The one you were given will stop working once you change it. You can skip this for now; you will be asked again at your next sign-in.');
+    return openPwModal(true, 'Your password', 'For your security we recommend choosing your own password. This is not required — you can keep the password you were given, change it now, or decide later (you will be asked again at your next sign-in).', true);
   }
 
   // RLS returns only your own row (and only for active employees)

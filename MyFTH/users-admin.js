@@ -151,6 +151,7 @@ function renderUsers(){
         <button class="bar-btn" data-act="edit" data-id="${u.id}">Edit</button>
         <button class="bar-btn" data-act="resetmfa" data-id="${u.id}" ${u.auth_user_id && MFA_SET ? '' : 'disabled'} title="Clear email-code sessions, remembered browsers, authenticator app and backup codes">Reset 2FA</button>
         <button class="bar-btn" data-act="reset" data-id="${u.id}" ${u.auth_user_id ? '' : 'disabled'}>Reset password</button>
+        <button class="bar-btn" data-act="maillogin" data-id="${u.id}" ${u.auth_user_id && !resigned ? '' : 'disabled'} title="Email this person their username and password (first use)">Email login</button>
         <button class="bar-btn" data-act="toggle" data-id="${u.id}">${resigned ? 'Reactivate' : 'Mark resigned'}</button>
       </td></tr>`;
   }).join('');
@@ -187,7 +188,7 @@ function openEdit(u){
   $('ue_mfa').checked = !!(u && u.mfa_required === true);
   $('ueMfaNote').textContent = !MFA_SET ? '' : MFA_SET.mode === 'all' ? '— everyone is required right now' : MFA_SET.mode === 'off' ? '— takes effect when the setting above is not “Nobody”' : '';
   $('ueRoles').classList.toggle('hidden', !u);   // roles can be granted after the account exists
-  $('ueHint').textContent = u ? '' : 'A login account is created with a temporary password (first name + last 4 digits of phone, or Employee ID). The employee must choose a new password at first sign-in.';
+  $('ueHint').textContent = u ? '' : 'A login account is created with a password (first name + last 4 digits of phone, or Employee ID). At first sign-in the employee is advised (not forced) to choose their own.';
   $('ueSave').textContent = u ? 'Save changes' : 'Create employee';
   $('userModal').classList.remove('hidden');
   $(fid('fname')).focus();
@@ -326,13 +327,17 @@ async function saveEdit(e){
   }
 }
 
-/* ---------- result dialog (temporary password shown once) ---------- */
+/* ---------- result dialog (password shown once) ---------- */
+let RESULT_EMAIL = '';
 function showResult(title, email, pw, note, extra){
+  RESULT_EMAIL = email;
   $('urTitle').textContent = title;
   $('urEmail').textContent = email;
+  $('urMailRow').classList.toggle('hidden', !pw);   // offer to email the details only when a password was just issued
+  $('urTo').value = email;
   $('urPwRow').classList.toggle('hidden', !pw);
   $('urPw').textContent = pw || '';
-  $('urNote').textContent = (note || (pw ? 'Share this temporary password with the employee. It is shown only once; they must choose their own at first sign-in.' : '')) + (extra ? ' ' + extra : '');
+  $('urNote').textContent = (note || (pw ? 'Share this password with the employee. It is shown only once; at first sign-in they are advised (not forced) to choose their own.' : '')) + (extra ? ' ' + extra : '');
   $('resultModal').classList.remove('hidden');
 }
 
@@ -341,6 +346,7 @@ async function onRowAction(ev){
   const b = ev.target.closest('button[data-act]'); if (!b) return;
   const u = USERS.find(x => x.id === b.dataset.id); if (!u) return;
   if (b.dataset.act === 'edit') return openEdit(u);
+  if (b.dataset.act === 'maillogin') return openMail([u]);
   if (b.dataset.act === 'mfa') {
     b.disabled = true;
     const { error } = await sb.from('employees').update({ mfa_required: u.mfa_required !== true }).eq('id', u.id);
@@ -375,6 +381,118 @@ async function onRowAction(ev){
   }
 }
 
+/* ---------- email sign-in details (username + password), each person their own ---------- */
+let MAIL_LIST = [];
+let MAIL_INIT = new Set();            // ids shown in the Manage users list when the dialog was opened (its filters)
+const MAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const mailOk = u => u.auth_user_id && u.status === 'active';
+function mailRows(){ return [...$('mlBody').querySelectorAll('tr')]; }
+function mailShown(){ return mailRows().filter(r => r.style.display !== 'none'); }
+function mailCount(){
+  const sh = mailShown(), n = sh.filter(r => r.querySelector('.ml-ck').checked).length, can = sh.filter(r => !r.dataset.cant).length;
+  $('mlCount').textContent = `Selected: ${n} of ${can}`;
+  $('mlAll').checked = can > 0 && n === can;
+}
+// choose who is listed (and ticked): the list as filtered on the page, every department, or one department
+function mailPick(){
+  const v = $('mlDept').value;
+  mailRows().forEach(r => {
+    const u = MAIL_LIST[+r.dataset.i];
+    const show = v === '__list' ? MAIL_INIT.has(u.id) : v === '__none' ? !normDept(u.department) : (v === '' || normDept(u.department) === v);
+    r.style.display = show ? '' : 'none';
+    r.querySelector('.ml-ck').checked = show && !r.dataset.cant;
+  });
+  mailCount();
+}
+// who already signed in / was emailed before (warning only — they can still be sent)
+let MAIL_STATUS = Promise.resolve(), MAIL_STATUS_OK = false;
+async function loadMailStatus(){
+  MAIL_STATUS_OK = false;
+  try {
+    const out = await callFn('login_status', { emails: MAIL_LIST.map(u => u.email) });
+    mailRows().forEach(r => {
+      const u = MAIL_LIST[+r.dataset.i], st = out.status?.[u.email.toLowerCase()];
+      if (!st) return;
+      r.dataset.signed = st.signed_in || ''; r.dataset.sent = st.mail_sent || '';
+      const chips = [];
+      const cant = st.own_password ? 'Chose own password — cannot be sent' : st.no_formula ? 'Password unknown — cannot be sent' : '';
+      if (cant) {   // the password is stored one-way: it can only be sent while the person still has the initial one
+        r.dataset.cant = '1';
+        const ck = r.querySelector('.ml-ck'); ck.checked = false; ck.disabled = true;
+        chips.push(`<span class="fc-badge fc-badge--neutral" title="Their password cannot be read back. Use Reset password if they need a new one.">${cant}</span>`);
+      }
+      if (st.signed_in && !cant) chips.push(`<span class="fc-badge fc-badge--warn" title="This person has already signed in with the password they were given but has not chosen their own yet.">Signed in before ${dmy(st.signed_in)}</span>`);
+      if (st.mail_sent) chips.push(`<span class="fc-badge fc-badge--info" title="Sign-in details were already emailed to this person.">Email sent ${dmy(st.mail_sent)}</span>`);
+      const c = r.querySelector('.ml-res');
+      if (chips.length && c.textContent === '—') c.innerHTML = chips.join(' ');
+    });
+    MAIL_STATUS_OK = true;
+    mailCount();
+  } catch (err) { /* status is only a hint — sending still works */ }
+}
+function openMail(list, pickDept){
+  MAIL_INIT = new Set(list.filter(mailOk).map(u => u.id));
+  MAIL_LIST = (pickDept ? USERS : list).filter(mailOk);
+  if (!MAIL_LIST.length) return toast('No one in the list can be emailed (needs an active employee with a login account).', true);
+  $('mlSummary').textContent = '';
+  $('mlBody').innerHTML = MAIL_LIST.map((u, i) => `<tr data-i="${i}">
+      <td><input type="checkbox" class="ml-ck" checked></td>
+      <td><strong>${esc(u.fname)} ${esc(u.lname)}</strong><div class="fc-mut" style="font-size:calc(12px * var(--ts,1))">${esc(u.department || '—')}</div></td>
+      <td><input type="email" class="fc-input ml-to" value="${esc(u.email)}" autocomplete="off"></td>
+      <td class="ml-res fc-mut">—</td></tr>`).join('');
+  MAIL_STATUS = loadMailStatus();
+  // department picker (only when opened from the toolbar)
+  $('mlDeptRow').classList.toggle('hidden', !pickDept);
+  if (pickDept) {
+    const m = new Map();
+    MAIL_LIST.forEach(u => { const d = normDept(u.department); if (d) m.set(d, (m.get(d) || 0) + 1); });
+    const noDept = MAIL_LIST.filter(u => !normDept(u.department)).length;
+    $('mlDept').innerHTML = `<option value="__list">As filtered in the list (${MAIL_INIT.size})</option>` +
+      `<option value="">All departments (${MAIL_LIST.length})</option>` +
+      [...m.keys()].sort((a, b) => a.localeCompare(b)).map(d => `<option value="${esc(d)}">${esc(d)} (${m.get(d)})</option>`).join('') +
+      (noDept ? `<option value="__none">No department (${noDept})</option>` : '');
+    const cur = resolveDept($('uDept').value);   // a department typed in the page filter starts selected
+    $('mlDept').value = cur.existing ? cur.name : '__list';
+  }
+  mailPick();
+  $('mlSend').disabled = false;
+  $('mailModal').classList.remove('hidden');
+}
+async function sendMails(){
+  const rows = mailShown().filter(r => r.querySelector('.ml-ck').checked);
+  if (!rows.length) return toast('Tick at least one person.', true);
+  for (const r of rows) {
+    const to = r.querySelector('.ml-to').value.trim();
+    if (!MAIL_RE.test(to)) { const c = r.querySelector('.ml-res'); c.textContent = 'Invalid email'; c.style.color = 'var(--fc-danger, #b91c1c)'; return toast('Fix the email address first.', true); }
+  }
+  const nSigned = rows.filter(r => r.dataset.signed).length, nSent = rows.filter(r => r.dataset.sent).length;
+  let warn = '';
+  if (nSigned) warn += `\n⚠ ${nSigned} of them have already signed in with the password they were given.`;
+  if (nSent) warn += `\n⚠ ${nSent} of them were already emailed their sign-in details before.`;
+  if (!confirm(`Email each of the ${rows.length} selected person${rows.length === 1 ? '' : 's'} their username and password?\n\nPasswords are NOT changed — the email contains the password they already have.${warn}`)) return;
+  $('mlSend').disabled = true;
+  let ok = 0, skip = 0, bad = 0;
+  for (const r of rows) {
+    const u = MAIL_LIST[+r.dataset.i], c = r.querySelector('.ml-res');
+    c.style.color = ''; c.textContent = 'Sending…';
+    try {
+      const out = await callFn('send_login', { email: u.email, to: r.querySelector('.ml-to').value.trim().toLowerCase() });
+      if (out.ok) {
+        ok++; c.textContent = '✔ Sent to ' + out.to + (out.sentBefore ? ' · sent again (first sent ' + dmy(out.sentBefore) + ')' : '');
+        c.style.color = 'var(--fc-ok, #15803d)'; r.querySelector('.ml-ck').checked = false; r.dataset.sent = new Date().toISOString();
+      }
+      else {
+        skip++;
+        c.textContent = { own_password: 'Skipped — chose own password', no_formula: 'Skipped — password unknown', resigned: 'Skipped — resigned', no_login: 'Skipped — no login account' }[out.skipped] || 'Skipped';
+        c.style.color = 'var(--fc-warn, #b45309)';
+      }
+    } catch (err) { bad++; c.textContent = '✖ ' + (err.message || err); c.style.color = 'var(--fc-danger, #b91c1c)'; }
+  }
+  mailCount();
+  $('mlSummary').textContent = `Sent ${ok}${skip ? ', skipped ' + skip : ''}${bad ? ', failed ' + bad : ''}.`;
+  $('mlSend').disabled = false;
+}
+
 function wireUsers(){
   $('btnUsers').onclick = async () => { show('viewUsers'); await loadUsers(); };
   $('btnUsersBack').onclick = () => show('viewMain');
@@ -396,6 +514,33 @@ function wireUsers(){
   $('uePhotoBtn').onclick = editPhoto;
   $('uePhotoRemove').onclick = () => { clearNewPhoto(); $('uePhotoThumb').textContent = '+'; $('uePhotoBtn').textContent = 'Add photo'; $('uePhotoRemove').classList.add('hidden'); };
   $('urClose').onclick = () => $('resultModal').classList.add('hidden');
+  $('btnMailLogins').onclick = () => openMail(LAST_LIST, true);
+  $('mlDept').onchange = mailPick;
+  // tick only the people (in the department shown) who have never signed in
+  $('mlNew').onclick = async () => {
+    $('mlNew').disabled = true;
+    await MAIL_STATUS;
+    $('mlNew').disabled = false;
+    if (!MAIL_STATUS_OK) return toast('Could not check who has signed in yet — try again in a moment.', true);
+    mailShown().forEach(r => { r.querySelector('.ml-ck').checked = !r.dataset.signed && !r.dataset.cant; });
+    mailCount();
+  };
+  $('mlBody').onchange = e => { if (e.target.classList.contains('ml-ck')) mailCount(); };
+  $('mlClose').onclick = () => $('mailModal').classList.add('hidden');
+  $('mlSend').onclick = sendMails;
+  $('mlAll').onchange = e => { mailShown().forEach(r => { r.querySelector('.ml-ck').checked = e.target.checked && !r.dataset.cant; }); mailCount(); };
+  $('urMail').onclick = async () => {
+    const to = $('urTo').value.trim();
+    if (!MAIL_RE.test(to)) return toast('Enter a valid email address.', true);
+    $('urMail').disabled = true;
+    try {
+      const out = await callFn('send_login', { email: RESULT_EMAIL, to, reveal: true });
+      if (out.tempPassword) $('urPw').textContent = out.tempPassword;
+      toast('Email sent to ' + out.to);
+    } catch (err) {
+      if (err.message && /could not be sent/.test(err.message)) toast(err.message, true); else toast(err.message || String(err), true);
+    } finally { $('urMail').disabled = false; }
+  };
   $('urCopy').onclick = async () => {
     try { await navigator.clipboard.writeText($('urPw').textContent); toast('Copied'); } catch { toast('Copy failed — select the text and copy manually', true); }
   };
