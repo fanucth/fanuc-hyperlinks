@@ -1089,7 +1089,7 @@
 
 <!-- Email sign-in details (username + password) to the people selected — each person gets only their own -->
 <div class="fc-modal hidden" id="mailModal" role="dialog" aria-modal="true" aria-labelledby="mlTitle">
-  <div class="fc-modal__box" style="max-width:760px;width:96vw">
+  <div class="fc-modal__box" style="max-width:1200px;width:96vw">
     <h3 id="mlTitle">Email sign-in details</h3>
     <p class="fc-note" style="margin-top:0">For first use. Each person receives only their own username and password, at the email address in the box (change it if you want it sent elsewhere). Passwords are NOT changed — the email carries the password they already have. At first sign-in they are advised (not forced) to choose their own. People who already chose their own password cannot be sent one (use Reset password for them); people who signed in or were emailed before are marked in the Result column.</p>
     <div id="mlDeptRow" class="hidden" style="display:flex;gap:var(--fc-s2);align-items:flex-end;flex-wrap:wrap;margin-bottom:var(--fc-s2)">
@@ -1100,7 +1100,7 @@
     </div>
     <div class="tbl-wrap" style="max-height:48vh;overflow:auto;margin:var(--fc-s2) 0">
       <table class="tbl">
-        <thead><tr><th style="width:32px"><input type="checkbox" id="mlAll" checked title="Select all"></th><th>Employee</th><th>Send to (email)</th><th>Result</th></tr></thead>
+        <thead><tr><th style="width:32px"><input type="checkbox" id="mlAll" checked title="Select all"></th><th style="width:24%">Employee</th><th style="width:42%;min-width:300px">Send to (email)</th><th style="width:34%">Result</th></tr></thead>
         <tbody id="mlBody"></tbody>
       </table>
     </div>
