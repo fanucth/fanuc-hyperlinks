@@ -10,6 +10,7 @@
      *** bump APP_VERSION ทุกครั้งก่อนอัปไฟล์ขึ้น GitHub ***
 
      CHANGELOG:
+       2026.11.26a - ลืมรหัสผ่าน: กรอกรหัสจากอีเมลได้ (pw-reset.js) กันระบบสแกนอีเมลเปิดลิงก์จนใช้ไม่ได้ + แจ้งเมื่อลิงก์เสีย  [หลังขึ้นเว็บแล้ว: เปลี่ยนแม่แบบอีเมล Reset Password ใน Supabase ให้ใช้ {{ .Token }}]
        2026.10.16b - แผนก Service - Robot โชว์เป็น "Robot" ในหน้าภาษาไทย (เดิม "หุ่นยนต์") — ไม่ต้องรัน SQL
        2026.10.16a - หน้าสร้าง QR: ช่อง Service Report No. / Service Order No. ใส่ได้หลายเลข (กด Enter ขึ้นบรรทัดใหม่ บรรทัดละ 1 เลข) และรับเฉพาะ "ตัวเลข"
                      (ตัวอักษร/เครื่องหมายถูกตัดออกอัตโนมัติ + แจ้งเตือน); มีคำอธิบายและตัวอย่างในหน้า; เก็บเป็น "1234567, 1234568" ในคอลัมน์เดิม
@@ -79,6 +80,7 @@
 -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="pw-reset.js?v=202611261100"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -211,7 +213,7 @@
       <label data-i18n="password">รหัสผ่าน</label>
       <input type="password" id="loginPass" autocomplete="current-password">
       <button class="btn btn-primary" id="btnLogin" data-i18n="signIn">เข้าสู่ระบบ</button>
-      <p style="text-align:center;margin:8px 0 0"><a href="#" id="linkForgot" style="color:var(--accent);font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a></p>
+      <p style="text-align:center;margin:8px 0 0"><a href="#" id="linkForgot" style="color:var(--accent);font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a> · <a href="#" id="linkHaveCode" style="color:var(--accent);font-size:12.5px" data-i18n="haveCode">มีรหัสจากอีเมลแล้ว</a></p>
       <p class="muted" data-i18n="loginNote">ลูกค้าไม่ต้องเข้าสู่ระบบ — สแกน QR จากหน้าจอวิศวกรได้เลย</p>
     </div>
   </section>
@@ -388,7 +390,7 @@
    ========================================================================= */
 // เวอร์ชัน — bump ทุกครั้งที่อัปไฟล์ขึ้น GitHub (ดูมุมขวาล่างของหน้า + console)
 // รูปแบบ: YYYY.MM.DD + ตัวอักษร ถ้าอัปหลายรอบในวันเดียว
-const APP_VERSION = "2026.10.16b";
+const APP_VERSION = "2026.11.26a";
 
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
@@ -422,7 +424,8 @@ const I18N = {
   loggedOutOk:{th:"ออกจากระบบเรียบร้อยแล้ว",en:"Signed out successfully",ja:"ログアウトしました"},
   forgotPw:{th:"ลืมรหัสผ่าน?",en:"Forgot password?",ja:"パスワードをお忘れですか？"},
   enterEmailFirst:{th:"กรอกอีเมลก่อน แล้วกด \"ลืมรหัสผ่าน?\" อีกครั้ง",en:"Enter your email first, then tap \"Forgot password?\"",ja:"先にメールを入力してください"},
-  resetSent:{th:"ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว (เช็กกล่อง spam ด้วย)",en:"A reset link was sent to your email (check spam too)",ja:"再設定リンクをメールに送りました"},
+  resetSent:{th:"ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว (เช็กกล่อง spam ด้วย)",en:"A password reset email was sent (check spam too)",ja:"再設定メールを送りました"},
+  haveCode:{th:"มีรหัสจากอีเมลแล้ว",en:"I have a code from the email",ja:"メールのコードを入力"},
   changePw:{th:"เปลี่ยนรหัสผ่าน",en:"Change password",ja:"パスワード変更"},
   pwNew:{th:"รหัสผ่านใหม่",en:"New password",ja:"新しいパスワード"},
   pwNew2:{th:"ยืนยันรหัสผ่านใหม่",en:"Confirm new password",ja:"新しいパスワード（確認）"},
@@ -747,7 +750,7 @@ function closePwModal(){ $('pwModal').classList.add('hidden'); }
 
 function wirePwUi(){
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true); }
+    if (event === 'PASSWORD_RECOVERY' && !(window.FTHReset && FTHReset.busy)) { show('viewLogin'); openPwModal(true); }
   });
   $('btnChgPw').onclick = () => openPwModal(false);
   $('pwCancel').onclick = closePwModal;
@@ -758,7 +761,10 @@ function wirePwUi(){
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     if (error) return toast(error.message, true);
     toast(t('resetSent'));
+    if (window.FTHReset) FTHReset.open(email);
   };
+  $('linkHaveCode').onclick = (e) => { e.preventDefault(); if (window.FTHReset) FTHReset.open($('loginEmail').value.trim().toLowerCase()); };
+  if (window.FTHReset) FTHReset.init({ sb, lang: () => lang, minLen: 6, onDone: msg => toast(msg) });
   $('pwSave').onclick = async () => {
     const a = $('pwNew').value, b = $('pwNew2').value;
     if (a.length < 6) { $('pwErr').textContent = t('pwTooShort'); return; }

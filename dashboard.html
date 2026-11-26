@@ -12,6 +12,7 @@
      UI: FANUC Web UI Kit (fanuc-ui.css) — ต้องอัป fanuc-ui.css ขึ้น repo คู่กัน
 
      CHANGELOG:
+       2026.11.26a - ลืมรหัสผ่าน: กรอกรหัสจากอีเมลได้ (pw-reset.js) กันระบบสแกนอีเมลเปิดลิงก์จนใช้ไม่ได้ + แจ้งเมื่อลิงก์เสีย  [หลังขึ้นเว็บแล้ว: เปลี่ยนแม่แบบอีเมล Reset Password ใน Supabase ให้ใช้ {{ .Token }}]
        2026.10.06c - แถบคะแนนรายข้อ: ต่อท้ายด้วย "เฉลี่ยต่อวัน (เดือนนี้)" = response เดือนนี้ ÷ จำนวนวันที่ผ่านมาของเดือน (นับวันปฏิทินรวมวันนี้)
        2026.10.06b - ลิงก์ 🌐↗ โชว์กับทุกคอมเมนต์ แม้ภาษาเดียวกับหน้า (ไทย->แปลเป็นญี่ปุ่น, ญี่ปุ่น->อังกฤษ) เดิมซ่อนจึงไม่เห็นเมื่อหน้าเป็นภาษาไทย
        2026.10.06a - ลิงก์ 🌐↗ แปลคอมเมนต์ (Google Translate) โชว์เสมอ — เดิมซ่อนเมื่อเบราว์เซอร์มี Translator API (เช่น Chrome บน https) ทำให้ one.fanucth.co.th ไม่เห็นลิงก์ แต่ 247 (http) เห็น
@@ -267,7 +268,7 @@
         <input type="password" id="loginPass" class="fc-input" autocomplete="current-password">
       </label>
       <button class="fc-btn fc-btn--primary" id="btnLogin" style="width:100%" data-i18n="signIn">เข้าสู่ระบบ</button>
-      <p style="text-align:center;margin:var(--fc-s2) 0 0"><a href="#" id="linkForgot" style="font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a></p>
+      <p style="text-align:center;margin:var(--fc-s2) 0 0"><a href="#" id="linkForgot" style="font-size:12.5px" data-i18n="forgotPw">ลืมรหัสผ่าน?</a> · <a href="#" id="linkHaveCode" style="font-size:12.5px" data-i18n="haveCode">มีรหัสจากอีเมลแล้ว</a></p>
       <p class="fc-note" style="margin-top:var(--fc-s3)" data-i18n="execOnly">เฉพาะผู้บริหารที่ได้รับสิทธิ์เท่านั้น</p>
     </div>
   </section>
@@ -544,10 +545,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="pw-reset.js?v=202611261100"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---------- CONFIG ---------- */
-const APP_VERSION = "2026.10.06c";
+const APP_VERSION = "2026.11.26a";
 const SUPABASE_CONFIG = {
   url: "https://soupmzzqsrwfnqmxevlg.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdXBtenpxc3J3Zm5xbXhldmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTg1NTgsImV4cCI6MjEwMzk5NDU1OH0.4WRRr_5qN4CLx6Ip85kzStKkZmTtxAUDr2K4YjWCNs0"
@@ -573,7 +575,8 @@ const I18N = {
   loginFail:{th:"เข้าสู่ระบบไม่สำเร็จ: {err}",en:"Sign-in failed: {err}",ja:"ログイン失敗: {err}"},
   forgotPw:{th:"ลืมรหัสผ่าน?",en:"Forgot password?",ja:"パスワードをお忘れですか？"},
   enterEmailFirst:{th:"กรอกอีเมลก่อน แล้วกด \"ลืมรหัสผ่าน?\" อีกครั้ง",en:"Enter your email first, then tap \"Forgot password?\"",ja:"先にメールを入力してください"},
-  resetSent:{th:"ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว (เช็ก spam ด้วย)",en:"A reset link was sent to your email (check spam too)",ja:"再設定リンクをメールに送りました"},
+  resetSent:{th:"ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว (เช็ก spam ด้วย)",en:"A password reset email was sent (check spam too)",ja:"再設定メールを送りました"},
+  haveCode:{th:"มีรหัสจากอีเมลแล้ว",en:"I have a code from the email",ja:"メールのコードを入力"},
   changePw:{th:"เปลี่ยนรหัสผ่าน",en:"Change password",ja:"パスワード変更"},
   pwSetNew:{th:"ตั้งรหัสผ่านใหม่",en:"Set a new password",ja:"新しいパスワードを設定"},
   pwNew:{th:"รหัสผ่านใหม่",en:"New password",ja:"新しいパスワード"},
@@ -1104,7 +1107,7 @@ function openPwModal(isRecovery){
 }
 function wirePwUi(){
   sb.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') { show('viewLogin'); openPwModal(true); }
+    if (event === 'PASSWORD_RECOVERY' && !(window.FTHReset && FTHReset.busy)) { show('viewLogin'); openPwModal(true); }
   });
   $('btnChgPw').onclick = () => openPwModal(false);
   $('pwCancel').onclick = () => $('pwModal').classList.add('fc-hidden');
@@ -1115,7 +1118,10 @@ function wirePwUi(){
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     if (error) return toast(error.message, true);
     toast(t('resetSent'));
+    if (window.FTHReset) FTHReset.open(email);
   };
+  $('linkHaveCode').onclick = (e) => { e.preventDefault(); if (window.FTHReset) FTHReset.open($('loginEmail').value.trim().toLowerCase()); };
+  if (window.FTHReset) FTHReset.init({ sb, lang: () => lang, minLen: 6, onDone: msg => toast(msg) });
   $('pwSave').onclick = async () => {
     const a = $('pwNew').value, b = $('pwNew2').value;
     if (a.length < 6) { $('pwErr').textContent = t('pwTooShort'); return; }
